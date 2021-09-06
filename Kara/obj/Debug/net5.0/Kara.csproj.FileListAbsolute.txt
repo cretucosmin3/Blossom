@@ -1,0 +1,116 @@
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.exe
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.deps.json
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.runtimeconfig.json
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.runtimeconfig.dev.json
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\ref\Kara.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Kara.pdb
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Blending.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Common.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Core.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Graphics.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Images.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Paths.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Rendering.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Scissoring.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Text.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Tools.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Transforms.dll
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.AssemblyInfoInputs.cache
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.AssemblyInfo.cs
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.CoreCompileInputs.cache
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.CopyComplete
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.dll
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\ref\Kara.dll
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.pdb
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.genruntimeconfig.cache
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Microsoft.Bcl.HashCode.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Microsoft.DotNet.PlatformAbstractions.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Microsoft.Extensions.DependencyModel.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Core.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.GLFW.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Common.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Glfw.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Sdl.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Maths.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.OpenAL.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.OpenGL.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.SDL.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Vulkan.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Vulkan.Extensions.KHR.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Common.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Glfw.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Sdl.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\StbImageWriteSharp.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\linux-x64\native\libglfw.so.3
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\osx-x64\native\libglfw.3.dylib
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x64\native\glfw3.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x86\native\glfw3.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\linux-x64\native\libSDL2-2.0.so
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\osx-x64\native\libSDL2-2.0.dylib
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x64\native\SDL2.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x86\native\SDL2.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Rendering.OpenGL.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\FontStash.NET.dll
+C:\Users\cretu\source\repos\Kara\Kara\bin\Debug\net5.0\SafeStbImageSharp.dll
+C:\Users\cretu\source\repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.AssemblyReference.cache
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.exe
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.deps.json
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.runtimeconfig.json
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.runtimeconfig.dev.json
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\ref\Kara.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Kara.pdb
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\FontStash.NET.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Microsoft.Bcl.HashCode.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Microsoft.DotNet.PlatformAbstractions.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Microsoft.Extensions.DependencyModel.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SafeStbImageSharp.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Core.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.GLFW.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Common.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Glfw.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Input.Sdl.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Maths.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.OpenAL.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.OpenGL.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.SDL.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Vulkan.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Vulkan.Extensions.KHR.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Common.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Glfw.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\Silk.NET.Windowing.Sdl.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\StbImageWriteSharp.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\linux-x64\native\libglfw.so.3
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\osx-x64\native\libglfw.3.dylib
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x64\native\glfw3.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x86\native\glfw3.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\linux-x64\native\libSDL2-2.0.so
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\osx-x64\native\libSDL2-2.0.dylib
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x64\native\SDL2.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\runtimes\win-x86\native\SDL2.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Blending.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Common.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Core.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Graphics.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Images.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Paths.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Rendering.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Rendering.OpenGL.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Scissoring.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Text.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Tools.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\bin\Debug\net5.0\SilkyNvg.Transforms.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.AssemblyReference.cache
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.AssemblyInfoInputs.cache
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.AssemblyInfo.cs
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.CoreCompileInputs.cache
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.csproj.CopyComplete
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\ref\Kara.dll
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.pdb
+C:\Users\cretu\Desktop\Github Repos\Kara\Kara\obj\Debug\net5.0\Kara.genruntimeconfig.cache
