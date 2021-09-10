@@ -58,6 +58,14 @@
               "target": "Package",
               "version": "[2.8.0, )"
             },
+            "SilkyNvg": {
+              "target": "Package",
+              "version": "[1.0.1, )"
+            },
+            "SilkyNvg.Rendering.OpenGL": {
+              "target": "Package",
+              "version": "[1.0.0, )"
+            },
             "StbImageWriteSharp": {
               "target": "Package",
               "version": "[1.13.5, )"

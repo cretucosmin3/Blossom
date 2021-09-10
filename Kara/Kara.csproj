@@ -13,49 +13,9 @@
     <PackageReference Include="FontStash.NET" Version="1.1.1" />
     <PackageReference Include="SafeStbImageSharp" Version="2.22.4" />
     <PackageReference Include="Silk.NET" Version="2.8.0" />
+    <PackageReference Include="SilkyNvg" Version="1.0.1" />
+    <PackageReference Include="SilkyNvg.Rendering.OpenGL" Version="1.0.0" />
     <PackageReference Include="StbImageWriteSharp" Version="1.13.5" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="SilkyNvg">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Blending">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Blending.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Common">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Core">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Graphics">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Graphics.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Images">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Images.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Paths">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Paths.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Rendering">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Rendering.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Rendering.OpenGL">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Rendering.OpenGL.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Scissoring">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Scissoring.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Text">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Text.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Tools">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Tools.dll</HintPath>
-    </Reference>
-    <Reference Include="SilkyNvg.Transforms">
-      <HintPath>..\..\..\..\Desktop\Dll Silky\SilkyNvg.Transforms.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>

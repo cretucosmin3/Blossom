@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "goJYrH7DJlQpoWGxKce++kq3C1oND599rZdfh+E+ySFIwGv2F80unN2Vm0JEI/bnVJZwmgrU1fLjjAhJfE3R5Q==",
+  "dgSpecHash": "cZcC++blpoW9lVeZPBJ33AAd7fFFHKgUlWU+yab2FCVoNiMjFe+Ie1QGzC0TQLEHeaWakaUDBG1Y5sa4fdiHWg==",
   "success": true,
   "projectFilePath": "C:\\Users\\cretu\\Desktop\\Github Repos\\Kara\\Kara\\Kara.csproj",
   "expectedPackageFiles": [
@@ -27,6 +27,8 @@
     "C:\\Users\\cretu\\.nuget\\packages\\silk.net.windowing.common\\2.8.0\\silk.net.windowing.common.2.8.0.nupkg.sha512",
     "C:\\Users\\cretu\\.nuget\\packages\\silk.net.windowing.glfw\\2.8.0\\silk.net.windowing.glfw.2.8.0.nupkg.sha512",
     "C:\\Users\\cretu\\.nuget\\packages\\silk.net.windowing.sdl\\2.8.0\\silk.net.windowing.sdl.2.8.0.nupkg.sha512",
+    "C:\\Users\\cretu\\.nuget\\packages\\silkynvg\\1.0.1\\silkynvg.1.0.1.nupkg.sha512",
+    "C:\\Users\\cretu\\.nuget\\packages\\silkynvg.rendering.opengl\\1.0.0\\silkynvg.rendering.opengl.1.0.0.nupkg.sha512",
     "C:\\Users\\cretu\\.nuget\\packages\\stbimagewritesharp\\1.13.5\\stbimagewritesharp.1.13.5.nupkg.sha512",
     "C:\\Users\\cretu\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\cretu\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",

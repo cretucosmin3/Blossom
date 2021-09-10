@@ -278,6 +278,51 @@
           "lib/net5.0/Silk.NET.Windowing.Sdl.dll": {}
         }
       },
+      "SilkyNvg/1.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net5.0/SilkyNvg.Blending.dll": {},
+          "lib/net5.0/SilkyNvg.Common.dll": {},
+          "lib/net5.0/SilkyNvg.Core.dll": {},
+          "lib/net5.0/SilkyNvg.Graphics.dll": {},
+          "lib/net5.0/SilkyNvg.Images.dll": {},
+          "lib/net5.0/SilkyNvg.Paths.dll": {},
+          "lib/net5.0/SilkyNvg.Rendering.dll": {},
+          "lib/net5.0/SilkyNvg.Scissoring.dll": {},
+          "lib/net5.0/SilkyNvg.Text.dll": {},
+          "lib/net5.0/SilkyNvg.Tools.dll": {},
+          "lib/net5.0/SilkyNvg.Transforms.dll": {},
+          "lib/net5.0/SilkyNvg.dll": {}
+        },
+        "runtime": {
+          "lib/net5.0/SilkyNvg.Blending.dll": {},
+          "lib/net5.0/SilkyNvg.Common.dll": {},
+          "lib/net5.0/SilkyNvg.Core.dll": {},
+          "lib/net5.0/SilkyNvg.Graphics.dll": {},
+          "lib/net5.0/SilkyNvg.Images.dll": {},
+          "lib/net5.0/SilkyNvg.Paths.dll": {},
+          "lib/net5.0/SilkyNvg.Rendering.dll": {},
+          "lib/net5.0/SilkyNvg.Scissoring.dll": {},
+          "lib/net5.0/SilkyNvg.Text.dll": {},
+          "lib/net5.0/SilkyNvg.Tools.dll": {},
+          "lib/net5.0/SilkyNvg.Transforms.dll": {},
+          "lib/net5.0/SilkyNvg.dll": {}
+        }
+      },
+      "SilkyNvg.Rendering.OpenGL/1.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Silk.NET.Maths": "2.7.0",
+          "Silk.NET.OpenGL": "2.7.0",
+          "SilkyNvg": "1.0.0"
+        },
+        "compile": {
+          "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll": {}
+        },
+        "runtime": {
+          "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll": {}
+        }
+      },
       "StbImageWriteSharp/1.13.5": {
         "type": "package",
         "compile": {
@@ -869,6 +914,41 @@
         "silk.net.windowing.sdl.nuspec"
       ]
     },
+    "SilkyNvg/1.0.1": {
+      "sha512": "oWsmpGAThAHCBE6FaWdm5cV0rIiAxDGoi1bzCYZFwnOBxkQwD1+GZU4/++a4WxqMu/dpvCcAlS3tUyUpjFbWyQ==",
+      "type": "package",
+      "path": "silkynvg/1.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net5.0/SilkyNvg.Blending.dll",
+        "lib/net5.0/SilkyNvg.Common.dll",
+        "lib/net5.0/SilkyNvg.Core.dll",
+        "lib/net5.0/SilkyNvg.Graphics.dll",
+        "lib/net5.0/SilkyNvg.Images.dll",
+        "lib/net5.0/SilkyNvg.Paths.dll",
+        "lib/net5.0/SilkyNvg.Rendering.dll",
+        "lib/net5.0/SilkyNvg.Scissoring.dll",
+        "lib/net5.0/SilkyNvg.Text.dll",
+        "lib/net5.0/SilkyNvg.Tools.dll",
+        "lib/net5.0/SilkyNvg.Transforms.dll",
+        "lib/net5.0/SilkyNvg.dll",
+        "silkynvg.1.0.1.nupkg.sha512",
+        "silkynvg.nuspec"
+      ]
+    },
+    "SilkyNvg.Rendering.OpenGL/1.0.0": {
+      "sha512": "JbVdK1MAXIt0SyIByFJEcQxrABgDQL9gax5WRI/989Am7dHhkKNo/pAaJ2vHIWuKBUce8tiBrGoWH3r7mdB+vA==",
+      "type": "package",
+      "path": "silkynvg.rendering.opengl/1.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll",
+        "silkynvg.rendering.opengl.1.0.0.nupkg.sha512",
+        "silkynvg.rendering.opengl.nuspec"
+      ]
+    },
     "StbImageWriteSharp/1.13.5": {
       "sha512": "AxnCp3V1OwpVhLYeftM+pBF2Ob8iqqMeppZmOb7H5rE6H0xdBU/F2BXWgty5OpjXbFaIuybFEieEmbxLdH+CJg==",
       "type": "package",
@@ -1190,6 +1270,8 @@
       "FontStash.NET >= 1.1.1",
       "SafeStbImageSharp >= 2.22.4",
       "Silk.NET >= 2.8.0",
+      "SilkyNvg >= 1.0.1",
+      "SilkyNvg.Rendering.OpenGL >= 1.0.0",
       "StbImageWriteSharp >= 1.13.5"
     ]
   },
@@ -1251,6 +1333,14 @@
           "Silk.NET": {
             "target": "Package",
             "version": "[2.8.0, )"
+          },
+          "SilkyNvg": {
+            "target": "Package",
+            "version": "[1.0.1, )"
+          },
+          "SilkyNvg.Rendering.OpenGL": {
+            "target": "Package",
+            "version": "[1.0.0, )"
           },
           "StbImageWriteSharp": {
             "target": "Package",
