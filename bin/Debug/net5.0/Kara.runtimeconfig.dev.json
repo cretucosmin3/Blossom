@@ -1,0 +1,8 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "/home/cosmin/.dotnet/store/|arch|/|tfm|",
+      "/home/cosmin/.nuget/packages"
+    ]
+  }
+}
