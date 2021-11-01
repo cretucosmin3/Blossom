@@ -40,7 +40,7 @@
           "dependencies": {
             "FontStash.NET": {
               "target": "Package",
-              "version": "[1.1.1, )"
+              "version": "[1.1.2, )"
             },
             "SafeStbImageSharp": {
               "target": "Package",
@@ -52,11 +52,15 @@
             },
             "SilkyNvg": {
               "target": "Package",
-              "version": "[1.0.1, )"
+              "version": "[*, )"
             },
             "SilkyNvg.Rendering.OpenGL": {
               "target": "Package",
-              "version": "[1.0.0, )"
+              "version": "[*, )"
+            },
+            "SilkyNvg.Rendering.Vulkan": {
+              "target": "Package",
+              "version": "[*, )"
             },
             "StbImageWriteSharp": {
               "target": "Package",
@@ -78,7 +82,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.402/RuntimeIdentifierGraph.json"
         }
       }
     }

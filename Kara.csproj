@@ -1,22 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>Kara</RootNamespace>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="FontStash.NET" Version="1.1.1" />
-    <PackageReference Include="SafeStbImageSharp" Version="2.22.4" />
-    <PackageReference Include="Silk.NET" Version="2.8.0" />
-    <PackageReference Include="SilkyNvg" Version="1.0.1" />
-    <PackageReference Include="SilkyNvg.Rendering.OpenGL" Version="1.0.0" />
-    <PackageReference Include="StbImageWriteSharp" Version="1.13.5" />
+    <PackageReference Include="FontStash.NET" Version="1.1.2"/>
+    <PackageReference Include="SafeStbImageSharp" Version="2.22.4"/>
+    <PackageReference Include="Silk.NET" Version="2.8.0"/>
+    <PackageReference Include="SilkyNvg" Version="*"/>
+    <PackageReference Include="SilkyNvg.Rendering.OpenGL" Version="*"/>
+    <PackageReference Include="StbImageWriteSharp" Version="1.13.5"/>
+    <PackageReference Include="SilkyNvg.Rendering.Vulkan" Version="*"/>
+    <PackageReference Include="System.Drawing.Common" Version="6.0.0-rc.2.21480.5"/>
   </ItemGroup>
-
 </Project>

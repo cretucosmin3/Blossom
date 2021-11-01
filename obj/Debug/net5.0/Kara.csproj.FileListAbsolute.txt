@@ -51,8 +51,8 @@
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.AssemblyInfoInputs.cache
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.AssemblyInfo.cs
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.csproj.CoreCompileInputs.cache
-/home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.csproj.CopyComplete
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.dll
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/ref/Kara.dll
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.pdb
 /home/cosmin/Github Repos/Kara/obj/Debug/net5.0/Kara.genruntimeconfig.cache
+/home/cosmin/Github Repos/Kara/bin/Debug/net5.0/SilkyNvg.Rendering.Vulkan.dll

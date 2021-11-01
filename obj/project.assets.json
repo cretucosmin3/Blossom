@@ -2,7 +2,7 @@
   "version": 3,
   "targets": {
     "net5.0": {
-      "FontStash.NET/1.1.1": {
+      "FontStash.NET/1.1.2": {
         "type": "package",
         "compile": {
           "lib/net5.0/FontStash.NET.dll": {}
@@ -278,8 +278,13 @@
           "lib/net5.0/Silk.NET.Windowing.Sdl.dll": {}
         }
       },
-      "SilkyNvg/1.0.1": {
+      "SilkyNvg/1.0.4": {
         "type": "package",
+        "dependencies": {
+          "FontStash.NET": "1.1.2",
+          "SafeStbImageSharp": "2.22.4",
+          "Silk.NET.Maths": "2.8.0"
+        },
         "compile": {
           "lib/net5.0/SilkyNvg.Blending.dll": {},
           "lib/net5.0/SilkyNvg.Common.dll": {},
@@ -309,18 +314,32 @@
           "lib/net5.0/SilkyNvg.dll": {}
         }
       },
-      "SilkyNvg.Rendering.OpenGL/1.0.0": {
+      "SilkyNvg.Rendering.OpenGL/1.0.3": {
         "type": "package",
         "dependencies": {
-          "Silk.NET.Maths": "2.7.0",
-          "Silk.NET.OpenGL": "2.7.0",
-          "SilkyNvg": "1.0.0"
+          "Silk.NET.Maths": "2.8.0",
+          "Silk.NET.OpenGL": "2.8.0",
+          "SilkyNvg": "1.0.3"
         },
         "compile": {
           "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll": {}
         },
         "runtime": {
           "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll": {}
+        }
+      },
+      "SilkyNvg.Rendering.Vulkan/1.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Silk.NET.Maths": "2.8.0",
+          "Silk.NET.Vulkan": "2.8.0",
+          "SilkyNvg": "1.0.3"
+        },
+        "compile": {
+          "lib/net5.0/SilkyNvg.Rendering.Vulkan.dll": {}
+        },
+        "runtime": {
+          "lib/net5.0/SilkyNvg.Rendering.Vulkan.dll": {}
         }
       },
       "StbImageWriteSharp/1.13.5": {
@@ -449,14 +468,14 @@
     }
   },
   "libraries": {
-    "FontStash.NET/1.1.1": {
-      "sha512": "wOLWZhDMdb5BgRVDdvfxZ7u+fKuFYIUXpFFFE7c0T8LjMK8m4p+RwZqb1QT8UamSZp47JED3LQ0x0i2O5Q+9aw==",
+    "FontStash.NET/1.1.2": {
+      "sha512": "XLyeda2FS02SEuEjpxDyFNJjNYgtbLe21dyg/orywCg0U1n8baXM65dR4JbcicIgmcaDSvymHCWw56lV4RJ4Mw==",
       "type": "package",
-      "path": "fontstash.net/1.1.1",
+      "path": "fontstash.net/1.1.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "fontstash.net.1.1.1.nupkg.sha512",
+        "fontstash.net.1.1.2.nupkg.sha512",
         "fontstash.net.nuspec",
         "lib/net5.0/FontStash.NET.dll"
       ]
@@ -914,39 +933,65 @@
         "silk.net.windowing.sdl.nuspec"
       ]
     },
-    "SilkyNvg/1.0.1": {
-      "sha512": "oWsmpGAThAHCBE6FaWdm5cV0rIiAxDGoi1bzCYZFwnOBxkQwD1+GZU4/++a4WxqMu/dpvCcAlS3tUyUpjFbWyQ==",
+    "SilkyNvg/1.0.4": {
+      "sha512": "Zy06BpZvVCs1eBP0G5MIsv/tuRrCXZvqycC7o9uJhG2ozWRKvbEUhCONjphnOOihvW4QDKYztMw/ER53yEj8AA==",
       "type": "package",
-      "path": "silkynvg/1.0.1",
+      "path": "silkynvg/1.0.4",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "lib/net5.0/SilkyNvg.Blending.dll",
+        "lib/net5.0/SilkyNvg.Blending.xml",
         "lib/net5.0/SilkyNvg.Common.dll",
+        "lib/net5.0/SilkyNvg.Common.xml",
         "lib/net5.0/SilkyNvg.Core.dll",
+        "lib/net5.0/SilkyNvg.Core.xml",
         "lib/net5.0/SilkyNvg.Graphics.dll",
+        "lib/net5.0/SilkyNvg.Graphics.xml",
         "lib/net5.0/SilkyNvg.Images.dll",
+        "lib/net5.0/SilkyNvg.Images.xml",
         "lib/net5.0/SilkyNvg.Paths.dll",
+        "lib/net5.0/SilkyNvg.Paths.xml",
         "lib/net5.0/SilkyNvg.Rendering.dll",
+        "lib/net5.0/SilkyNvg.Rendering.xml",
         "lib/net5.0/SilkyNvg.Scissoring.dll",
+        "lib/net5.0/SilkyNvg.Scissoring.xml",
         "lib/net5.0/SilkyNvg.Text.dll",
+        "lib/net5.0/SilkyNvg.Text.xml",
         "lib/net5.0/SilkyNvg.Tools.dll",
+        "lib/net5.0/SilkyNvg.Tools.xml",
         "lib/net5.0/SilkyNvg.Transforms.dll",
+        "lib/net5.0/SilkyNvg.Transforms.xml",
         "lib/net5.0/SilkyNvg.dll",
-        "silkynvg.1.0.1.nupkg.sha512",
+        "lib/net5.0/SilkyNvg.xml",
+        "silkynvg.1.0.4.nupkg.sha512",
         "silkynvg.nuspec"
       ]
     },
-    "SilkyNvg.Rendering.OpenGL/1.0.0": {
-      "sha512": "JbVdK1MAXIt0SyIByFJEcQxrABgDQL9gax5WRI/989Am7dHhkKNo/pAaJ2vHIWuKBUce8tiBrGoWH3r7mdB+vA==",
+    "SilkyNvg.Rendering.OpenGL/1.0.3": {
+      "sha512": "FppKBAxzKI9mahYg1DgOj1V5AUSRQmPAAApwcNFqn2DqzoFdJl1RWx66nGQy4zKQ61EmVZuNx0kPLzsg7tNEhA==",
       "type": "package",
-      "path": "silkynvg.rendering.opengl/1.0.0",
+      "path": "silkynvg.rendering.opengl/1.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "lib/net5.0/SilkyNvg.Rendering.OpenGL.dll",
-        "silkynvg.rendering.opengl.1.0.0.nupkg.sha512",
+        "lib/net5.0/SilkyNvg.Rendering.OpenGL.xml",
+        "silkynvg.rendering.opengl.1.0.3.nupkg.sha512",
         "silkynvg.rendering.opengl.nuspec"
+      ]
+    },
+    "SilkyNvg.Rendering.Vulkan/1.0.1": {
+      "sha512": "bVCMQO/5cLbuqoJogEPYB8weX6zNSAoLA7T3RFNJj/YipWYfI/lxScyEAYbpnodIMIOevNPF3bv3jV+ZNM5TOQ==",
+      "type": "package",
+      "path": "silkynvg.rendering.vulkan/1.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net5.0/SilkyNvg.Rendering.Vulkan.dll",
+        "lib/net5.0/SilkyNvg.Rendering.Vulkan.xml",
+        "silkynvg.rendering.vulkan.1.0.1.nupkg.sha512",
+        "silkynvg.rendering.vulkan.nuspec"
       ]
     },
     "StbImageWriteSharp/1.13.5": {
@@ -1267,11 +1312,12 @@
   },
   "projectFileDependencyGroups": {
     "net5.0": [
-      "FontStash.NET >= 1.1.1",
+      "FontStash.NET >= 1.1.2",
       "SafeStbImageSharp >= 2.22.4",
       "Silk.NET >= 2.8.0",
-      "SilkyNvg >= 1.0.1",
-      "SilkyNvg.Rendering.OpenGL >= 1.0.0",
+      "SilkyNvg >= *",
+      "SilkyNvg.Rendering.OpenGL >= *",
+      "SilkyNvg.Rendering.Vulkan >= *",
       "StbImageWriteSharp >= 1.13.5"
     ]
   },
@@ -1314,7 +1360,7 @@
         "dependencies": {
           "FontStash.NET": {
             "target": "Package",
-            "version": "[1.1.1, )"
+            "version": "[1.1.2, )"
           },
           "SafeStbImageSharp": {
             "target": "Package",
@@ -1326,11 +1372,15 @@
           },
           "SilkyNvg": {
             "target": "Package",
-            "version": "[1.0.1, )"
+            "version": "[*, )"
           },
           "SilkyNvg.Rendering.OpenGL": {
             "target": "Package",
-            "version": "[1.0.0, )"
+            "version": "[*, )"
+          },
+          "SilkyNvg.Rendering.Vulkan": {
+            "target": "Package",
+            "version": "[*, )"
           },
           "StbImageWriteSharp": {
             "target": "Package",
@@ -1352,7 +1402,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.400/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.402/RuntimeIdentifierGraph.json"
       }
     }
   }
