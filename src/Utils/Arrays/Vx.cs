@@ -8,20 +8,21 @@ namespace Kara.Utils.Arrays
 {
 	public class Vx
 	{
-		private Dictionary<object, float> elements = new Dictionary<object, float>();
+		private Dictionary<object, float> Elements = new Dictionary<object, float>();
 
-		public int Size { get => elements.Count; }
-		public object[] Keys { get => elements.Keys.ToArray(); }
+		public int Size { get => Elements.Count; }
+		public object[] Keys { get => Elements.Keys.ToArray(); }
+		public float[] Items { get => Elements.Values.ToArray(); }
 
 		public float this[object key]
 		{
-			get => elements[key];
+			get => Elements[key];
 			set
 			{
-				if (elements.ContainsKey(key))
-					elements[key] = value;
+				if (Elements.ContainsKey(key))
+					Elements[key] = value;
 				else
-					elements.Add(key, value);
+					Elements.Add(key, value);
 			}
 		}
 
@@ -37,7 +38,7 @@ namespace Kara.Utils.Arrays
 		internal Vx Math(Vx b, MathOperator op)
 		{
 			if (Size != b.Size) throw new Exception("Elements are not the same size");
-			if (Keys != b.Keys) throw new Exception("Elements don't have matching keys");
+			if (Keys[0].GetType() != b.Keys[0].GetType()) throw new Exception("Elements don't have matching keys");
 
 			Vx result = new Vx();
 
@@ -45,11 +46,11 @@ namespace Kara.Utils.Arrays
 			{
 				result[key] = op switch
 				{
-					MathOperator.Add => elements[key] + b[key],
-					MathOperator.Substract => elements[key] - b[key],
-					MathOperator.Multiply => elements[key] * b[key],
-					MathOperator.Divide => elements[key] / b[key],
-					MathOperator.Power => (int)elements[key] ^ (int)b[key],
+					MathOperator.Add => Elements[key] + b[key],
+					MathOperator.Substract => Elements[key] - b[key],
+					MathOperator.Multiply => Elements[key] * b[key],
+					MathOperator.Divide => Elements[key] / b[key],
+					MathOperator.Power => (int)Elements[key] ^ (int)b[key],
 					_ => default,
 				};
 			}
