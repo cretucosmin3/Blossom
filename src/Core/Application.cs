@@ -120,20 +120,24 @@ namespace Kara.Core
 			//     Environment.Exit(-1);
 			// }
 
-			// _ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
+			_ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
 			// _ = Rp.AddFallbackFontId(_fontBold, _fontEmoji);
 
-			//! Set up button
+			//! Element sample
 			Button = new VisualElement()
 			{
-				BackColor = Color.Gray,
+				BackColor = Color.FromArgb(200, 0, 0, 0),
+				BorderColor = Color.Red,
+				FontColor = Color.White,
+				TextShadowColor = Color.Red,
 				Transform = new RectangleF(50, 50, 200, 100),
-				Roundness = 5f,
-				BorderWidth = 2f,
-				BorderColor = Color.Black,
-				Text = "Click me",
+				Roundness = 10f,
+				BorderWidth = 5f,
+				Text = "Razvan",
 				FontSize = 35,
-				FontColor = Color.White
+				TextAlignment = TextAlign.Top,
+				TextPadding = 10f,
+				TextShadow = new System.Numerics.Vector2(-1f, 1f),
 			};
 		}
 

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.ComponentModel;
 using System;
 using System.Net.Mime;
@@ -156,16 +157,40 @@ namespace Kara.Core.Visual
 			set
 			{
 				_TextShadow = value;
+				//! #render
 			}
 		}
 
-		private Color _TextShadowColor = Color.Black;
+		private Color _TextShadowColor = Color.Transparent;
 		public Color TextShadowColor
 		{
 			get { return _TextShadowColor; }
 			set
 			{
 				_TextShadowColor = value;
+				//! #render
+			}
+		}
+
+		private TextAlign _TextAlignment = TextAlign.Center;
+		public TextAlign TextAlignment
+		{
+			get => _TextAlignment;
+			set
+			{
+				_TextAlignment = value;
+				//! #render
+			}
+		}
+
+		private float _TextPadding = 0f;
+		public float TextPadding
+		{
+			get => _TextPadding;
+			set
+			{
+				_TextPadding = value;
+				//! #render
 			}
 		}
 
@@ -257,10 +282,9 @@ namespace Kara.Core.Visual
 		{
 			Renderer.FontSize(FontSize);
 			Renderer.FontFace("sans");
-			Renderer.TextAlign(Align.Centre | Align.Centre);
 
 			Silk.NET.Maths.Rectangle<float> bounds;
-			float tw = Renderer.TextBounds(X + (Width / 2f), Y + (Height / 2f) + 8, Text, out bounds);
+			float tw = Renderer.TextBounds(0, 0, Text, out bounds);
 
 			// Renderer.BeginPath();
 			// Renderer.FillColour(Renderer.Rgba(10, 10, 10, 125));
@@ -269,8 +293,44 @@ namespace Kara.Core.Visual
 
 			var halfBorder = (BorderWidth / 2);
 			Renderer.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
+
+			Renderer.TextAlign(Align.Middle | Align.Middle);
+
+			float textX = TextAlignment switch
+			{
+				var x when
+					x == TextAlign.Left ||
+					x == TextAlign.TopLeft ||
+					x == TextAlign.BottomLeft => X + TextPadding,
+				var x when
+					x == TextAlign.Right ||
+					x == TextAlign.TopRight ||
+					x == TextAlign.BottomRight => (X + Width - tw) - TextPadding,
+				_ => X + Width * 0.5f - tw * 0.5f, // Center, other
+			};
+
+			float textY = TextAlignment switch
+			{
+				var x when x == TextAlign.Top ||
+					x == TextAlign.TopLeft ||
+					x == TextAlign.TopRight => Y + bounds.HalfSize.Y + TextPadding,
+				var x when x == TextAlign.Bottom ||
+					x == TextAlign.BottomLeft ||
+					x == TextAlign.BottomRight => Y + Height - bounds.HalfSize.Y - TextPadding,
+				_ => Y + Height * 0.5f, // Center, other
+			};
+
+			textY += 3f;
+
+			if (TextShadowColor != Color.Transparent && TextShadow != Vector2.Zero)
+			{
+				Renderer.FillColour(Renderer.Rgba(TextShadowColor.R, TextShadowColor.G, TextShadowColor.B, TextShadowColor.A));
+				var aria = bounds.Size.X + bounds.Size.Y;
+				Renderer.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
+			}
+
 			Renderer.FillColour(Renderer.Rgba(FontColor.R, FontColor.G, FontColor.B, FontColor.A));
-			Renderer.Text(bounds.Origin.X + bounds.HalfSize.X, bounds.Origin.Y + bounds.HalfSize.Y + 14, Text);
+			Renderer.Text(textX, textY, Text);
 		}
 
 		public void GetFocus()
