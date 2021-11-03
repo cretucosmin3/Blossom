@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System;
 using System.Net.Mime;
 using System.Text;
@@ -19,12 +20,12 @@ namespace Kara.Core.Visual
 {
 	public class VisualElement : IDisposable
 	{
+		private Nvg Renderer { get => Browser.Renderer; }
 		public string Name { get; set; }
 		public bool HasFocus { get { return ApplicationParent.FocusedElement == this; } }
 		public bool IsHovered { get; set; } = false;
 
 		internal Application ApplicationParent { get; set; }
-
 
 		public VisualElement Parent { get; set; } = null;
 		public List<VisualElement> Children { get; set; } = new List<VisualElement>();
@@ -56,67 +57,15 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		#region Style
-		private Vector4 _Borders = Vector4.Zero;
-
-		public Vector4 Borders
-		{
-			get => _Borders;
-			set
-			{
-				_Borders = value;
-
-				// Reposition Borders Panel
-				BorderTransform.X = X - value.X;
-				BorderTransform.Y = Y - value.Y;
-				BorderTransform.Width = Width + value.X + value.Z;
-				BorderTransform.Height = Height + value.Y + value.W;
-			}
-		}
-
-		private System.Drawing.RectangleF BorderTransform = new System.Drawing.RectangleF(0, 0, 0, 0);
-		public float BorderLeft
-		{
-			get => _Borders.X;
-			set
-			{
-				_Borders.X = value;
-				BorderTransform.X = X - value;
-				BorderTransform.Width = Width + _Borders.Z + _Borders.X;
-			}
-		}
-		public float BorderTop
-		{
-			get => _Borders.Y;
-			set
-			{
-				_Borders.Y = value;
-				BorderTransform.Y = Y - value;
-				BorderTransform.Height = Height + _Borders.Y + _Borders.W;
-			}
-		}
-		public float BorderRight
-		{
-			get => _Borders.Z;
-			set
-			{
-				_Borders.Z = value;
-				BorderTransform.Width = Width + Borders.X + _Borders.Z;
-			}
-		}
-		public float BorderBottom
-		{
-			get => _Borders.W;
-			set
-			{
-				_Borders.W = value;
-				BorderTransform.Height = Height + Borders.Y + _Borders.W;
-			}
-		}
-
+		private float _BorderWidth = 0f;
 		public float BorderWidth
 		{
-			set => Borders = new Vector4(value);
+			get => _BorderWidth;
+			set
+			{
+				_BorderWidth = value;
+				//! #render
+			}
 		}
 
 		private Color _BorderColor = Color.Transparent;
@@ -126,43 +75,69 @@ namespace Kara.Core.Visual
 			set => _BorderColor = value;
 		}
 
+		private float _Roundness = 0f;
+		public float Roundness
+		{
+			get => _Roundness;
+			set
+			{
+				_Roundness = value;
+				//! #render
+			}
+		}
+
 		private Color _BackColor = Color.Transparent;
 		public Color BackColor
 		{
 			get => _BackColor;
 			set => _BackColor = value;
 		}
-		#endregion
 
 		private string _Text = "";
 		public string Text
 		{
 			get => _Text;
-			set => _Text = value;
+			set
+			{
+				_Text = value;
+				//! #render
+			}
 		}
 
 		private int _Text_Spacing = 2;
 		public int TextSpacing
 		{
 			get => _Text_Spacing;
-			set => _Text_Spacing = value;
+			set
+			{
+				_Text_Spacing = value;
+				//! #render
+			}
 		}
 
-		private int _FontSize = 18;
-		public int FontSize
+		private float _FontSize = 18f;
+		public float FontSize
 		{
 			get => _FontSize;
-			set => _FontSize = value;
+			set
+			{
+				_FontSize = value;
+				//! #render
+			}
 		}
 
 		private Color _FontColor = Color.Black;
 		public Color FontColor
 		{
 			get => _FontColor;
-			set => _FontColor = value;
+			set
+			{
+				_FontColor = value;
+				//! #render
+			}
 		}
 
-		private string _FontName = "arial";
+		private string _FontName = "sans";
 
 		public string FontName
 		{
@@ -194,7 +169,6 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		#region Transform
 		internal System.Drawing.RectangleF Transform = new System.Drawing.RectangleF(0, 0, 0, 0);
 
 		public float X
@@ -203,7 +177,6 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.X = value;
-				BorderTransform.X = value - _Borders.X;
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -213,7 +186,6 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Y = value;
-				BorderTransform.Y = value - _Borders.Y;
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -223,7 +195,6 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Width = value;
-				BorderTransform.Width = value + _Borders.X + _Borders.Z;
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -233,32 +204,79 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Height = value;
-				BorderTransform.Height = value + _Borders.Y + _Borders.W;
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
-		#endregion
 
 		#region Events
 
 		#endregion
 
-		#region Internal Only
 		internal void Draw()
 		{
-
+			DrawBase();
+			DrawText();
+			Renderer.Reset();
 		}
-		#endregion
+
+		internal void DrawBase()
+		{
+			Renderer.BeginPath();
+			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
+
+			Renderer.FillColour(
+				Renderer.Rgba(
+					BackColor.R,
+					BackColor.G,
+					BackColor.B,
+					BackColor.A
+				)
+			);
+
+			Renderer.Fill();
+
+			Renderer.BeginPath();
+
+			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
+
+			Renderer.StrokeWidth(BorderWidth);
+			Renderer.StrokeColour(
+				Renderer.Rgba(
+					BorderColor.R,
+					BorderColor.G,
+					BorderColor.B,
+					BorderColor.A
+				)
+			);
+
+			Renderer.Stroke();
+			Renderer.ClosePath();
+		}
+
+		internal void DrawText()
+		{
+			Renderer.FontSize(FontSize);
+			Renderer.FontFace("sans");
+			Renderer.TextAlign(Align.Centre | Align.Centre);
+
+			Silk.NET.Maths.Rectangle<float> bounds;
+			float tw = Renderer.TextBounds(X + (Width / 2f), Y + (Height / 2f) + 8, Text, out bounds);
+
+			// Renderer.BeginPath();
+			// Renderer.FillColour(Renderer.Rgba(10, 10, 10, 125));
+			// Renderer.RoundedRect(bounds.Origin.X, bounds.Origin.Y, bounds.Size.X, bounds.Size.Y, 1f);
+			// Renderer.Fill();
+
+			var halfBorder = (BorderWidth / 2);
+			Renderer.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
+			Renderer.FillColour(Renderer.Rgba(FontColor.R, FontColor.G, FontColor.B, FontColor.A));
+			Renderer.Text(bounds.Origin.X + bounds.HalfSize.X, bounds.Origin.Y + bounds.HalfSize.Y + 14, Text);
+		}
 
 		public void GetFocus()
 		{
 			if (ApplicationParent != null)
 				ApplicationParent.FocusedElement = this;
-		}
-
-		internal void DrawText()
-		{
-
 		}
 
 		public void Dispose()

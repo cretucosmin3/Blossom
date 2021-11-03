@@ -14,7 +14,8 @@
           "SilkyNvg": "1.0.4",
           "SilkyNvg.Rendering.OpenGL": "1.0.3",
           "SilkyNvg.Rendering.Vulkan": "1.0.1",
-          "StbImageWriteSharp": "1.13.5"
+          "StbImageWriteSharp": "1.13.5",
+          "System.Drawing.Common": "6.0.0-rc.2.21480.5"
         },
         "runtime": {
           "Kara.dll": {}
@@ -53,6 +54,22 @@
           "lib/netstandard2.0/Microsoft.Extensions.DependencyModel.dll": {
             "assemblyVersion": "3.1.1.0",
             "fileVersion": "3.100.119.60804"
+          }
+        }
+      },
+      "Microsoft.Win32.SystemEvents/6.0.0-rc.2.21480.5": {
+        "runtime": {
+          "lib/netcoreapp3.1/Microsoft.Win32.SystemEvents.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.21.48005"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/netcoreapp3.1/Microsoft.Win32.SystemEvents.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.21.48005"
           }
         }
       },
@@ -358,6 +375,31 @@
         }
       },
       "System.Buffers/4.5.1": {},
+      "System.Drawing.Common/6.0.0-rc.2.21480.5": {
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "6.0.0-rc.2.21480.5"
+        },
+        "runtime": {
+          "lib/netcoreapp3.1/System.Drawing.Common.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.21.48005"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/unix/lib/netcoreapp3.1/System.Drawing.Common.dll": {
+            "rid": "unix",
+            "assetType": "runtime",
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.21.48005"
+          },
+          "runtimes/win/lib/netcoreapp3.1/System.Drawing.Common.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.21.48005"
+          }
+        }
+      },
       "System.Memory/4.5.3": {},
       "System.Numerics.Vectors/4.5.0": {},
       "System.Reflection.Emit/4.7.0": {},
@@ -455,6 +497,13 @@
       "sha512": "sha512-JjNCPx5Jbk7WTjaFI9Kyq+ZRVwMJ7Ee2AmgLKraQUS8AuciAO+euxHAhlhv0AWCsVyibyRr+5USxjyc7U6VsMA==",
       "path": "microsoft.extensions.dependencymodel/3.1.1",
       "hashPath": "microsoft.extensions.dependencymodel.3.1.1.nupkg.sha512"
+    },
+    "Microsoft.Win32.SystemEvents/6.0.0-rc.2.21480.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zjGNyzr1fR9aJQ2eBaAKMOB59/LB8E8ce6EYm562tQxkGL5EFAut0Fx7vHASLGdS+m0gXQVFfKbRSYT/QnTr9A==",
+      "path": "microsoft.win32.systemevents/6.0.0-rc.2.21480.5",
+      "hashPath": "microsoft.win32.systemevents.6.0.0-rc.2.21480.5.nupkg.sha512"
     },
     "SafeStbImageSharp/2.22.4": {
       "type": "package",
@@ -616,6 +665,13 @@
       "sha512": "sha512-Rw7ijyl1qqRS0YQD/WycNst8hUUMgrMH4FCn1nNm27M4VxchZ1js3fVjQaANHO5f3sN4isvP4a+Met9Y4YomAg==",
       "path": "system.buffers/4.5.1",
       "hashPath": "system.buffers.4.5.1.nupkg.sha512"
+    },
+    "System.Drawing.Common/6.0.0-rc.2.21480.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8TWJCPW/yqKAIT2sQCeGHXOGd1UV5x+tU5/fq6oDocqDHRczMpfmucOvG842Mcmta/Wos0PYQ9UdNJrm/6jE0g==",
+      "path": "system.drawing.common/6.0.0-rc.2.21480.5",
+      "hashPath": "system.drawing.common.6.0.0-rc.2.21480.5.nupkg.sha512"
     },
     "System.Memory/4.5.3": {
       "type": "package",

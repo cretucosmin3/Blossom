@@ -65,6 +65,10 @@
             "StbImageWriteSharp": {
               "target": "Package",
               "version": "[1.13.5, )"
+            },
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[6.0.0-rc.2.21480.5, )"
             }
           },
           "imports": [

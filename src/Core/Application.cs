@@ -1,3 +1,4 @@
+using System.Drawing;
 using System;
 using Silk.NET.Maths;
 using SilkyNvg;
@@ -88,6 +89,8 @@ namespace Kara.Core
 		public VisualElement FocusedElement { get; set; }
 		#endregion
 
+		public VisualElement Button;
+
 		internal void Initialize(Nvg RenderPipeline)
 		{
 			Rp = RenderPipeline;
@@ -119,6 +122,19 @@ namespace Kara.Core
 
 			// _ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
 			// _ = Rp.AddFallbackFontId(_fontBold, _fontEmoji);
+
+			//! Set up button
+			Button = new VisualElement()
+			{
+				BackColor = Color.Gray,
+				Transform = new RectangleF(50, 50, 200, 100),
+				Roundness = 5f,
+				BorderWidth = 2f,
+				BorderColor = Color.Black,
+				Text = "Click me",
+				FontSize = 35,
+				FontColor = Color.White
+			};
 		}
 
 		private Random rnd = new Random();
@@ -136,6 +152,7 @@ namespace Kara.Core
 		internal void Render(double time)
 		{
 			//DrawSearchBox($"{(time).ToString("0.00")} FPS", 400f, 250f, 200f, 80f, 12f);
+			Button.Draw();
 		}
 
 		private void WindowLoad()

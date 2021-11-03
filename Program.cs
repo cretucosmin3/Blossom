@@ -129,26 +129,12 @@ namespace Kara
 			gl.Dispose();
 		}
 
-		static StringBuilder _text = new StringBuilder();
-		static string Text
-		{
-			get
-			{
-				return _text.ToString();
-			}
-			set
-			{
-				_text.Clear();
-				_text.Append(value);
-			}
-		}
-
 		static void Main(string[] args)
 		{
 
 			Browser.Initialize();
-
 			return;
+
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
 			windowOptions.ShouldSwapAutomatically = true;

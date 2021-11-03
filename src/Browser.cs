@@ -18,7 +18,7 @@ namespace Kara
 	public static class Browser
 	{
 		private static GL gl;
-		private static Nvg nvg;
+		internal static Nvg Renderer;
 
 		private static double prevTime = 0;
 
@@ -33,6 +33,26 @@ namespace Kara
 			Events.AddKeybind(new Key[] { Key.ControlLeft, Key.C }, () =>
 			{
 				Console.WriteLine("Copy pressed (Ctrl + C)");
+			});
+
+			Events.AddKeybind(new Key[] { Key.ControlLeft, Key.Up }, () =>
+			{
+				BrowserApplication.Button.BorderWidth += 0.5f;
+			});
+
+			Events.AddKeybind(new Key[] { Key.ControlLeft, Key.Down }, () =>
+			{
+				BrowserApplication.Button.BorderWidth -= 0.5f;
+			});
+
+			Events.AddKeybind(new Key[] { Key.ControlLeft, Key.Right }, () =>
+			{
+				BrowserApplication.Button.FontSize += 2;
+			});
+
+			Events.AddKeybind(new Key[] { Key.ControlLeft, Key.Left }, () =>
+			{
+				BrowserApplication.Button.FontSize -= 2;
 			});
 
 			WindowOptions windowOptions = WindowOptions.Default;
@@ -52,9 +72,16 @@ namespace Kara
 
 			window.Initialize();
 
+			bool once = false;
+
 			while (!window.IsClosing)
 			{
+				// if (!once)
+				// {
 				window.DoRender();
+				// 	once = true;
+				// }
+
 				window.DoEvents();
 				window.ContinueEvents();
 				Thread.Sleep(1);
@@ -67,7 +94,7 @@ namespace Kara
 		{
 			timer.Stop();
 			BrowserApplication.Dispose();
-			nvg.Dispose();
+			Renderer.Dispose();
 			gl.Dispose();
 		}
 
@@ -78,9 +105,9 @@ namespace Kara
 			gl = window.CreateOpenGL();
 
 			OpenGLRenderer nvgRenderer = new(CreateFlags.Antialias | CreateFlags.StencilStrokes | CreateFlags.Debug, gl);
-			nvg = Nvg.Create(nvgRenderer);
+			Renderer = Nvg.Create(nvgRenderer);
 
-			BrowserApplication.Initialize(nvg);
+			BrowserApplication.Initialize(Renderer);
 
 			timer = Stopwatch.StartNew();
 
@@ -103,11 +130,9 @@ namespace Kara
 			gl.ClearColor(255, 255, 255, 128);
 			gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
-			nvg.BeginFrame(winSize.As<float>(), pxRatio);
-
+			Renderer.BeginFrame(winSize.As<float>(), pxRatio);
 			BrowserApplication.Render(prevTime);
-
-			nvg.EndFrame();
+			Renderer.EndFrame();
 		}
 	}
 }
