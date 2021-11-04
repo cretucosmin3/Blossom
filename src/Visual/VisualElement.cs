@@ -286,11 +286,6 @@ namespace Kara.Core.Visual
 			Silk.NET.Maths.Rectangle<float> bounds;
 			float tw = Renderer.TextBounds(0, 0, Text, out bounds);
 
-			// Renderer.BeginPath();
-			// Renderer.FillColour(Renderer.Rgba(10, 10, 10, 125));
-			// Renderer.RoundedRect(bounds.Origin.X, bounds.Origin.Y, bounds.Size.X, bounds.Size.Y, 1f);
-			// Renderer.Fill();
-
 			var halfBorder = (BorderWidth / 2);
 			Renderer.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
 
@@ -320,15 +315,16 @@ namespace Kara.Core.Visual
 				_ => Y + Height * 0.5f, // Center, other
 			};
 
-			textY += 3f;
-
+			textY += 2f;
 			if (TextShadowColor != Color.Transparent && TextShadow != Vector2.Zero)
 			{
+				Renderer.FontBlur(2f);
 				Renderer.FillColour(Renderer.Rgba(TextShadowColor.R, TextShadowColor.G, TextShadowColor.B, TextShadowColor.A));
 				var aria = bounds.Size.X + bounds.Size.Y;
 				Renderer.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
 			}
 
+			Renderer.FontBlur(0f);
 			Renderer.FillColour(Renderer.Rgba(FontColor.R, FontColor.G, FontColor.B, FontColor.A));
 			Renderer.Text(textX, textY, Text);
 		}

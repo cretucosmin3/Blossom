@@ -133,10 +133,9 @@ namespace Kara.Core
 				Transform = new RectangleF(50, 50, 200, 100),
 				Roundness = 10f,
 				BorderWidth = 5f,
-				Text = "Razvan",
-				FontSize = 35,
-				TextAlignment = TextAlign.Top,
-				TextPadding = 10f,
+				Text = "Click me!",
+				FontSize = 25,
+				TextAlignment = TextAlign.Center,
 				TextShadow = new System.Numerics.Vector2(-1f, 1f),
 			};
 		}
@@ -153,10 +152,34 @@ namespace Kara.Core
 			Rp.Text(x + (w / 2f) - (tw / 2f), y + h * 0.5f, text);
 		}
 
+		bool up = true;
+		float value = 1f;
+		float max = 1.5f;
+		float min = -1.5f;
+		float increment = 0.2f;
 		internal void Render(double time)
 		{
-			//DrawSearchBox($"{(time).ToString("0.00")} FPS", 400f, 250f, 200f, 80f, 12f);
+			DrawSearchBox($"{(time).ToString("0.00")} FPS", 400f, 250f, 200f, 80f, 12f);
 			Button.Draw();
+
+            if (up)
+            {
+				value += increment;
+				if (value >= max)
+                {
+					up = false;
+                }
+            }
+			else
+            {
+				value -= increment;
+				if (value <= min)
+				{
+					up = true;
+				}
+			}
+
+			Button.TextShadow = new System.Numerics.Vector2(value, value);
 		}
 
 		private void WindowLoad()
