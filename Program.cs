@@ -1,4 +1,5 @@
-﻿using Silk.NET.Input;
+﻿using System.Diagnostics.Tracing;
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -131,6 +132,11 @@ namespace Kara
 
 		static void Main(string[] args)
 		{
+			// Log.Debug("Kara");
+			// Log.Info("Kara");
+			// Log.Warning("Kara");
+			// Log.Error("Kara");
+			// Log.Fatal("Kara");
 
 			Browser.Initialize();
 			return;

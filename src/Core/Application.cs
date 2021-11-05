@@ -1,3 +1,4 @@
+using System.Diagnostics.Tracing;
 using System.Drawing;
 using System;
 using Silk.NET.Maths;
@@ -11,6 +12,7 @@ using Silk.NET.Input;
 using Kara.Core.Delegates.Inputs;
 using Kara.Core.Delegates.Common;
 using Kara.Core.Visual;
+using Kara.Core.Input;
 
 namespace Kara.Core
 {
@@ -34,61 +36,23 @@ namespace Kara.Core
 		#endregion
 
 		#region Events
-		// Keyboard
-		public event ForKey OnKeyboardDown;
-		public event ForKey OnKeyboardUp;
-		public event ForChar OnKeyboardType;
-		public event ForKeybind OnKeyboardKeybind;
 
-		// Mouse
-		public event ForPosition OnMouseMove;
-		public event ForPosition OnMouseScroll;
-		public event ForKey OnMouseDown;
-		public event ForKey OnMouseUp;
-		public event ForKey OnMouseClick;
-		public event ForKey OnMouseDoubleClick;
+		public EventMap Events = new EventMap();
 
-		// Application
-		public event ForString OnTitleChanged;
 		#endregion
 
-		#region Event Invokers
-		// Keyboard
-		public void DoKeyDown(int val) => OnKeyboardDown?.Invoke(val);
-		public void DoKeyUp(int val) => OnKeyboardUp?.Invoke(val);
-		public void DoKeyChar(char k) => OnKeyboardType?.Invoke(k);
-		public void DoKeybind(int[] k) => OnKeyboardKeybind?.Invoke(k);
-
-		// Mouse
-		public void DoMouseDown(int key) => OnMouseDown?.Invoke(key);
-		public void DoMouseUp(int key) => OnMouseUp?.Invoke(key);
-		public void DoMouseClick(int key) => OnMouseClick?.Invoke(key);
-		public void DoMouseDoubleClick(int key) => OnMouseDoubleClick?.Invoke(key);
-		public void DoMouseScroll(int x, int y) => OnMouseScroll?.Invoke(x, y);
-
-		public void DoMouseMove(int x, int y) => OnMouseMove?.Invoke(x, y);
-		#endregion
-
-		#region Properties
-		// Privates
 		private string _title = "";
-
-		// Publics
 		public string Title
 		{
-			get
-			{
-				return _title;
-			}
+			get => _title;
 			set
 			{
 				_title = value;
-				OnTitleChanged?.Invoke(value);
+				//! #render
 			}
 		}
-		public VisualElement FocusedElement { get; set; }
-		#endregion
 
+		public VisualElement FocusedElement { get; set; }
 		public VisualElement Button;
 
 		internal void Initialize(Nvg RenderPipeline)
@@ -120,7 +84,7 @@ namespace Kara.Core
 			//     Environment.Exit(-1);
 			// }
 
-			_ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
+			// _ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
 			// _ = Rp.AddFallbackFontId(_fontBold, _fontEmoji);
 
 			//! Element sample
@@ -135,56 +99,16 @@ namespace Kara.Core
 				BorderWidth = 5f,
 				Text = "Click me!",
 				FontSize = 25,
-				TextAlignment = TextAlign.Center,
+				TextAlignment = TextAlign.Top,
+				TextPadding = 20f,
 				TextShadow = new System.Numerics.Vector2(-1f, 1f),
+				TextShadowSpread = 2f,
 			};
 		}
 
-		private Random rnd = new Random();
-		private void DrawSearchBox(string text, float x, float y, float w, float h, float fontSize)
+		internal void Render()
 		{
-			Rp.FontSize(fontSize);
-			Rp.FontFace("sans");
-			Rp.FillColour(new Colour(0, 0, 0, 255));
-
-			float tw = Rp.TextBounds(0.0f, 0.0f, text, out _);
-			Rp.TextAlign(Align.Left | Align.Middle);
-			Rp.Text(x + (w / 2f) - (tw / 2f), y + h * 0.5f, text);
-		}
-
-		bool up = true;
-		float value = 1f;
-		float max = 1.5f;
-		float min = -1.5f;
-		float increment = 0.2f;
-		internal void Render(double time)
-		{
-			DrawSearchBox($"{(time).ToString("0.00")} FPS", 400f, 250f, 200f, 80f, 12f);
 			Button.Draw();
-
-            if (up)
-            {
-				value += increment;
-				if (value >= max)
-                {
-					up = false;
-                }
-            }
-			else
-            {
-				value -= increment;
-				if (value <= min)
-				{
-					up = true;
-				}
-			}
-
-			Button.TextShadow = new System.Numerics.Vector2(value, value);
-		}
-
-		private void WindowLoad()
-		{
-
 		}
 
 		public void Dispose()

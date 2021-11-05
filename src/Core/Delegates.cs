@@ -1,3 +1,5 @@
+using Kara.Core.Input;
+
 namespace Kara.Core.Delegates.Window
 {
 	// Window
@@ -9,8 +11,8 @@ namespace Kara.Core.Delegates.Window
 namespace Kara.Core.Delegates.Inputs
 {
 	public delegate void ForKey(int key);
-	public delegate void ForChar(char k);
-	public delegate void ForKeybind(int[] keybind);
+	public delegate void ForChar(char c);
+	public delegate void ForHotkey(Hotkey hotkey);
 	public delegate void ForPosition(int x, int y);
 }
 
