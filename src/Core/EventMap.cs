@@ -11,6 +11,8 @@ namespace Kara.Core.Input
 {
 	public class EventMap
 	{
+
+		// TODO: manage events by access
 		public EventAccess Access = EventAccess.All;
 
 		private List<Key> CtrlKeys = new List<Key> {
@@ -81,12 +83,12 @@ namespace Kara.Core.Input
 				int[] karr;
 				Arr.Map<int>(KeySequence.ToArray(), out karr);
 
-				string StringKey = String.Join(':', karr);
+				string StringKey = string.Join(':', karr);
 
 				if (Hotkeys.ContainsKey(StringKey))
 				{
 					var Hotkey = Hotkeys[StringKey];
-					if (String.IsNullOrEmpty(Hotkey.Name))
+					if (string.IsNullOrEmpty(Hotkey.Name))
 					{
 						Hotkey.Invoke();
 						FoundEvent = true;
@@ -131,7 +133,7 @@ namespace Kara.Core.Input
 
 		internal void HandleKeyChar(char ch)
 		{
-
+			OnKeyType?.Invoke(ch);
 		}
 		#endregion
 
@@ -182,10 +184,10 @@ namespace Kara.Core.Input
 		private EventMap Parent;
 		internal ForHotkey Method;
 
-		/// <summary>
-		/// Create new input event
-		/// </summary>
-		internal Hotkey(string name, EventMap map)
+        /// <summary>
+        /// Create new input event
+        /// </summary>
+        internal Hotkey(string name, EventMap map)
 		{
 			(Name, Parent) = (name, map);
 		}
