@@ -172,6 +172,17 @@ namespace Kara.Core.Visual
 			}
 		}
 
+		private float _TextShadowSpread = 0f;
+		public float TextShadowSpread
+		{
+			get => _TextShadowSpread;
+			set
+			{
+				_TextShadowSpread = value;
+				//! #render
+			}
+		}
+
 		private TextAlign _TextAlignment = TextAlign.Center;
 		public TextAlign TextAlignment
 		{
@@ -318,7 +329,7 @@ namespace Kara.Core.Visual
 			textY += 2f;
 			if (TextShadowColor != Color.Transparent && TextShadow != Vector2.Zero)
 			{
-				Renderer.FontBlur(2f);
+				Renderer.FontBlur(TextShadowSpread);
 				Renderer.FillColour(Renderer.Rgba(TextShadowColor.R, TextShadowColor.G, TextShadowColor.B, TextShadowColor.A));
 				var aria = bounds.Size.X + bounds.Size.Y;
 				Renderer.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
