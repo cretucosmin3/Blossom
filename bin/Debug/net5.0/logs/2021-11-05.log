@@ -567,3 +567,41 @@
 [01:42:23] [Info] 2
 [01:42:23] [Info] 3
 [01:42:23] [Debug] Browser Handled Key C
+[01:49:56] [Error] Keybind 341:67 already exists
+[01:50:03] [Info] 2
+[01:50:03] [Info] 3
+[01:50:03] [Debug] Browser Handled Key C
+[01:50:04] [Info] 2
+[01:50:04] [Info] 3
+[01:50:04] [Debug] Browser Handled Key C
+[01:50:04] [Info] 2
+[01:50:04] [Info] 3
+[01:50:04] [Debug] Browser Handled Key C
+[01:50:04] [Info] 2
+[01:50:04] [Info] 3
+[01:50:04] [Debug] Browser Handled Key C
+[01:50:05] [Info] 2
+[01:50:05] [Info] 3
+[01:50:05] [Debug] Browser Handled Key C
+[01:54:23] [Error] Keybind 341:67 already exists
+[01:54:45] [Error] Keybind 341:67 already exists
+[01:54:53] [Debug] 2. Copy Handled.
+[01:54:53] [Debug] 3. Copy Handled.
+[01:54:53] [Debug] Browser Handled Key C
+[01:55:20] [Error] Keybind 341:67 already exists
+[01:55:32] [Debug] 2. Copy Handled.
+[01:55:32] [Debug] 3. Copy Handled.
+[01:55:54] [Error] Keybind 341:67 already exists
+[01:56:16] [Debug] 2. Copy Handled.
+[01:56:16] [Debug] 3. Copy Handled.
+[02:05:02] [Error] Keybind 341:67 already exists
+[02:05:05] [Debug] 2. Copy Handled.
+[02:05:05] [Debug] 3. Copy Handled.
+[02:05:06] [Debug] 2. Copy Handled.
+[02:05:06] [Debug] 3. Copy Handled.
+[02:05:07] [Debug] 2. Copy Handled.
+[02:05:07] [Debug] 3. Copy Handled.
+[02:05:11] [Debug] 2. Copy Handled.
+[02:05:11] [Debug] 3. Copy Handled.
+[02:05:13] [Debug] 2. Copy Handled.
+[02:05:13] [Debug] 3. Copy Handled.

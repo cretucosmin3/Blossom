@@ -43,8 +43,6 @@ namespace Kara.Core.Input
 		/// </summary>
 		public Hotkey AddHotkey(Key[] keybind, string id = "")
 		{
-			Console.WriteLine($"Registered keybind {string.Join(",", keybind)}");
-
 			int[] karr;
 			Arr.Map<int>(keybind, out karr);
 

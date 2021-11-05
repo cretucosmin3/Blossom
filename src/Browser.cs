@@ -19,27 +19,10 @@ namespace Kara
 		/// <summary>
 		/// Application of the browser
 		/// </summary>
-		internal static Application BApp = new Application();
+		internal static Application KaraApp = new Application();
 
 		public static void Initialize()
 		{
-			BApp.Events.Access = EventAccess.All;
-
-			BApp.Events.AddHotkey(new[] { Key.ControlLeft, Key.C }, "Copy").Handle(e =>
-			{
-				Log.Debug("1");
-			});
-
-			BApp.Events.OnHotkey += e =>
-			{
-				Log.Info($"2");
-			};
-
-			BApp.Events.AddHotkey(new[] { Key.ControlLeft, Key.C }).Handle(e =>
-			{
-				Log.Info($"3");
-			});
-
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
 			windowOptions.ShouldSwapAutomatically = true;
@@ -68,8 +51,9 @@ namespace Kara
 			window.Dispose();
 		}
 
-		private static void RegisterInputEvents()
+		private static void ManageInputEvents()
 		{
+			KaraApp.Events.Access = EventAccess.Keyboard;
 			IInputContext input = window.CreateInput();
 
 			// Register keyboard events
@@ -77,21 +61,17 @@ namespace Kara
 			{
 				keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
 				{
-					var BrowserHandled = BApp.Events.HandleKeyDown(key, i);
-					if (BrowserHandled)
-					{
-						Log.Debug($"Browser Handled Key {key.ToString()}");
-					}
+					var BrowserHandled = KaraApp.Events.HandleKeyDown(key, i);
 				};
 
 				keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
 				{
-					BApp.Events.HandleKeyUp(key, i);
+					KaraApp.Events.HandleKeyUp(key, i);
 				};
 
 				keyboard.KeyChar += (IKeyboard _, char ch) =>
 				{
-					BApp.Events.HandleKeyChar(ch);
+					KaraApp.Events.HandleKeyChar(ch);
 				};
 			}
 
@@ -112,20 +92,20 @@ namespace Kara
 
 		private static void Closing()
 		{
-			BApp.Dispose();
+			KaraApp.Dispose();
 			Renderer.Dispose();
 			gl.Dispose();
 		}
 
 		private static void Load()
 		{
-			RegisterInputEvents();
+			ManageInputEvents();
 			gl = window.CreateOpenGL();
 
 			OpenGLRenderer nvgRenderer = new(CreateFlags.Antialias | CreateFlags.StencilStrokes | CreateFlags.Debug, gl);
 			Renderer = Nvg.Create(nvgRenderer);
 
-			BApp.Initialize(Renderer);
+			KaraApp.Initialize(Renderer);
 		}
 
 		private static void Render(double time)
@@ -140,7 +120,7 @@ namespace Kara
 			gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
 			Renderer.BeginFrame(winSize.As<float>(), pxRatio);
-			BApp.Render();
+			KaraApp.Render();
 			Renderer.EndFrame();
 		}
 	}

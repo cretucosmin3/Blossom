@@ -3,13 +3,13 @@ using System.IO;
 
 public static class Log
 {
-	public enum Severity
+	private enum Severity
 	{
-		Debug,
-		Info,
-		Warning,
-		Error,
-		Fatal
+		Debug = 0,
+		Info = 1,
+		Warning = 2,
+		Error = 3,
+		Fatal = 4
 	}
 
 	private static void LogToFile(string message, Severity severity)
@@ -35,13 +35,13 @@ public static class Log
 
 	private static void Write(string LogMessage, Severity severity)
 	{
-		ConsoleColor SeverityColor = severity switch
+		ConsoleColor SeverityColor = ((int)severity) switch
 		{
-			Severity.Debug => ConsoleColor.DarkGray,
-			Severity.Info => ConsoleColor.White,
-			Severity.Warning => ConsoleColor.Yellow,
-			Severity.Error => ConsoleColor.Red,
-			Severity.Fatal => ConsoleColor.DarkMagenta,
+			0 => ConsoleColor.DarkGray,
+			1 => ConsoleColor.White,
+			2 => ConsoleColor.Yellow,
+			3 => ConsoleColor.Red,
+			4 => ConsoleColor.DarkMagenta,
 		};
 
 		WritePrefix($"[{severity.ToString().ToUpper()}] ", SeverityColor);
