@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="FontStash.NET" Version="1.1.2"/>
     <PackageReference Include="SafeStbImageSharp" Version="2.22.4"/>
-    <PackageReference Include="Silk.NET" Version="2.8.0"/>
+    <PackageReference Include="Silk.NET" Version="2.9.0"/>
     <PackageReference Include="SilkyNvg" Version="*"/>
     <PackageReference Include="SilkyNvg.Rendering.OpenGL" Version="*"/>
     <PackageReference Include="StbImageWriteSharp" Version="1.13.5"/>
