@@ -13,14 +13,7 @@ using System.Text;
 
 namespace Kara
 {
-
-	enum Status
-	{
-		Running = 1,
-		Testing = 2
-	}
-
-	class KaraEntry
+	internal class KaraEntry
 	{
 		private static void Errorcb(Silk.NET.GLFW.ErrorCode error, string desc)
 		{
@@ -132,12 +125,6 @@ namespace Kara
 
 		static void Main(string[] args)
 		{
-			// Log.Debug("Kara");
-			// Log.Info("Kara");
-			// Log.Warning("Kara");
-			// Log.Error("Kara");
-			// Log.Fatal("Kara");
-
 			Browser.Initialize();
 			return;
 
