@@ -9,7 +9,7 @@ using Kara.Utils;
 
 namespace Kara.Core.Input
 {
-	public class EventMap
+	public class EventMap : IDisposable
 	{
 
 		// TODO: manage events by access
@@ -47,6 +47,7 @@ namespace Kara.Core.Input
 		{
 			int[] karr;
 			Arr.Map<int>(keybind, out karr);
+			Array.Sort(karr);
 
 			string StringKey = String.Join(':', karr);
 
@@ -80,8 +81,11 @@ namespace Kara.Core.Input
 			{
 				KeySequence.Add(key);
 
-				int[] karr;
+				int[] karr; ;
 				Arr.Map<int>(KeySequence.ToArray(), out karr);
+
+				//  sort an array of integers
+				Array.Sort(karr);
 
 				string StringKey = string.Join(':', karr);
 
@@ -138,34 +142,27 @@ namespace Kara.Core.Input
 		#endregion
 
 		#region Mouse
-		private void Handle_Mouse_Move(IMouse _, System.Numerics.Vector2 Position)
+		internal void Handle_Mouse_Move(int x, int y) =>
+			OnMouseMove?.Invoke(x, y);
+
+		internal void Handle_Mouse_Down(int ButtonName) =>
+			OnMouseDown?.Invoke((int)ButtonName);
+
+		internal void Handle_Mouse_Up(int ButtonName) =>
+			OnMouseUp?.Invoke((int)ButtonName);
+
+		internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
+			OnMouseClick?.Invoke((int)ButtonName);
+
+		internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
+			OnMouseDoubleClick?.Invoke((int)ButtonName);
+
+		internal void Handle_Mouse_Scroll(int x, int y) =>
+			OnMouseScroll?.Invoke(x, y);
+
+		public void Dispose()
 		{
-
-		}
-
-		private void Handle_Mouse_Down(IMouse _, MouseButton ButtonName)
-		{
-
-		}
-
-		private void Handle_Mouse_Up(IMouse _, MouseButton ButtonName)
-		{
-
-		}
-
-		private void Handle_Mouse_Click(IMouse _, MouseButton ButtonName, System.Numerics.Vector2 Position)
-		{
-
-		}
-
-		private void Handle_Mouse_Double_Click(IMouse _, MouseButton ButtonName, System.Numerics.Vector2 Position)
-		{
-
-		}
-
-		private void Handle_Mouse_Scroll(IMouse _, ScrollWheel Scroll)
-		{
-
+			Hotkeys.Clear();
 		}
 		#endregion
 	}
@@ -184,10 +181,10 @@ namespace Kara.Core.Input
 		private EventMap Parent;
 		internal ForHotkey Method;
 
-        /// <summary>
-        /// Create new input event
-        /// </summary>
-        internal Hotkey(string name, EventMap map)
+		/// <summary>
+		/// Create new input event
+		/// </summary>
+		internal Hotkey(string name, EventMap map)
 		{
 			(Name, Parent) = (name, map);
 		}

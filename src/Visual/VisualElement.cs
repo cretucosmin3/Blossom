@@ -16,6 +16,7 @@ using Silk.NET.Input;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
+using Kara.Utils;
 
 namespace Kara.Core.Visual
 {
@@ -44,7 +45,13 @@ namespace Kara.Core.Visual
 
 		public bool CanRender
 		{
-			get => Visible && X >= 0 && Y >= 0 && Y < Parent.Height && X < Parent.Width;
+			get
+			{
+				var pw = Parent != null ? Parent.Width : Browser.window.Size.X;
+				var ph = Parent != null ? Parent.Width : Browser.window.Size.X;
+				return Visible && X >= 0 && Y >= 0 && Y < ph && X < pw;
+			}
+
 		}
 
 		private int _Layer;
@@ -54,6 +61,7 @@ namespace Kara.Core.Visual
 			set
 			{
 				_Layer = value;
+				//! #render
 				//! OnLayerChanged?.Invoke(this, value);
 			}
 		}
@@ -69,11 +77,15 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private Color _BorderColor = Color.Transparent;
+		private Colour _BorderColor = new(0, 0, 0, 0);
 		public Color BorderColor
 		{
-			get => _BorderColor;
-			set => _BorderColor = value;
+			get => Conversion.toColor(_BorderColor);
+			set
+			{
+				_BorderColor = Conversion.fromColor(value);
+				//! #render
+			}
 		}
 
 		private float _Roundness = 0f;
@@ -87,20 +99,25 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private Color _BackColor = Color.Transparent;
+		private Colour _BackColor = new(255, 255, 255, 255);
 		public Color BackColor
 		{
-			get => _BackColor;
-			set => _BackColor = value;
+			get => Conversion.toColor(_BackColor);
+			set
+			{
+				_BackColor = Conversion.fromColor(value);
+				//! #render
+			}
 		}
 
-		private string _Text = "";
+		private string _Text;
 		public string Text
 		{
 			get => _Text;
 			set
 			{
 				_Text = value;
+				CalculateTextBounds();
 				//! #render
 			}
 		}
@@ -123,29 +140,30 @@ namespace Kara.Core.Visual
 			set
 			{
 				_FontSize = value;
+				CalculateTextBounds();
 				//! #render
 			}
 		}
 
-		private Color _FontColor = Color.Black;
+		private Colour _FontColor = new(0, 0, 0, 255);
 		public Color FontColor
 		{
-			get => _FontColor;
+			get => Conversion.toColor(_FontColor);
 			set
 			{
-				_FontColor = value;
+				_FontColor = Conversion.fromColor(value);
 				//! #render
 			}
 		}
 
 		private string _FontName = "sans";
-
-		public string FontName
+		public string Font
 		{
 			get => _FontName;
 			set
 			{
 				_FontName = value;
+				//! #render
 				//! TextFont = Fonts.Get(value);
 			}
 		}
@@ -161,13 +179,13 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private Color _TextShadowColor = Color.Transparent;
+		private Colour _TextShadowColor = new(0, 0, 0, 0);
 		public Color TextShadowColor
 		{
-			get { return _TextShadowColor; }
+			get { return Conversion.toColor(_TextShadowColor); }
 			set
 			{
-				_TextShadowColor = value;
+				_TextShadowColor = Conversion.fromColor(value);
 				//! #render
 			}
 		}
@@ -205,6 +223,7 @@ namespace Kara.Core.Visual
 			}
 		}
 
+		private Silk.NET.Maths.Rectangle<float> TextBounds;
 		internal System.Drawing.RectangleF Transform = new System.Drawing.RectangleF(0, 0, 0, 0);
 
 		public float X
@@ -213,6 +232,7 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.X = value;
+				//! #render
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -222,6 +242,7 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Y = value;
+				//! #render
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -231,6 +252,7 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Width = value;
+				//! #render
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
@@ -240,19 +262,19 @@ namespace Kara.Core.Visual
 			set
 			{
 				Transform.Height = value;
+				//! #render
 				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
 			}
 		}
 
-		#region Events
-
-		#endregion
-
 		internal void Draw()
 		{
-			DrawBase();
-			DrawText();
-			Renderer.Reset();
+			if (CanRender)
+			{
+				DrawBase();
+				DrawText();
+				Renderer.Reset();
+			}
 		}
 
 		internal void DrawBase()
@@ -260,33 +282,29 @@ namespace Kara.Core.Visual
 			Renderer.BeginPath();
 			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
 
-			Renderer.FillColour(
-				Renderer.Rgba(
-					BackColor.R,
-					BackColor.G,
-					BackColor.B,
-					BackColor.A
-				)
-			);
-
-			Renderer.Fill();
+			if (_BackColor.A > 0)
+			{
+				Renderer.FillColour(_BackColor);
+				Renderer.Fill();
+			}
 
 			Renderer.BeginPath();
-
 			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
 
-			Renderer.StrokeWidth(BorderWidth);
-			Renderer.StrokeColour(
-				Renderer.Rgba(
-					BorderColor.R,
-					BorderColor.G,
-					BorderColor.B,
-					BorderColor.A
-				)
-			);
+			if (_BorderColor.A > 0f && BorderWidth > 0f)
+			{
+				Renderer.StrokeWidth(BorderWidth);
+				Renderer.StrokeColour(_BorderColor);
+				Renderer.Stroke();
+			}
 
-			Renderer.Stroke();
 			Renderer.ClosePath();
+		}
+
+		private float TextWidth = 0;
+		private void CalculateTextBounds()
+		{
+			TextWidth = Renderer.TextBounds(0, 0, Text, out TextBounds);
 		}
 
 		internal void DrawText()
@@ -294,13 +312,11 @@ namespace Kara.Core.Visual
 			Renderer.FontSize(FontSize);
 			Renderer.FontFace("sans");
 
-			Silk.NET.Maths.Rectangle<float> bounds;
-			float tw = Renderer.TextBounds(0, 0, Text, out bounds);
-
 			var halfBorder = (BorderWidth / 2);
 			Renderer.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
 
 			Renderer.TextAlign(Align.Middle | Align.Middle);
+			CalculateTextBounds();
 
 			float textX = TextAlignment switch
 			{
@@ -311,33 +327,45 @@ namespace Kara.Core.Visual
 				var x when
 					x == TextAlign.Right ||
 					x == TextAlign.TopRight ||
-					x == TextAlign.BottomRight => (X + Width - tw) - TextPadding,
-				_ => X + Width * 0.5f - tw * 0.5f, // Center, other
+					x == TextAlign.BottomRight => (X + Width - TextWidth) - TextPadding,
+				_ => X + Width * 0.5f - TextWidth * 0.5f, // Center, other
 			};
 
 			float textY = TextAlignment switch
 			{
 				var x when x == TextAlign.Top ||
 					x == TextAlign.TopLeft ||
-					x == TextAlign.TopRight => Y + bounds.HalfSize.Y + TextPadding,
+					x == TextAlign.TopRight => Y + TextBounds.HalfSize.Y + TextPadding,
 				var x when x == TextAlign.Bottom ||
 					x == TextAlign.BottomLeft ||
-					x == TextAlign.BottomRight => Y + Height - bounds.HalfSize.Y - TextPadding,
+					x == TextAlign.BottomRight => Y + Height - TextBounds.HalfSize.Y - TextPadding,
 				_ => Y + Height * 0.5f, // Center, other
 			};
 
 			textY += 2f;
-			if (TextShadowColor != Color.Transparent && TextShadow != Vector2.Zero)
+
+			// Early return if there's no text
+			if (string.IsNullOrEmpty(Text))
+				return;
+
+			if (TextShadowColor.A > 0 && TextShadow != Vector2.Zero)
 			{
-				Renderer.FontBlur(TextShadowSpread);
-				Renderer.FillColour(Renderer.Rgba(TextShadowColor.R, TextShadowColor.G, TextShadowColor.B, TextShadowColor.A));
-				var aria = bounds.Size.X + bounds.Size.Y;
+				if (TextShadowSpread > 0) Renderer.FontBlur(TextShadowSpread);
+
+				var aria = TextBounds.Size.X + TextBounds.Size.Y;
+				Renderer.FillColour(Conversion.fromColor(TextShadowColor));
 				Renderer.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
+
+				if (TextShadowSpread > 0) Renderer.FontBlur(0);
 			}
 
-			Renderer.FontBlur(0f);
-			Renderer.FillColour(Renderer.Rgba(FontColor.R, FontColor.G, FontColor.B, FontColor.A));
+			Renderer.FillColour(Conversion.fromColor(FontColor));
 			Renderer.Text(textX, textY, Text);
+		}
+
+		internal void DrawTextShadow()
+		{
+
 		}
 
 		public void GetFocus()

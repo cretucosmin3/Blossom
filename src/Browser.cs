@@ -1,3 +1,5 @@
+using System.Numerics;
+using System;
 using System.Threading;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -76,18 +78,22 @@ namespace Kara
 			}
 
 			// Register mouse events
-			// foreach (IMouse mouse in input.Mice)
-			// {
-			// 	mouse.MouseMove += Handle_Mouse_Move;
+			foreach (IMouse mouse in input.Mice)
+			{
 
-			// 	mouse.Click += Handle_Mouse_Click;
-			// 	mouse.DoubleClick += Handle_Mouse_Double_Click;
+				// mouse.MouseMove += (IMouse _, Vector2 pos) =>
+				// {
+				// 	KaraApp.Events.(pos.X, pos.Y);
+				// };
 
-			// 	mouse.MouseDown += Handle_Mouse_Down;
-			// 	mouse.MouseUp += Handle_Mouse_Up;
+				// mouse.Click += Handle_Mouse_Click;
+				// mouse.DoubleClick += Handle_Mouse_Double_Click;
 
-			// 	mouse.Scroll += Handle_Mouse_Scroll;
-			// }
+				// mouse.MouseDown += Handle_Mouse_Down;
+				// mouse.MouseUp += Handle_Mouse_Up;
+
+				// mouse.Scroll += Handle_Mouse_Scroll;
+			}
 		}
 
 		private static void Closing()

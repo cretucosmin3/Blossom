@@ -21,4 +21,5 @@ namespace Kara.Core.Delegates.Common
 	public delegate void ForString(string val);
 	public delegate void ForInt(int val);
 	public delegate void ForFloat(float val);
+	public delegate void ForV3(int x, int y, int z);
 }

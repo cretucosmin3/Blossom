@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace Kara.Utils
+namespace Kara
 {
 	public static class Log
 	{
@@ -52,10 +52,10 @@ namespace Kara.Utils
 			LogToFile(LogMessage, severity);
 		}
 
-		public static void Debug(string LogMessage)		=> Write(LogMessage, Severity.Debug);
-		public static void Info(string LogMessage)		=> Write(LogMessage, Severity.Info);
-		public static void Warning(string LogMessage)	=> Write(LogMessage, Severity.Warning);
-		public static void Error(string LogMessage)		=> Write(LogMessage, Severity.Error);
-		public static void Fatal(string LogMessage)		=> Write(LogMessage, Severity.Fatal);
+		public static void Debug(string LogMessage) => Write(LogMessage, Severity.Debug);
+		public static void Info(string LogMessage) => Write(LogMessage, Severity.Info);
+		public static void Warning(string LogMessage) => Write(LogMessage, Severity.Warning);
+		public static void Error(string LogMessage) => Write(LogMessage, Severity.Error);
+		public static void Fatal(string LogMessage) => Write(LogMessage, Severity.Fatal);
 	}
 }
