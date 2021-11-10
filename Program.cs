@@ -162,19 +162,4 @@ namespace Kara
 		// 	imageWriter.WritePng(image.ToArray(), w, h, ColorComponents.RedGreenBlueAlpha, File.OpenWrite(name));
 		// }
 	}
-
-	class temp : IDisposable
-	{
-		public string Name { get; set; }
-		public int Age { get; set; }
-
-		public temp(string name, int id) => (Name, Age) = (name, id);
-
-		public void Dispose()
-		{
-
-		}
-
-		public override string ToString() => $"{Name} {Age}";
-	}
 }

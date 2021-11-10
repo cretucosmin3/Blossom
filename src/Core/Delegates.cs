@@ -23,3 +23,9 @@ namespace Kara.Core.Delegates.Common
 	public delegate void ForFloat(float val);
 	public delegate void ForV3(int x, int y, int z);
 }
+
+namespace Kara.Core.Visual
+{
+	public delegate void Void();
+	public delegate void ForDispose(VisualElement e);
+}

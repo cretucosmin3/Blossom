@@ -21,7 +21,7 @@ namespace Kara
 		/// <summary>
 		/// Application of the browser
 		/// </summary>
-		internal static Application KaraApp = new Application();
+		internal static Application KaraApp;
 
 		public static void Initialize()
 		{

@@ -9,12 +9,13 @@ using Silk.NET.Input;
 using Kara.Core.Visual;
 using Kara.Core.Input;
 using Kara.Utils;
+using System.Collections.Generic;
+using QuadTrees;
 
 namespace Kara.Core
 {
-	public class Application : IDisposable
+	public abstract class Application : IDisposable
 	{
-		#region Rendering
 		private const int ICON_SEARCH = 0x1F50D;
 		private const int ICON_CIRCLED_CROSS = 0x2716;
 		private const int ICON_CHEVRON_RIGHT = 0xE75E;
@@ -29,7 +30,6 @@ namespace Kara.Core
 		/// Render Pipeline
 		/// </summary>
 		internal Nvg Rp;
-		#endregion
 
 		public EventMap Events = new EventMap();
 		private string _title = "";
@@ -39,9 +39,13 @@ namespace Kara.Core
 			set
 			{
 				_title = value;
-				//! #render
+				//! #render title only
 			}
 		}
+
+		private readonly Dictionary<string, VisualElement> Components = new Dictionary<string, VisualElement>();
+		private readonly QuadTreeRectF<ComponentTracker> InteractionMap;
+		private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
 
 		public VisualElement FocusedElement { get; set; }
 		public VisualElement Element;

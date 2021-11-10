@@ -28,9 +28,10 @@ namespace Kara.Core.Visual
 		public bool IsHovered { get; set; } = false;
 
 		internal Application ApplicationParent { get; set; }
-
 		public VisualElement Parent { get; set; } = null;
 		public List<VisualElement> Children { get; set; } = new List<VisualElement>();
+
+		internal event ForDispose OnDisposing; 
 
 		private bool _Visible = true;
 		public bool Visible
@@ -376,7 +377,7 @@ namespace Kara.Core.Visual
 
 		public void Dispose()
 		{
-			//! OnDisposing?.Invoke(this);
+			OnDisposing?.Invoke(this);
 
 			if (Parent != null)
 				Parent.Children.Remove(this);
