@@ -25,33 +25,21 @@ namespace Kara
 		private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
 		private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
-		static void Main(string[] args)
+        static void Main(string[] args)
 		{
-			List<temp> temp = new List<temp>();
+			Log.Info(_appName);
+			Log.Info(_appPath);
+			Log.Info(_appDataPath);
+			Log.Info(_appDataPathConfig);
+			Log.Info(_appDataPathLog);
+			Log.Info(_appDataPathScreenshot);
+			AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+            {
+                Log.Debug("Closing");
+            };
 
-			temp x = new("Vasile", 15);
-
-			temp.Add(x);
-			temp.Add(new("Bogdan", 16));
-			temp.Add(new("Alex", 17));
-			temp.Add(new("Pepe", 18));
-
-			Log.Debug(string.Join(", ", temp));
-
-			x.Name = "Ionut";
-			x.Age = 19;
-
-			x = new temp("Razvan", 23);
-
-			Log.Info(string.Join(", ", temp));
-
-			// AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-			// {
-			// 	Log.Debug("Closing");
-			// };
-
-			// Browser.Initialize();
-		}
+            Browser.Initialize();
+        }
 
 		// static void UnpremultiplyAlpha(Span<byte> image, int w, int h, int stride)
 		// {

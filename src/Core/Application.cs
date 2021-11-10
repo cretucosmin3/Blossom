@@ -31,12 +31,7 @@ namespace Kara.Core
 		internal Nvg Rp;
 		#endregion
 
-		#region Events
-
 		public EventMap Events = new EventMap();
-
-		#endregion
-
 		private string _title = "";
 		public string Title
 		{
@@ -49,18 +44,81 @@ namespace Kara.Core
 		}
 
 		public VisualElement FocusedElement { get; set; }
-		public VisualElement[] Elements;
+		public VisualElement Element;
 
 		internal void Initialize(Nvg RenderPipeline)
 		{
 			Rp = RenderPipeline;
 
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Up }, "Control + Up");
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad1 }).Handle(
+				(e) => Element.Roundness += 5
+			);
 
-			Events.OnHotkey += (e) =>
-			{
-				Log.Info($"#2 Hotkey: {e.Name} Pressed");
-			};
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad2 }).Handle(
+				(e) => Element.Roundness -= 5
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad3 }).Handle(
+				(e) => Element.FontSize += 5
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad4 }).Handle(
+				(e) => Element.FontSize -= 5
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad5 }).Handle(
+				(e) =>
+                {
+					Element.BackColor = Color.White;
+					Element.FontColor = Color.Black;
+				}
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad6 }).Handle(
+				(e) =>
+                {
+					Element.BackColor = Color.Black;
+					Element.FontColor = Color.White;
+                }
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Up }).Handle(
+				(e) => Element.TextAlignment = TextAlign.Top
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Down }).Handle(
+				(e) => Element.TextAlignment = TextAlign.Bottom
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Left }).Handle(
+				(e) => Element.TextAlignment = TextAlign.Left
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Right }).Handle(
+				(e) => Element.TextAlignment = TextAlign.Right
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Enter }).Handle(
+				(e) => Element.TextAlignment = TextAlign.Center
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad7}).Handle(
+				(e) =>
+                {
+					Element.TextShadow = new System.Numerics.Vector2(1, 1);
+					Element.TextShadowColor = Color.Red;
+					Element.TextShadowSpread = 2;
+					Element.FontColor = Color.White;
+                }
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad8 }).Handle(
+				(e) => Element.TextShadowColor = Color.Transparent
+			);
+
+			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad9 }).Handle(
+				(e) => Element.BorderWidth = Element.BorderWidth == 6 ? 2 : 6
+			);
 
 			// _fontIcons = Rp.CreateFont("icons", "./fonts/entypo.ttf");
 			// if (_fontIcons == -1)
@@ -90,35 +148,25 @@ namespace Kara.Core
 			// _ = Rp.AddFallbackFontId(_fontNormal, _fontEmoji);
 			// _ = Rp.AddFallbackFontId(_fontBold, _fontEmoji);
 
-			Elements = new VisualElement[1];
-
-			for (int i = 0; i < Elements.Length; i++)
+			Element = new VisualElement()
 			{
-				Elements[i] = new VisualElement()
-				{
-					BackColor = Color.FromArgb(2, 0, 0, 0),
-					BorderColor = Color.FromArgb(255, 0, 0, 0),
-					FontColor = Color.Black,
-					Transform = new RectangleF(20 + (i + 2), 20 + (i + 2), 350, 170),
-					BorderWidth = 2f,
-					Roundness = 5f,
-					Text = "Hello",
-					FontSize = 30,
-					TextAlignment = TextAlign.Center,
-					TextPadding = 20f,
-					TextShadowColor = Color.Blue,
-					TextShadow = new System.Numerics.Vector2(1, 1),
-					TextShadowSpread = 0f,
-				};
-			}
+				BackColor = Color.FromArgb(2, 0, 0, 0),
+				BorderColor = Color.FromArgb(255, 0, 0, 0),
+				FontColor = Color.Black,
+				Transform = new RectangleF(20, 20, 200, 80),
+				BorderWidth = 2f,
+				Roundness = 5f,
+				Text = "Hello",
+				FontSize = 30,
+				TextAlignment = TextAlign.Right,
+				TextShadow = new System.Numerics.Vector2(1, 1),
+				TextShadowSpread = 0f,
+			};
 		}
 
 		internal void Render()
 		{
-			for (int i = 0; i < Elements.Length; i++)
-			{
-				Elements[i].Draw();
-			}
+			Element.Draw();
 		}
 
 		public void Dispose()

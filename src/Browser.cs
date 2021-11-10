@@ -42,6 +42,8 @@ namespace Kara
 
 			window.Initialize();
 
+
+			bool once = false;
 			while (!window.IsClosing)
 			{
 				window.DoRender();
@@ -63,6 +65,9 @@ namespace Kara
 			{
 				keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
 				{
+					if (i == 0) return;
+
+					Log.Debug($"Key down {key}");
 					var BrowserHandled = KaraApp.Events.HandleKeyDown(key, i);
 				};
 
