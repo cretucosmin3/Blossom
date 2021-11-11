@@ -14,7 +14,12 @@ namespace Kara.src.Core
     {
         private readonly Dictionary<string, VisualElement> Elements = new Dictionary<string, VisualElement>();
         private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
-        private readonly QuadTreeRectF<ComponentTracker> InteractionMap;
+        
+        private readonly QuadTreeRectF<ComponentTracker> InteractionMap = new QuadTreeRectF<ComponentTracker>(
+            float.MinValue / 2f, float.MinValue / 2f,
+            float.MaxValue, float.MaxValue
+        );
+
         public List<VisualElement> UiComponents = new List<VisualElement>();
 
         internal Application AppRef;
@@ -27,7 +32,7 @@ namespace Kara.src.Core
         /// <summary>
         /// Get components from a given point
         /// </summary>
-        internal List<ComponentTracker> ComponentsFromPoint(PointF point)
+        public List<ComponentTracker> ComponentsFromPoint(PointF point)
         {
             return InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 3, 3));
         }
@@ -37,7 +42,7 @@ namespace Kara.src.Core
         /// </summary>
         /// <param name="Com">Component used to search collided components by</param>
         /// <returns></returns>
-        internal List<VisualElement> CollidedComponents(VisualElement Com)
+        public List<VisualElement> CollidedComponents(VisualElement Com)
         {
             var Collided = InteractionMap.GetObjects(Com.Transform);
             List<VisualElement> Result = new();
@@ -53,11 +58,10 @@ namespace Kara.src.Core
         /// <summary>
         /// Get first element from a specific point
         /// </summary>
-        internal VisualElement FirstFromPoint(System.Numerics.Vector2 point)
+        public VisualElement FirstFromPoint(System.Numerics.Vector2 point)
         {
             var components = InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
             if (!components.Any()) return null;
-
 
             var z = InteractionMap.ToList()[0].Component;
 
@@ -69,7 +73,7 @@ namespace Kara.src.Core
         /// Check collision of 2 elements
         /// </summary>
         /// <returns>true if com1 and com2 intersect</returns>
-        internal bool ComponentsIntersect(VisualElement com1, VisualElement com2)
+        public bool ComponentsIntersect(VisualElement com1, VisualElement com2)
         {
             var Intersected = InteractionMap.GetObjects(com1.Transform);
 
