@@ -10,126 +10,126 @@ using System.Threading.Tasks;
 
 namespace Kara.src.Core
 {
-    public class ElementsMap
-    {
-        private readonly Dictionary<string, VisualElement> Elements = new Dictionary<string, VisualElement>();
-        private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
-        
-        private readonly QuadTreeRectF<ComponentTracker> InteractionMap = new QuadTreeRectF<ComponentTracker>(
-            float.MinValue / 2f, float.MinValue / 2f,
-            float.MaxValue, float.MaxValue
-        );
+	public class ElementsMap
+	{
+		private readonly Dictionary<string, VisualElement> Elements = new Dictionary<string, VisualElement>();
+		private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
 
-        public List<VisualElement> UiComponents = new List<VisualElement>();
+		private readonly QuadTreeRectF<ComponentTracker> InteractionMap = new QuadTreeRectF<ComponentTracker>(
+			float.MinValue / 2f, float.MinValue / 2f,
+			float.MaxValue, float.MaxValue
+		);
 
-        internal Application AppRef;
+		public List<VisualElement> UiComponents = new List<VisualElement>();
 
-        internal ElementsMap(ref Application appref)
-        {
-            AppRef = appref;
-        }
+		internal Application AppRef;
 
-        /// <summary>
-        /// Get components from a given point
-        /// </summary>
-        public List<ComponentTracker> ComponentsFromPoint(PointF point)
-        {
-            return InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 3, 3));
-        }
+		internal ElementsMap(ref Application appref)
+		{
+			AppRef = appref;
+		}
 
-        /// <summary>
-        /// Finds components that collide with a components's rect
-        /// </summary>
-        /// <param name="Com">Component used to search collided components by</param>
-        /// <returns></returns>
-        public List<VisualElement> CollidedComponents(VisualElement Com)
-        {
-            var Collided = InteractionMap.GetObjects(Com.Transform);
-            List<VisualElement> Result = new();
-            foreach (var Tracker in Collided)
-            {
-                if (Tracker.Component == Com) continue;
-                Result.Add(Tracker.Component);
-            }
+		/// <summary>
+		/// Get components from a given point
+		/// </summary>
+		public List<VisualElement> ComponentsFromPoint(PointF point)
+		{
+			return InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 3, 3)).ToArray().Select(x => x.Component).ToList();
+		}
 
-            return Result;
-        }
+		/// <summary>
+		/// Finds components that collide with a components's rect
+		/// </summary>
+		/// <param name="Com">Component used to search collided components by</param>
+		/// <returns></returns>
+		public List<VisualElement> CollidedComponents(VisualElement Com)
+		{
+			var Collided = InteractionMap.GetObjects(Com.Transform);
+			List<VisualElement> Result = new();
+			foreach (var Tracker in Collided)
+			{
+				if (Tracker.Component == Com) continue;
+				Result.Add(Tracker.Component);
+			}
 
-        /// <summary>
-        /// Get first element from a specific point
-        /// </summary>
-        public VisualElement FirstFromPoint(System.Numerics.Vector2 point)
-        {
-            var components = InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
-            if (!components.Any()) return null;
+			return Result;
+		}
 
-            var z = InteractionMap.ToList()[0].Component;
+		/// <summary>
+		/// Get first element from a specific point
+		/// </summary>
+		public VisualElement FirstFromPoint(System.Numerics.Vector2 point)
+		{
+			var components = InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
+			if (!components.Any()) return null;
 
-            int maxLayer = components.Max(t => t.Component.Layer);
-            return components.Find(t => t.Component.Layer == maxLayer).Component;
-        }
+			var z = InteractionMap.ToList()[0].Component;
 
-        /// <summary>
-        /// Check collision of 2 elements
-        /// </summary>
-        /// <returns>true if com1 and com2 intersect</returns>
-        public bool ComponentsIntersect(VisualElement com1, VisualElement com2)
-        {
-            var Intersected = InteractionMap.GetObjects(com1.Transform);
+			int maxLayer = components.Max(t => t.Component.Layer);
+			return components.Find(t => t.Component.Layer == maxLayer).Component;
+		}
 
-            foreach (var Tracker in Intersected)
-                if (Tracker.Component == com2) return true;
+		/// <summary>
+		/// Check collision of 2 elements
+		/// </summary>
+		/// <returns>true if com1 and com2 intersect</returns>
+		public bool ComponentsIntersect(VisualElement com1, VisualElement com2)
+		{
+			var Intersected = InteractionMap.GetObjects(com1.Transform);
 
-            return false;
-        }
+			foreach (var Tracker in Intersected)
+				if (Tracker.Component == com2) return true;
 
-        private void RemoveTracker(VisualElement Com)
-        {
-            InteractionMap.Remove(Trackers[Com]);
-            Trackers.Remove(Com);
-        }
+			return false;
+		}
 
-        private void AddTracker(ref VisualElement Com)
-        {
-            var NewTracker = new ComponentTracker(ref Com);
-            InteractionMap.Add(NewTracker);
-            Trackers.Add(Com, NewTracker);
-        }
+		private void RemoveTracker(VisualElement Com)
+		{
+			InteractionMap.Remove(Trackers[Com]);
+			Trackers.Remove(Com);
+		}
 
-        /// <summary>
-        /// Registers a <see langword="VisualElement"/>.
-        /// </summary>
-        public void Add(ref VisualElement e)
-        {
-            if (Elements.ContainsKey(e.Name))
-            {
-                Log.Error($"A component with name {e.Name} already exists.");
-                return;
-            }
+		private void AddTracker(ref VisualElement Com)
+		{
+			var NewTracker = new ComponentTracker(ref Com);
+			InteractionMap.Add(NewTracker);
+			Trackers.Add(Com, NewTracker);
+		}
 
-            e.ApplicationParent = AppRef;
-            Elements.Add(e.Name, e);
-            AddTracker(ref e);
+		/// <summary>
+		/// Registers a <see langword="VisualElement"/>.
+		/// </summary>
+		public void Add(ref VisualElement e)
+		{
+			if (Elements.ContainsKey(e.Name))
+			{
+				Log.Error($"A component with name {e.Name} already exists.");
+				return;
+			}
 
-            e.OnDisposing += Element_OnDispose;
-        }
+			e.ApplicationParent = AppRef;
+			Elements.Add(e.Name, e);
+			AddTracker(ref e);
 
-        /// <summary>
-        /// Removes a given <see langword="VisualElement"/> and it's children.
-        /// </summary>
-        /// <param name="e"></param>
-        public void RemoveComponent(VisualElement e)
-        {
-            Elements.Remove(e.Name);
-            RemoveTracker(e);
+			e.OnDisposing += Element_OnDispose;
+		}
 
-            // Remove children if any
-            e.Children.ForEach(child => child.Dispose());
-        }
+		/// <summary>
+		/// Removes a given <see langword="VisualElement"/> and it's children.
+		/// </summary>
+		/// <param name="e"></param>
+		public void RemoveComponent(VisualElement e)
+		{
+			Elements.Remove(e.Name);
+			RemoveTracker(e);
 
-        private void Element_OnDispose(VisualElement e)
-        {
-            RemoveComponent(e);
-        }
-    }
+			// Remove children if any
+			e.Children.ForEach(child => child.Dispose());
+		}
+
+		private void Element_OnDispose(VisualElement e)
+		{
+			RemoveComponent(e);
+		}
+	}
 }
