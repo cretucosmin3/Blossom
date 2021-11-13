@@ -25,7 +25,7 @@ namespace Kara
 		private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
 		private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
-        static void Main(string[] args)
+		static void Main(string[] args)
 		{
 			Log.Info(_appName);
 			Log.Info(_appPath);
@@ -34,12 +34,12 @@ namespace Kara
 			Log.Info(_appDataPathLog);
 			Log.Info(_appDataPathScreenshot);
 			AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-            {
-                Log.Debug("Closing");
-            };
+			{
+				Log.Debug("Closing");
+			};
 
-            Browser.Initialize();
-        }
+			Browser.Initialize();
+		}
 
 		// static void UnpremultiplyAlpha(Span<byte> image, int w, int h, int stride)
 		// {

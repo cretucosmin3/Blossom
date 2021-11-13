@@ -42,8 +42,6 @@ namespace Kara
 
 			window.Initialize();
 
-
-			bool once = false;
 			while (!window.IsClosing)
 			{
 				window.DoRender();

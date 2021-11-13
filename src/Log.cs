@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using static System.Console;
 
 namespace Kara
 {
@@ -30,12 +31,12 @@ namespace Kara
 
 		private static void WritePrefix(string text, ConsoleColor color)
 		{
-			Console.ForegroundColor = color;
-			Console.Write(text);
-			Console.ResetColor();
+			ForegroundColor = color;
+			Write(text);
+			ResetColor();
 		}
 
-		private static void Write(string LogMessage, Severity severity)
+		private static void CWrite(string LogMessage, Severity severity)
 		{
 			ConsoleColor SeverityColor = ((int)severity) switch
 			{
@@ -48,14 +49,14 @@ namespace Kara
 			};
 
 			WritePrefix($"[{severity.ToString().ToUpper()}] ", SeverityColor);
-			Console.WriteLine(LogMessage);
+			WriteLine(LogMessage);
 			LogToFile(LogMessage, severity);
 		}
 
-		public static void Debug(string LogMessage) => Write(LogMessage, Severity.Debug);
-		public static void Info(string LogMessage) => Write(LogMessage, Severity.Info);
-		public static void Warning(string LogMessage) => Write(LogMessage, Severity.Warning);
-		public static void Error(string LogMessage) => Write(LogMessage, Severity.Error);
-		public static void Fatal(string LogMessage) => Write(LogMessage, Severity.Fatal);
+		public static void Debug(string LogMessage) => CWrite(LogMessage, Severity.Debug);
+		public static void Info(string LogMessage) => CWrite(LogMessage, Severity.Info);
+		public static void Warning(string LogMessage) => CWrite(LogMessage, Severity.Warning);
+		public static void Error(string LogMessage) => CWrite(LogMessage, Severity.Error);
+		public static void Fatal(string LogMessage) => CWrite(LogMessage, Severity.Fatal);
 	}
 }

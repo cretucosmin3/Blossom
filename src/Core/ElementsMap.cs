@@ -8,33 +8,26 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Kara.src.Core
+namespace Kara.Core
 {
 	public class ElementsMap
 	{
-		private readonly Dictionary<string, VisualElement> Elements = new Dictionary<string, VisualElement>();
-		private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
-
-		private readonly QuadTreeRectF<ComponentTracker> InteractionMap = new QuadTreeRectF<ComponentTracker>(
+		private readonly Dictionary<string, (VisualElement, ComponentTracker)> Map = new();
+		private readonly QuadTreeRectF<ComponentTracker> QuadTree = new(
 			float.MinValue / 2f, float.MinValue / 2f,
 			float.MaxValue, float.MaxValue
 		);
 
 		public List<VisualElement> UiComponents = new List<VisualElement>();
 
-		internal Application AppRef;
-
-		internal ElementsMap(ref Application appref)
-		{
-			AppRef = appref;
-		}
+		internal ElementsMap() { }
 
 		/// <summary>
 		/// Get components from a given point
 		/// </summary>
 		public List<VisualElement> ComponentsFromPoint(PointF point)
 		{
-			return InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 3, 3)).ToArray().Select(x => x.Component).ToList();
+			return QuadTree.GetObjects(new RectangleF(point.X, point.Y, 3, 3)).ToArray().Select(x => x.Component).ToList();
 		}
 
 		/// <summary>
@@ -44,7 +37,7 @@ namespace Kara.src.Core
 		/// <returns></returns>
 		public List<VisualElement> CollidedComponents(VisualElement Com)
 		{
-			var Collided = InteractionMap.GetObjects(Com.Transform);
+			var Collided = QuadTree.GetObjects(Com.Transform);
 			List<VisualElement> Result = new();
 			foreach (var Tracker in Collided)
 			{
@@ -60,10 +53,8 @@ namespace Kara.src.Core
 		/// </summary>
 		public VisualElement FirstFromPoint(System.Numerics.Vector2 point)
 		{
-			var components = InteractionMap.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
+			var components = QuadTree.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
 			if (!components.Any()) return null;
-
-			var z = InteractionMap.ToList()[0].Component;
 
 			int maxLayer = components.Max(t => t.Component.Layer);
 			return components.Find(t => t.Component.Layer == maxLayer).Component;
@@ -75,7 +66,7 @@ namespace Kara.src.Core
 		/// <returns>true if com1 and com2 intersect</returns>
 		public bool ComponentsIntersect(VisualElement com1, VisualElement com2)
 		{
-			var Intersected = InteractionMap.GetObjects(com1.Transform);
+			var Intersected = QuadTree.GetObjects(com1.Transform);
 
 			foreach (var Tracker in Intersected)
 				if (Tracker.Component == com2) return true;
@@ -83,33 +74,36 @@ namespace Kara.src.Core
 			return false;
 		}
 
-		private void RemoveTracker(VisualElement Com)
-		{
-			InteractionMap.Remove(Trackers[Com]);
-			Trackers.Remove(Com);
-		}
-
-		private void AddTracker(ref VisualElement Com)
+		private ComponentTracker AddTracker(ref VisualElement Com)
 		{
 			var NewTracker = new ComponentTracker(ref Com);
-			InteractionMap.Add(NewTracker);
-			Trackers.Add(Com, NewTracker);
+			QuadTree.Add(NewTracker);
+
+			return NewTracker;
+		}
+
+		private void RemoveTracker(VisualElement Element)
+		{
+			var (_, tracker) = Map[Element.Name];
+			QuadTree.Remove(tracker);
 		}
 
 		/// <summary>
 		/// Registers a <see langword="VisualElement"/>.
 		/// </summary>
-		public void Add(ref VisualElement e)
+		public void AddElement(ref VisualElement e, Application app)
 		{
-			if (Elements.ContainsKey(e.Name))
+			if (Map.ContainsKey(e.Name))
 			{
 				Log.Error($"A component with name {e.Name} already exists.");
 				return;
 			}
 
-			e.ApplicationParent = AppRef;
-			Elements.Add(e.Name, e);
-			AddTracker(ref e);
+			e.ApplicationParent = app;
+			var tracker = AddTracker(ref e);
+
+			// Add element and tracker to the map
+			Map.Add(e.Name, (e, tracker));
 
 			e.OnDisposing += Element_OnDispose;
 		}
@@ -118,10 +112,9 @@ namespace Kara.src.Core
 		/// Removes a given <see langword="VisualElement"/> and it's children.
 		/// </summary>
 		/// <param name="e"></param>
-		public void RemoveComponent(VisualElement e)
+		public void RemoveElement(VisualElement e)
 		{
-			Elements.Remove(e.Name);
-			RemoveTracker(e);
+			Map.Remove(e.Name);
 
 			// Remove children if any
 			e.Children.ForEach(child => child.Dispose());
@@ -129,7 +122,7 @@ namespace Kara.src.Core
 
 		private void Element_OnDispose(VisualElement e)
 		{
-			RemoveComponent(e);
+			RemoveElement(e);
 		}
 	}
 }

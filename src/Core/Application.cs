@@ -1,5 +1,3 @@
-using System.Collections.Specialized;
-using System.ComponentModel.DataAnnotations;
 using System.Drawing;
 using System;
 using SilkyNvg;
@@ -8,9 +6,7 @@ using SilkyNvg.Text;
 using Silk.NET.Input;
 using Kara.Core.Visual;
 using Kara.Core.Input;
-using Kara.Utils;
 using System.Collections.Generic;
-using QuadTrees;
 
 namespace Kara.Core
 {
@@ -31,7 +27,9 @@ namespace Kara.Core
 		/// </summary>
 		internal Nvg Rp;
 
-		public EventMap Events = new EventMap();
+		public EventMap Events = new();
+		public ElementsMap Elements = new();
+
 		private string _title = "";
 		public string Title
 		{
@@ -43,86 +41,27 @@ namespace Kara.Core
 			}
 		}
 
-		private readonly Dictionary<string, VisualElement> Components = new Dictionary<string, VisualElement>();
-		private readonly QuadTreeRectF<ComponentTracker> InteractionMap;
-		private readonly Dictionary<VisualElement, ComponentTracker> Trackers = new Dictionary<VisualElement, ComponentTracker>();
+		public Application Instance
+		{
+			get => this;
+		}
 
 		public VisualElement FocusedElement { get; set; }
 		public VisualElement Element;
 
+		public void AddElement(VisualElement element)
+		{
+			Elements.AddElement(ref element, this);
+		}
+
+		public void RemoveElement(VisualElement element)
+		{
+			Elements.RemoveElement(element);
+		}
+
 		internal void Initialize(Nvg RenderPipeline)
 		{
 			Rp = RenderPipeline;
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad1 }).Handle(
-				(e) => Element.Roundness += 5
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad2 }).Handle(
-				(e) => Element.Roundness -= 5
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad3 }).Handle(
-				(e) => Element.FontSize += 5
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad4 }).Handle(
-				(e) => Element.FontSize -= 5
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad5 }).Handle(
-				(e) =>
-                {
-					Element.BackColor = Color.White;
-					Element.FontColor = Color.Black;
-				}
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad6 }).Handle(
-				(e) =>
-                {
-					Element.BackColor = Color.Black;
-					Element.FontColor = Color.White;
-                }
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Up }).Handle(
-				(e) => Element.TextAlignment = TextAlign.Top
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Down }).Handle(
-				(e) => Element.TextAlignment = TextAlign.Bottom
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Left }).Handle(
-				(e) => Element.TextAlignment = TextAlign.Left
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Right }).Handle(
-				(e) => Element.TextAlignment = TextAlign.Right
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Enter }).Handle(
-				(e) => Element.TextAlignment = TextAlign.Center
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad7}).Handle(
-				(e) =>
-                {
-					Element.TextShadow = new System.Numerics.Vector2(1, 1);
-					Element.TextShadowColor = Color.Red;
-					Element.TextShadowSpread = 2;
-					Element.FontColor = Color.White;
-                }
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad8 }).Handle(
-				(e) => Element.TextShadowColor = Color.Transparent
-			);
-
-			Events.AddHotkey(new[] { Key.ControlLeft, Key.Keypad9 }).Handle(
-				(e) => Element.BorderWidth = Element.BorderWidth == 6 ? 2 : 6
-			);
 
 			// _fontIcons = Rp.CreateFont("icons", "./fonts/entypo.ttf");
 			// if (_fontIcons == -1)
