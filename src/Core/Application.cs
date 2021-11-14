@@ -41,11 +41,6 @@ namespace Kara.Core
 			}
 		}
 
-		public Application Instance
-		{
-			get => this;
-		}
-
 		public VisualElement FocusedElement { get; set; }
 		public VisualElement Element;
 

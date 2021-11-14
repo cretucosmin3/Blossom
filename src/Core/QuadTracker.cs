@@ -4,16 +4,16 @@ using Kara.Core.Visual;
 
 namespace Kara.Core
 {
-	internal class ComponentTracker : IRectFQuadStorable
+	internal class ElementTracker : IRectFQuadStorable
 	{
 		public RectangleF Rect;
-		public VisualElement Component;
-		RectangleF IRectFQuadStorable.Rect => Component.Transform;
+		public VisualElement Element;
+		RectangleF IRectFQuadStorable.Rect => Element.Transform;
 
-		public ComponentTracker(ref VisualElement com)
+		public ElementTracker(ref VisualElement com)
 		{
 			Rect = com.Transform;
-			Component = com;
+			Element = com;
 		}
 	}
 }
