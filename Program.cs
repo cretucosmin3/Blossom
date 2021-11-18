@@ -27,12 +27,12 @@ namespace Kara
 
 		static void Main(string[] args)
 		{
-			Log.Info(_appName);
-			Log.Info(_appPath);
-			Log.Info(_appDataPath);
-			Log.Info(_appDataPathConfig);
-			Log.Info(_appDataPathLog);
-			Log.Info(_appDataPathScreenshot);
+			// Log.Info(_appName);
+			// Log.Info(_appPath);
+			// Log.Info(_appDataPath);
+			// Log.Info(_appDataPathConfig);
+			// Log.Info(_appDataPathLog);
+			// Log.Info(_appDataPathScreenshot);
 			AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
 			{
 				Log.Debug("Closing");

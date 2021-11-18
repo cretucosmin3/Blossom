@@ -1,5 +1,3 @@
-using System.Numerics;
-using System;
 using System.Threading;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -21,7 +19,7 @@ namespace Kara
 		/// <summary>
 		/// Application of the browser
 		/// </summary>
-		internal static Application KaraApp;
+		internal static Application KaraApp = new WebApplication();
 
 		public static void Initialize()
 		{
@@ -132,5 +130,10 @@ namespace Kara
 			KaraApp.Render();
 			Renderer.EndFrame();
 		}
+	}
+
+	public class WebApplication : Application
+	{
+
 	}
 }

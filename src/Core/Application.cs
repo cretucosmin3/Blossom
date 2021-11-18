@@ -1,3 +1,7 @@
+using System.Diagnostics;
+using System.Net;
+using System.IO;
+using System.Runtime.InteropServices.ComTypes;
 using System.Drawing;
 using System;
 using SilkyNvg;
@@ -7,6 +11,10 @@ using Silk.NET.Input;
 using Kara.Core.Visual;
 using Kara.Core.Input;
 using System.Collections.Generic;
+using Kara.Utils;
+using SilkyNvg.Graphics;
+using SilkyNvg.Paths;
+using StbImageSharp;
 
 namespace Kara.Core
 {
@@ -20,7 +28,7 @@ namespace Kara.Core
 		private const int ICON_TRASH = 0xE729;
 
 		private int _fontNormal, _fontBold, _fontIcons, _fontEmoji;
-		private int[] _images = new int[12];
+		private int LoadedImage;
 
 		/// <summary>
 		/// Render Pipeline
@@ -40,9 +48,34 @@ namespace Kara.Core
 				//! #render title only
 			}
 		}
+		// LoadedImage = Rp.CreateImage("/home/cosmin/Desktop/cookies2.jpg", ImageFlags.Nearest);
 
 		public VisualElement FocusedElement { get; set; }
 		public VisualElement Element;
+
+		public void Load()
+		{
+			string url4k = "https://wallpaperaccess.com/full/1369012.jpg";
+			string second = "https://purepng.com/public/uploads/thumbnail//google-stadia-logo-hd4.png";
+			var warmup = Imaging.LoadImageBytes(second);
+
+			Stopwatch timer = new Stopwatch();
+			timer.Start();
+
+			var imgBytes = Imaging.LoadImageBytes(second);
+			ImageResult result = ImageResult.FromMemory(imgBytes, ColorComponents.RedGreenBlueAlpha, true);
+
+			if (result == null)
+			{
+				// Handle error
+				return;
+			}
+
+			LoadedImage = Rp.CreateImageRgba((uint)result.Width, (uint)result.Height, ImageFlags.Premultiplied, result.Data);
+
+			timer.Stop();
+			Log.Info($"Loaded image in {timer.ElapsedMilliseconds.ToString("0.00")} ms");
+		}
 
 		public void AddElement(VisualElement element)
 		{
@@ -100,18 +133,40 @@ namespace Kara.Core
 				TextShadow = new System.Numerics.Vector2(1, 1),
 				TextShadowSpread = 0f,
 			};
+
+			Load();
 		}
 
 		internal void Render()
 		{
-			Element.Draw();
+			//Element.Draw();
+
+			float scale = 0.3f;
+
+			Rp.ImageSize(LoadedImage, out uint imgW, out uint imgH);
+
+			imgW = (uint)(imgW * scale);
+			imgH = (uint)(imgH * scale);
+
+			Rp.Reset();
+			Paint imgPaint = Paint.ImagePattern(50, 50, imgW, imgH, 0, LoadedImage, 1f);
+			Rp.BeginPath();
+			Rp.RoundedRect(50, 50, imgW, imgH, 25f);
+			Rp.StrokeColour(Colour.Coral);
+			Rp.StrokeWidth(5f);
+
+			Rp.Stroke();
+			Rp.FillPaint(imgPaint);
+			Rp.Fill();
+			Rp.Stroke();
+
 		}
 
 		public void Dispose()
 		{
 			for (uint i = 0; i < 12; i++)
 			{
-				Rp.DeleteImage(_images[i]);
+				Rp.DeleteImage(LoadedImage);
 			}
 		}
 	}

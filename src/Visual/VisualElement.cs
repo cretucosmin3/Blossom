@@ -9,10 +9,6 @@ using SilkyNvg.Images;
 using SilkyNvg.Paths;
 using SilkyNvg.Scissoring;
 using SilkyNvg.Text;
-using Kara.Core.Delegates.Inputs;
-using Kara.Core.Delegates.Common;
-using QuadTrees;
-using Silk.NET.Input;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
@@ -31,7 +27,7 @@ namespace Kara.Core.Visual
 		public VisualElement Parent { get; set; } = null;
 		public List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
-		internal event ForDispose OnDisposing; 
+		internal event ForDispose OnDisposing;
 
 		private bool _Visible = true;
 		public bool Visible
