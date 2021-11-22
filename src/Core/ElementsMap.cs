@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Kara.Core
 {
-	public class ElementsMap
+	public class ElementsMap : IDisposable
 	{
 		private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
 		private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
@@ -71,7 +71,7 @@ namespace Kara.Core
 			QuadTree.Remove(tracker);
 		}
 
-		public void AddElement(ref VisualElement e, Application app)
+		public void AddElement(ref VisualElement e, View view)
 		{
 			if (Map.ContainsKey(e.Name))
 			{
@@ -79,7 +79,7 @@ namespace Kara.Core
 				return;
 			}
 
-			e.ApplicationParent = app;
+			e.ParentView = view;
 			var tracker = AddTracker(ref e);
 
 			// Add element and tracker to the map
@@ -99,6 +99,17 @@ namespace Kara.Core
 		private void Element_OnDispose(VisualElement e)
 		{
 			RemoveElement(e);
+		}
+
+		public void Dispose()
+		{
+			foreach (var (element, tracker) in Map.Values)
+			{
+				element.Dispose();
+			}
+
+			QuadTree.Clear();
+			Map.Clear();
 		}
 	}
 }

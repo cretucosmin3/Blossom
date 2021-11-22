@@ -13,23 +13,29 @@ namespace Kara
 	public static class Browser
 	{
 		private static GL gl;
-		internal static Nvg Renderer;
+		internal static Nvg RenderPipeline;
 		internal static IWindow window;
+
+		internal static int RenderOffsetX;
+		internal static int RenderOffsetY;
 
 		/// <summary>
 		/// Application of the browser
 		/// </summary>
-		internal static Application KaraApp = new WebApplication();
+		internal static Application BrowserApp = new WebApplication();
 
 		public static void Initialize()
 		{
+			BrowserApp.RenderOffsetX = 0;
+			BrowserApp.RenderOffsetY = 0;
+
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
 			windowOptions.ShouldSwapAutomatically = true;
 			windowOptions.Size = new Vector2D<int>(1000, 600);
 			windowOptions.Title = "Kara";
 			windowOptions.VSync = false;
-			windowOptions.PreferredDepthBufferBits = 12;
+			windowOptions.PreferredDepthBufferBits = 24;
 			windowOptions.PreferredStencilBufferBits = 8;
 
 			window = Window.Create(windowOptions);
@@ -53,7 +59,7 @@ namespace Kara
 
 		private static void ManageInputEvents()
 		{
-			KaraApp.Events.Access = EventAccess.Keyboard;
+			BrowserApp.Events.Access = EventAccess.Keyboard;
 			IInputContext input = window.CreateInput();
 
 			// Register keyboard events
@@ -64,17 +70,17 @@ namespace Kara
 					if (i == 0) return;
 
 					Log.Debug($"Key down {key}");
-					var BrowserHandled = KaraApp.Events.HandleKeyDown(key, i);
+					var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
 				};
 
 				keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
 				{
-					KaraApp.Events.HandleKeyUp(key, i);
+					BrowserApp.Events.HandleKeyUp(key, i);
 				};
 
 				keyboard.KeyChar += (IKeyboard _, char ch) =>
 				{
-					KaraApp.Events.HandleKeyChar(ch);
+					BrowserApp.Events.HandleKeyChar(ch);
 				};
 			}
 
@@ -99,8 +105,8 @@ namespace Kara
 
 		private static void Closing()
 		{
-			KaraApp.Dispose();
-			Renderer.Dispose();
+			BrowserApp.Dispose();
+			RenderPipeline.Dispose();
 			gl.Dispose();
 		}
 
@@ -110,9 +116,9 @@ namespace Kara
 			gl = window.CreateOpenGL();
 
 			OpenGLRenderer nvgRenderer = new(CreateFlags.Antialias | CreateFlags.StencilStrokes | CreateFlags.Debug, gl);
-			Renderer = Nvg.Create(nvgRenderer);
+			RenderPipeline = Nvg.Create(nvgRenderer);
 
-			KaraApp.Initialize(Renderer);
+			Renderer.Initialize(RenderPipeline);
 		}
 
 		private static void Render(double time)
@@ -123,17 +129,30 @@ namespace Kara
 			float pxRatio = fbSize.X / winSize.X;
 
 			gl.Viewport(0, 0, (uint)winSize.X, (uint)winSize.Y);
-			gl.ClearColor(255, 255, 255, 128);
+			gl.ClearColor(255, 255, 255, 255);
 			gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
-			Renderer.BeginFrame(winSize.As<float>(), pxRatio);
-			KaraApp.Render();
-			Renderer.EndFrame();
+			RenderPipeline.BeginFrame(winSize.X, winSize.Y, pxRatio);
+			BrowserApp.Render();
+			RenderPipeline.EndFrame();
+		}
+	}
+
+	public class MainView : View
+	{
+		public MainView()
+		{
+			Log.Debug("MainView created");
 		}
 	}
 
 	public class WebApplication : Application
 	{
+		public WebApplication()
+		{
+			this.Events.Access = EventAccess.Keyboard;
 
+			AddView(new MainView());
+		}
 	}
 }

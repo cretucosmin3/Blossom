@@ -18,12 +18,12 @@ namespace Kara.Core.Visual
 {
 	public class VisualElement : IDisposable
 	{
-		private Nvg Renderer { get => Browser.Renderer; }
 		public string Name { get; set; }
-		public bool HasFocus { get { return ApplicationParent.FocusedElement == this; } }
+		public bool HasFocus { get { return ParentView.FocusedElement == this; } }
 		public bool IsHovered { get; set; } = false;
 
-		internal Application ApplicationParent { get; set; }
+		internal Application ParentApp { get; set; }
+		internal View ParentView { get; set; }
 		public VisualElement Parent { get; set; } = null;
 		public List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
@@ -270,49 +270,49 @@ namespace Kara.Core.Visual
 			{
 				DrawBase();
 				DrawText();
-				Renderer.Reset();
+				Renderer.Pipe.Reset();
 			}
 		}
 
 		internal void DrawBase()
 		{
-			Renderer.BeginPath();
-			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
+			Renderer.Pipe.BeginPath();
+			Renderer.Pipe.RoundedRect(X, Y, Width, Height, Roundness);
 
 			if (_BackColor.A > 0)
 			{
-				Renderer.FillColour(_BackColor);
-				Renderer.Fill();
+				Renderer.Pipe.FillColour(_BackColor);
+				Renderer.Pipe.Fill();
 			}
 
-			Renderer.BeginPath();
-			Renderer.RoundedRect(X, Y, Width, Height, Roundness);
+			Renderer.Pipe.BeginPath();
+			Renderer.Pipe.RoundedRect(X, Y, Width, Height, Roundness);
 
 			if (_BorderColor.A > 0f && BorderWidth > 0f)
 			{
-				Renderer.StrokeWidth(BorderWidth);
-				Renderer.StrokeColour(_BorderColor);
-				Renderer.Stroke();
+				Renderer.Pipe.StrokeWidth(BorderWidth);
+				Renderer.Pipe.StrokeColour(_BorderColor);
+				Renderer.Pipe.Stroke();
 			}
 
-			Renderer.ClosePath();
+			Renderer.Pipe.ClosePath();
 		}
 
 		private float TextWidth = 0;
 		private void CalculateTextBounds()
 		{
-			TextWidth = Renderer.TextBounds(0, 0, Text, out TextBounds);
+			TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
 		}
 
 		internal void DrawText()
 		{
-			Renderer.FontSize(FontSize);
-			Renderer.FontFace("sans");
+			Renderer.Pipe.FontSize(FontSize);
+			Renderer.Pipe.FontFace("sans");
 
 			var halfBorder = (BorderWidth / 2);
-			Renderer.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
+			Renderer.Pipe.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
 
-			Renderer.TextAlign(Align.Middle | Align.Middle);
+			Renderer.Pipe.TextAlign(Align.Middle | Align.Middle);
 			CalculateTextBounds();
 
 			float textX = TextAlignment switch
@@ -347,17 +347,17 @@ namespace Kara.Core.Visual
 
 			if (TextShadowColor.A > 0 && TextShadow != Vector2.Zero)
 			{
-				if (TextShadowSpread > 0) Renderer.FontBlur(TextShadowSpread);
+				if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
 
 				var aria = TextBounds.Size.X + TextBounds.Size.Y;
-				Renderer.FillColour(Conversion.fromColor(TextShadowColor));
-				Renderer.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
+				Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
+				Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
 
-				if (TextShadowSpread > 0) Renderer.FontBlur(0);
+				if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
 			}
 
-			Renderer.FillColour(Conversion.fromColor(FontColor));
-			Renderer.Text(textX, textY, Text);
+			Renderer.Pipe.FillColour(Conversion.fromColor(FontColor));
+			Renderer.Pipe.Text(textX, textY, Text);
 		}
 
 		internal void DrawTextShadow()
@@ -367,8 +367,8 @@ namespace Kara.Core.Visual
 
 		public void GetFocus()
 		{
-			if (ApplicationParent != null)
-				ApplicationParent.FocusedElement = this;
+			if (ParentView != null)
+				ParentView.FocusedElement = this;
 		}
 
 		public void Dispose()

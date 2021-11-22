@@ -53,30 +53,5 @@ namespace Kara.Utils
 
 			return bytes;
 		}
-
-		public static byte[] GetImageFromUrl(string url)
-		{
-			System.Net.HttpWebRequest request = null;
-			System.Net.HttpWebResponse response = null;
-			byte[] b = null;
-
-			request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
-			response = (System.Net.HttpWebResponse)request.GetResponse();
-
-			if (request.HaveResponse)
-			{
-				if (response.StatusCode == System.Net.HttpStatusCode.OK)
-				{
-					Stream receiveStream = response.GetResponseStream();
-					using (BinaryReader br = new BinaryReader(receiveStream))
-					{
-						b = br.ReadBytes(500000);
-						br.Close();
-					}
-				}
-			}
-
-			return b;
-		}
 	}
 }
