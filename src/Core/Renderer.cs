@@ -1,20 +1,5 @@
-using System.Diagnostics;
-using System.Net;
-using System.IO;
-using System.Runtime.InteropServices.ComTypes;
-using System.Drawing;
-using System;
 using SilkyNvg;
-using SilkyNvg.Images;
 using SilkyNvg.Text;
-using Silk.NET.Input;
-using Kara.Core.Visual;
-using Kara.Core.Input;
-using System.Collections.Generic;
-using Kara.Utils;
-using SilkyNvg.Graphics;
-using SilkyNvg.Paths;
-using StbImageSharp;
 
 namespace Kara.Core
 {

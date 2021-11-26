@@ -221,7 +221,10 @@ namespace Kara.Core.Visual
 		}
 
 		private Silk.NET.Maths.Rectangle<float> TextBounds;
-		internal System.Drawing.RectangleF Transform = new System.Drawing.RectangleF(0, 0, 0, 0);
+
+		public bool RelativePosition { get; set; }
+		internal System.Drawing.RectangleF TransformRatio = new RectangleF(0, 0, 0, 0);
+		internal System.Drawing.RectangleF Transform = new RectangleF(0, 0, 0, 0);
 
 		public float X
 		{
