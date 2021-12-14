@@ -261,7 +261,6 @@ namespace NvgExample
 			_nvg.Text(x + w * 0.5f - tw * 0.5f + iw * 0.25f, y + h * 0.5f, text);
 		}
 
-		private bool zz = true;
 		private float fx = 17f;
 
 		private void DrawSlider(float pos, float x, float y, float w, float h)

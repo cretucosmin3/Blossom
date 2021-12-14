@@ -1,17 +1,13 @@
-using System.Security.Cryptography;
-using System.ComponentModel;
 using System;
-using System.Net.Mime;
-using System.Text;
+using System.Drawing;
+using System.Numerics;
+using System.Collections.Generic;
 using SilkyNvg;
 using SilkyNvg.Graphics;
-using SilkyNvg.Images;
 using SilkyNvg.Paths;
 using SilkyNvg.Scissoring;
 using SilkyNvg.Text;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Numerics;
+using Kara.Core.Delegates.Common;
 using Kara.Utils;
 
 namespace Kara.Core.Visual
@@ -20,14 +16,40 @@ namespace Kara.Core.Visual
 	{
 		public string Name { get; set; }
 		public bool HasFocus { get { return ParentView.FocusedElement == this; } }
-		public bool IsHovered { get; set; } = false;
 
-		internal Application ParentApp { get; set; }
+		internal Application ParentApplication { get; set; }
 		internal View ParentView { get; set; }
-		public VisualElement Parent { get; set; } = null;
+
+		private VisualElement _Parent = null;
+		public VisualElement Parent
+		{
+			get => _Parent;
+			set
+			{
+				_Parent = value;
+				SetAnchorValues();
+			}
+		}
+
 		public List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
 		internal event ForDispose OnDisposing;
+		public event ForV4 OnResized;
+		internal event ForResizeType OnComputedSize;
+
+		public void AddChild(VisualElement child)
+		{
+			child.Parent = this;
+			OnComputedSize += child.HandleParentResized;
+			Children.Add(child);
+		}
+
+		public void RemoveChild(VisualElement child)
+		{
+			child.Parent = null;
+			OnComputedSize -= child.HandleParentResized;
+			Children.Remove(child);
+		}
 
 		private bool _Visible = true;
 		public bool Visible
@@ -35,7 +57,10 @@ namespace Kara.Core.Visual
 			get => _Visible;
 			set
 			{
-				if (value != _Visible) { } // Application render
+				if (value != _Visible)
+				{
+
+				}
 				else _Visible = value;
 			}
 		}
@@ -44,11 +69,15 @@ namespace Kara.Core.Visual
 		{
 			get
 			{
-				var pw = Parent != null ? Parent.Width : Browser.window.Size.X;
-				var ph = Parent != null ? Parent.Width : Browser.window.Size.X;
-				return Visible && X >= 0 && Y >= 0 && Y < ph && X < pw;
+				if (Parent != null)
+				{
+					return Visible ? ParentView.Elements.ComponentsIntersect(this, Parent) : false;
+				}
+				else
+				{
+					return Visible;
+				}
 			}
-
 		}
 
 		private int _Layer;
@@ -222,48 +251,258 @@ namespace Kara.Core.Visual
 
 		private Silk.NET.Maths.Rectangle<float> TextBounds;
 
-		public bool RelativePosition { get; set; }
-		internal System.Drawing.RectangleF TransformRatio = new RectangleF(0, 0, 0, 0);
-		internal System.Drawing.RectangleF Transform = new RectangleF(0, 0, 0, 0);
+		private Anchor _Anchor = Anchor.Left | Anchor.Top;
+
+		internal float FixedLeft = 0f;
+		internal float FixedRight = 0f;
+		internal float FixedTop = 0f;
+		internal float FixedBottom = 0f;
+
+		internal float RelativeLeft = 0f;
+		internal float RelativeRight = 0f;
+		internal float RelativeTop = 0f;
+		internal float RelativeBottom = 0f;
+
+		public Anchor Anchor
+		{
+			get => _Anchor;
+			set
+			{
+				_Anchor = value;
+				SetAnchorValues();
+			}
+		}
+
+		private void SetAnchorValues()
+		{
+			if (!Browser.IsLoaded) return;
+
+			ComputeX();
+			ComputeY();
+			ComputeWidth();
+			ComputeHeight();
+		}
+
+		internal RectangleF LocalTransform = new RectangleF(0, 0, 0, 0);
+		internal RectangleF ComputedTransform = new RectangleF(0, 0, 0, 0);
+		public RectangleF GlobalTransform { get => ComputedTransform; }
+
+		internal void HandleParentResized(ResizeType prop)
+		{
+			switch (prop)
+			{
+				case ResizeType.X:
+					ComputeX();
+					break;
+				case ResizeType.Y:
+					ComputeY();
+					break;
+				case ResizeType.Width:
+					ComputeWidth();
+					break;
+				case ResizeType.Height:
+					ComputeHeight();
+					break;
+			}
+		}
+
+		private bool XChanged = false;
+		private bool YChanged = false;
+		private bool WidthChanged = false;
+		private bool HeightChanged = false;
+
+		private void ComputeX()
+		{
+			if (_Anchor.HasFlag(Anchor.Left))
+			{
+				FixedLeft = X;
+				ComputedTransform.X = FixedLeft;
+			}
+			else if (!_Anchor.HasFlag(Anchor.Right))
+			{
+				if (XChanged)
+				{
+					RelativeLeft = (X + (Width / 2f)) / Parent.Width;
+					XChanged = false;
+				}
+
+				ComputedTransform.X = (Parent.Width * RelativeLeft) - (Width / 2f);
+			}
+
+			// Add parent X
+			if (Parent != null) ComputedTransform.X += Parent.X;
+
+			// Add app offset render
+			if (Parent != null)
+				ComputedTransform.X += ParentApplication.OffsetX;
+		}
+
+		private void ComputeY()
+		{
+			if (_Anchor.HasFlag(Anchor.Top))
+			{
+				FixedTop = Y;
+				ComputedTransform.Y = FixedTop;
+			}
+			else if (!_Anchor.HasFlag(Anchor.Bottom))
+			{
+				if (YChanged)
+				{
+					RelativeTop = (Y + (Height / 2f)) / Parent.Height;
+					YChanged = false;
+				}
+
+				ComputedTransform.Y = (Parent.Height * RelativeTop) - (Height / 2f);
+			}
+
+			// Add parent Y
+			if (Parent != null) ComputedTransform.Y += Parent.Y;
+
+			// Add app offset render
+			if (Parent != null)
+				ComputedTransform.Y += ParentApplication.OffsetY;
+		}
+
+		private void ComputeWidth()
+		{
+			if (_Anchor.HasFlag(Anchor.Left))
+			{
+				ComputedTransform.Width = Width;
+			}
+			else if (!_Anchor.HasFlag(Anchor.Right))
+			{
+				if (WidthChanged)
+				{
+					RelativeRight = (Parent.Width - (X + Width)) / Parent.Width;
+					WidthChanged = false;
+				}
+
+				ComputedTransform.Width = Parent.Width * RelativeRight;
+			}
+
+			// Add parent X
+			// if (Parent != null) ComputedTransform.Width += Parent.X;
+
+			// Add app offset render
+			// if (Parent != null)
+			// 	ComputedTransform.Width += ParentApplication.OffsetX;
+		}
+
+		private void ComputeHeight()
+		{
+			if (_Anchor.HasFlag(Anchor.Top))
+			{
+				FixedTop = Y;
+				ComputedTransform.Height = Height;
+			}
+			else if (!_Anchor.HasFlag(Anchor.Bottom))
+			{
+				if (HeightChanged)
+				{
+					RelativeBottom = (Parent.Height - (Y + Height)) / Parent.Height;
+					HeightChanged = false;
+				}
+
+				ComputedTransform.Height = Parent.Height * RelativeBottom;
+			}
+
+			// Add parent Y
+			// if (Parent != null) ComputedTransform.Height += Parent.Y;
+
+			// Add app offset render
+			// if (Parent != null)
+			// 	ComputedTransform.Height += ParentApplication.OffsetY;
+		}
 
 		public float X
 		{
-			get => Transform.X;
+			get => LocalTransform.X;
 			set
 			{
-				Transform.X = value;
-				//! #render
-				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
+				XChanged = true;
+				LocalTransform.X = value;
+				ComputeX();
+				ComputeWidth();
+
+				OnResized?.Invoke(
+					LocalTransform.X,
+					LocalTransform.Y,
+					LocalTransform.Width,
+					LocalTransform.Height
+				);
+
+				OnComputedSize?.Invoke(ResizeType.X);
+
+				//! queue render
 			}
 		}
+
 		public float Y
 		{
-			get => Transform.Y;
+			get => LocalTransform.Y;
 			set
 			{
-				Transform.Y = value;
-				//! #render
-				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
+				YChanged = true;
+				LocalTransform.Y = value;
+				ComputeY();
+				ComputeHeight();
+
+				OnResized?.Invoke(
+					LocalTransform.X,
+					LocalTransform.Y,
+					LocalTransform.Width,
+					LocalTransform.Height
+				);
+
+				OnComputedSize?.Invoke(ResizeType.Y);
+
+				//! queue render
 			}
 		}
+
 		public float Width
 		{
-			get => Transform.Width;
+			get => LocalTransform.Width;
 			set
 			{
-				Transform.Width = value;
-				//! #render
-				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
+				WidthChanged = true;
+				LocalTransform.Width = value;
+				ComputeWidth();
+				ComputeX();
+
+				OnResized?.Invoke(
+					LocalTransform.X,
+					LocalTransform.Y,
+					LocalTransform.Width,
+					LocalTransform.Height
+				);
+
+				OnComputedSize?.Invoke(ResizeType.Width);
+
+				//! queue render
 			}
 		}
+
 		public float Height
 		{
-			get => Transform.Height;
+			get => LocalTransform.Height;
 			set
 			{
-				Transform.Height = value;
-				//! #render
-				//! OnSizeChanged?.Invoke(new Vector4(X, Y, Width, Height));
+				HeightChanged = true;
+				LocalTransform.Height = value;
+				ComputeHeight();
+				ComputeX();
+
+				OnResized?.Invoke(
+					LocalTransform.X,
+					LocalTransform.Y,
+					LocalTransform.Width,
+					LocalTransform.Height
+				);
+
+				OnComputedSize?.Invoke(ResizeType.Height);
+
+				//! queue render
 			}
 		}
 
@@ -274,13 +513,34 @@ namespace Kara.Core.Visual
 				DrawBase();
 				DrawText();
 				Renderer.Pipe.Reset();
+
+				foreach (var child in Children)
+				{
+					child.Draw();
+				}
 			}
 		}
 
 		internal void DrawBase()
 		{
+			if (Parent != null)
+			{
+				Renderer.Pipe.Scissor(
+					Parent.GlobalTransform.X + (Parent.BorderWidth / 2f),
+					Parent.GlobalTransform.Y + (Parent.BorderWidth / 2f),
+					Parent.GlobalTransform.Width - Parent.BorderWidth,
+					Parent.GlobalTransform.Height - Parent.BorderWidth
+				);
+			}
+
 			Renderer.Pipe.BeginPath();
-			Renderer.Pipe.RoundedRect(X, Y, Width, Height, Roundness);
+			Renderer.Pipe.RoundedRect(
+				ComputedTransform.X,
+				ComputedTransform.Y,
+				ComputedTransform.Width,
+				ComputedTransform.Height,
+				Roundness
+			);
 
 			if (_BackColor.A > 0)
 			{
@@ -289,7 +549,13 @@ namespace Kara.Core.Visual
 			}
 
 			Renderer.Pipe.BeginPath();
-			Renderer.Pipe.RoundedRect(X, Y, Width, Height, Roundness);
+			Renderer.Pipe.RoundedRect(
+				ComputedTransform.X,
+				ComputedTransform.Y,
+				ComputedTransform.Width,
+				ComputedTransform.Height,
+				Roundness
+			);
 
 			if (_BorderColor.A > 0f && BorderWidth > 0f)
 			{
@@ -304,16 +570,32 @@ namespace Kara.Core.Visual
 		private float TextWidth = 0;
 		private void CalculateTextBounds()
 		{
-			TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
+			if (Browser.IsLoaded)
+				TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
 		}
 
 		internal void DrawText()
 		{
+			var cx = ComputedTransform.X;
+			var cy = ComputedTransform.Y;
+			var cw = ComputedTransform.Width;
+			var ch = ComputedTransform.Height;
+
 			Renderer.Pipe.FontSize(FontSize);
 			Renderer.Pipe.FontFace("sans");
 
 			var halfBorder = (BorderWidth / 2);
-			Renderer.Pipe.Scissor(X + halfBorder, Y + halfBorder, Width - BorderWidth, Height - BorderWidth);
+
+			if (Parent != null)
+			{
+				Renderer.Pipe.Scissor(
+					Parent.GlobalTransform.X + (Parent.BorderWidth / 2f),
+					Parent.GlobalTransform.Y + (Parent.BorderWidth / 2f),
+					Parent.GlobalTransform.Width - Parent.BorderWidth,
+					Parent.GlobalTransform.Height - Parent.BorderWidth
+				);
+			}
+			else Renderer.Pipe.Scissor(cx + halfBorder, cy + halfBorder, cw - BorderWidth, ch - BorderWidth);
 
 			Renderer.Pipe.TextAlign(Align.Middle | Align.Middle);
 			CalculateTextBounds();
@@ -323,23 +605,23 @@ namespace Kara.Core.Visual
 				var x when
 					x == TextAlign.Left ||
 					x == TextAlign.TopLeft ||
-					x == TextAlign.BottomLeft => X + TextPadding,
+					x == TextAlign.BottomLeft => cx + TextPadding,
 				var x when
 					x == TextAlign.Right ||
 					x == TextAlign.TopRight ||
-					x == TextAlign.BottomRight => (X + Width - TextWidth) - TextPadding,
-				_ => X + Width * 0.5f - TextWidth * 0.5f, // Center, other
+					x == TextAlign.BottomRight => (X + cw - TextWidth) - TextPadding,
+				_ => cx + cw * 0.5f - TextWidth * 0.5f, // Center, other
 			};
 
 			float textY = TextAlignment switch
 			{
 				var x when x == TextAlign.Top ||
 					x == TextAlign.TopLeft ||
-					x == TextAlign.TopRight => Y + TextBounds.HalfSize.Y + TextPadding,
+					x == TextAlign.TopRight => cy + TextBounds.HalfSize.Y + TextPadding,
 				var x when x == TextAlign.Bottom ||
 					x == TextAlign.BottomLeft ||
-					x == TextAlign.BottomRight => Y + Height - TextBounds.HalfSize.Y - TextPadding,
-				_ => Y + Height * 0.5f, // Center, other
+					x == TextAlign.BottomRight => cy + ch - TextBounds.HalfSize.Y - TextPadding,
+				_ => cy + ch * 0.5f, // Center, other
 			};
 
 			textY += 4f;
@@ -376,6 +658,7 @@ namespace Kara.Core.Visual
 
 		public void Dispose()
 		{
+			Parent.OnComputedSize -= HandleParentResized;
 			OnDisposing?.Invoke(this);
 
 			if (Parent != null)

@@ -50,6 +50,13 @@ namespace Kara.Core
 		public VisualElement FocusedElement { get; set; }
 		public VisualElement Element;
 
+		public abstract void Main();
+
+		internal View()
+		{
+			Browser.OnLoaded += () => Main();
+		}
+
 		public void AddElement(VisualElement element)
 		{
 			Elements.AddElement(ref element, this);
@@ -62,7 +69,10 @@ namespace Kara.Core
 
 		internal void Render()
 		{
-			Element.Draw();
+			foreach (var element in Elements.Items)
+			{
+				element.Draw();
+			}
 		}
 
 		public void Dispose()

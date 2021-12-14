@@ -31,21 +31,31 @@ namespace Kara.Core
 			}
 		}
 
-		internal int RenderOffsetX = Browser.RenderOffsetX;
-		internal int RenderOffsetY = Browser.RenderOffsetY;
+		internal int OffsetX = Browser.RenderOffsetX;
+		internal int OffsetY = Browser.RenderOffsetY;
 
 		private Dictionary<string, View> Views = new();
-		private string ActiveView;
+		private string _ActiveView = "";
+		public View ActiveView
+		{
+			get
+			{
+				if (Views.TryGetValue(_ActiveView, out var view))
+					return view;
+
+				return null;
+			}
+		}
 
 		public void SetActiveView(string name)
 		{
 			if (Views.ContainsKey(name))
-			{
-				ActiveView = name;
-			}
+				_ActiveView = name;
 			else
 				Log.Error($"View {name} does not exist");
 		}
+
+		public void SetActiveView(View view) => SetActiveView(view.Name);
 
 		public EventMap Events = new();
 
@@ -71,13 +81,7 @@ namespace Kara.Core
 				Log.Error($"View with name {view.Name} does not exist!");
 		}
 
-		internal void Render()
-		{
-			if (ActiveView != null)
-			{
-				Views[ActiveView].Render();
-			}
-		}
+		internal void Render() => ActiveView?.Render();
 
 		public void Dispose()
 		{

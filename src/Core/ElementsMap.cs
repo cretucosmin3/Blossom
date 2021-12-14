@@ -18,6 +18,8 @@ namespace Kara.Core
 			float.MaxValue, float.MaxValue
 		);
 
+		public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
+
 		internal ElementsMap() { }
 
 		public List<VisualElement> ComponentsFromPoint(PointF point)
@@ -27,7 +29,7 @@ namespace Kara.Core
 
 		public List<VisualElement> CollidedComponents(VisualElement element)
 		{
-			var Collided = QuadTree.GetObjects(element.Transform);
+			var Collided = QuadTree.GetObjects(element.GlobalTransform);
 			List<VisualElement> Result = new();
 			foreach (var Tracker in Collided)
 			{
@@ -38,9 +40,18 @@ namespace Kara.Core
 			return Result;
 		}
 
-		public VisualElement FirstFromPoint(System.Numerics.Vector2 point)
+		public VisualElement FirstFromPoint(PointF point)
 		{
-			var components = QuadTree.GetObjects(new RectangleF(point.X, point.Y, 1, 1));
+			var components = QuadTree.GetObjects(new RectangleF(point.X, point.Y, 2, 2));
+			if (!components.Any()) return null;
+
+			int maxLayer = components.Max(t => t.Element.Layer);
+			return components.Find(t => t.Element.Layer == maxLayer).Element;
+		}
+
+		public VisualElement FirstFromQuad(RectangleF quad)
+		{
+			var components = QuadTree.GetObjects(quad);
 			if (!components.Any()) return null;
 
 			int maxLayer = components.Max(t => t.Element.Layer);
@@ -49,7 +60,7 @@ namespace Kara.Core
 
 		public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
 		{
-			var Intersected = QuadTree.GetObjects(elm1.Transform);
+			var Intersected = QuadTree.GetObjects(elm1.GlobalTransform);
 
 			foreach (var Tracker in Intersected)
 				if (Tracker.Element == elm2) return true;
@@ -79,6 +90,7 @@ namespace Kara.Core
 				return;
 			}
 
+			e.ParentApplication = view.ParentApp;
 			e.ParentView = view;
 			var tracker = AddTracker(ref e);
 

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -7,6 +9,10 @@ using SilkyNvg;
 using SilkyNvg.Rendering.OpenGL;
 using Kara.Core;
 using Kara.Core.Input;
+using Kara.Core.Visual;
+using System.Drawing;
+using Kara.Core.Delegates.Common;
+using System;
 
 namespace Kara
 {
@@ -16,18 +22,18 @@ namespace Kara
 		internal static Nvg RenderPipeline;
 		internal static IWindow window;
 
-		internal static int RenderOffsetX;
-		internal static int RenderOffsetY;
+		internal static int RenderOffsetX = 0;
+		internal static int RenderOffsetY = 0;
 
-		/// <summary>
-		/// Application of the browser
-		/// </summary>
-		internal static Application BrowserApp = new WebApplication();
+		internal static Application BrowserApp = new BrowserApplication();
+
+		public static event ForVoid OnLoaded;
+		public static bool IsLoaded { get; private set; } = false;
 
 		public static void Initialize()
 		{
-			BrowserApp.RenderOffsetX = 0;
-			BrowserApp.RenderOffsetY = 0;
+			// RenderOffsetX = 0;
+			// RenderOffsetY = 0;
 
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
@@ -68,19 +74,20 @@ namespace Kara
 				keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
 				{
 					if (i == 0) return;
-
-					Log.Debug($"Key down {key}");
 					var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
+					var ViewHandled = BrowserApp.ActiveView.Events.HandleKeyDown(key, i);
 				};
 
 				keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
 				{
 					BrowserApp.Events.HandleKeyUp(key, i);
+					BrowserApp.ActiveView.Events.HandleKeyUp(key, i);
 				};
 
 				keyboard.KeyChar += (IKeyboard _, char ch) =>
 				{
 					BrowserApp.Events.HandleKeyChar(ch);
+					BrowserApp.ActiveView.Events.HandleKeyChar(ch);
 				};
 			}
 
@@ -112,13 +119,15 @@ namespace Kara
 
 		private static void Load()
 		{
-			ManageInputEvents();
 			gl = window.CreateOpenGL();
 
 			OpenGLRenderer nvgRenderer = new(CreateFlags.Antialias | CreateFlags.StencilStrokes | CreateFlags.Debug, gl);
 			RenderPipeline = Nvg.Create(nvgRenderer);
-
 			Renderer.Initialize(RenderPipeline);
+
+			ManageInputEvents();
+			IsLoaded = true;
+			OnLoaded?.Invoke();
 		}
 
 		private static void Render(double time)
@@ -138,21 +147,111 @@ namespace Kara
 		}
 	}
 
+	public class Button : VisualElement
+	{
+
+	}
+
 	public class MainView : View
 	{
-		public MainView()
+		public override void Main()
 		{
-			Log.Debug("MainView created");
+			VisualElement parent = new VisualElement()
+			{
+				Name = "parent",
+				Text = "Parent",
+				X = 50,
+				Y = 50,
+				Width = 400,
+				Height = 400,
+				FontSize = 20,
+				BorderWidth = 2,
+				BorderColor = Color.Black,
+				TextAlignment = TextAlign.Bottom,
+				TextPadding = 10,
+				Anchor = Anchor.Top | Anchor.Left,
+			};
+
+			VisualElement child = new VisualElement()
+			{
+				Name = "child",
+				Text = "Child",
+				X = 10,
+				Y = 10,
+				Width = 80,
+				Height = 50,
+				FontSize = 20,
+				BorderWidth = 2,
+				BorderColor = Color.Red,
+				Anchor = Anchor.Bottom | Anchor.Left,
+			};
+
+			Name = "MainView";
+			Events.OnKeyDown += (int K) =>
+			{
+				Log.Debug($"{K}");
+
+				if (K == 114) parent.X += 5;
+				if (K == 113) parent.X -= 5;
+				if (K == 116) parent.Y += 5;
+				if (K == 111) parent.Y -= 5;
+
+				if (K == 38) parent.Width -= 5;
+				if (K == 40) parent.Width += 5;
+			};
+
+			Elements.AddElement(ref parent, this);
+			Elements.AddElement(ref child, this);
+
+			parent.AddChild(child);
+
+			new Thread(() =>
+			{
+				var from = 50;
+				var to = 200;
+				var oscilateDirectiton = true;
+
+				// oscilate between from and to
+				while (true)
+				{
+					if (oscilateDirectiton)
+					{
+						if (parent.X < to)
+						{
+							parent.X += 1;
+							parent.Width = parent.X * 2.3f;
+							parent.Height = parent.X * 2.3f;
+						}
+						else
+							oscilateDirectiton = false;
+					}
+					else
+					{
+						if (parent.X > from)
+						{
+							parent.X -= 1;
+							parent.Width = parent.X * 2.3f;
+							parent.Height = parent.X * 2.3f;
+						}
+						else
+							oscilateDirectiton = true;
+					}
+
+					Thread.Sleep(15);
+				}
+			}).Start();
 		}
 	}
 
-	public class WebApplication : Application
+	public class BrowserApplication : Application
 	{
-		public WebApplication()
+		private View mainView = new MainView();
+		public BrowserApplication()
 		{
 			this.Events.Access = EventAccess.Keyboard;
 
-			AddView(new MainView());
+			AddView(mainView);
+			SetActiveView(mainView);
 		}
 	}
 }

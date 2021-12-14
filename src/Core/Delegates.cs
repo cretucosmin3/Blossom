@@ -2,7 +2,6 @@ using Kara.Core.Input;
 
 namespace Kara.Core.Delegates.Window
 {
-	// Window
 	public delegate void ForLoad();
 	public delegate void ForResize(int w, int h);
 	public delegate void ForState(int state);
@@ -18,14 +17,16 @@ namespace Kara.Core.Delegates.Inputs
 
 namespace Kara.Core.Delegates.Common
 {
+	public delegate void ForVoid();
 	public delegate void ForString(string val);
 	public delegate void ForInt(int val);
 	public delegate void ForFloat(float val);
-	public delegate void ForV3(int x, int y, int z);
+	public delegate void ForV3(float x, float y, float z);
+	public delegate void ForV4(float x, float y, float w, float h);
 }
 
 namespace Kara.Core.Visual
 {
-	public delegate void Void();
 	public delegate void ForDispose(VisualElement e);
+	public delegate void ForResizeType(ResizeType type);
 }

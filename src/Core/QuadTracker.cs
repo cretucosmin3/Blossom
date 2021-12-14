@@ -8,11 +8,11 @@ namespace Kara.Core
 	{
 		public RectangleF Rect;
 		public VisualElement Element;
-		RectangleF IRectFQuadStorable.Rect => Element.Transform;
+		RectangleF IRectFQuadStorable.Rect => Element.GlobalTransform;
 
 		public ElementTracker(ref VisualElement com)
 		{
-			Rect = com.Transform;
+			Rect = com.GlobalTransform;
 			Element = com;
 		}
 	}

@@ -1,17 +1,8 @@
-﻿using System.Net.Mime;
-using System.Diagnostics.Tracing;
-using Silk.NET.Input;
-using Silk.NET.Maths;
-using Silk.NET.OpenGL;
-using Silk.NET.Windowing;
-using SilkyNvg;
-using SilkyNvg.Rendering.OpenGL;
-using StbImageWriteSharp;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.IO;
-using System.Text;
-using System.Collections.Generic;
+using Kara.Core.Visual;
+using Kara.Core;
+using Kara.Core.Input;
 
 namespace Kara
 {
@@ -27,12 +18,12 @@ namespace Kara
 
 		static void Main(string[] args)
 		{
-			// Log.Info(_appName);
-			// Log.Info(_appPath);
-			// Log.Info(_appDataPath);
-			// Log.Info(_appDataPathConfig);
-			// Log.Info(_appDataPathLog);
-			// Log.Info(_appDataPathScreenshot);
+			Log.Info(_appName);
+			Log.Info(_appPath);
+			Log.Info(_appDataPath);
+			Log.Info(_appDataPathConfig);
+			Log.Info(_appDataPathLog);
+			Log.Info(_appDataPathScreenshot);
 			AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
 			{
 				Log.Debug("Closing");
