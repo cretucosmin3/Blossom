@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading;
@@ -13,6 +15,7 @@ using Kara.Core.Visual;
 using System.Drawing;
 using Kara.Core.Delegates.Common;
 using System;
+using System.Numerics;
 
 namespace Kara
 {
@@ -26,14 +29,14 @@ namespace Kara
 		internal static int RenderOffsetY = 0;
 
 		internal static Application BrowserApp = new BrowserApplication();
+		internal static RectangleF RenderRect = new RectangleF(0, 0, 0, 0);
 
 		public static event ForVoid OnLoaded;
 		public static bool IsLoaded { get; private set; } = false;
 
 		public static void Initialize()
 		{
-			// RenderOffsetX = 0;
-			// RenderOffsetY = 0;
+			RenderRect = new RectangleF(0, 0, 1000, 600);
 
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
@@ -94,10 +97,11 @@ namespace Kara
 			// Register mouse events
 			foreach (IMouse mouse in input.Mice)
 			{
-
 				// mouse.MouseMove += (IMouse _, Vector2 pos) =>
 				// {
-				// 	KaraApp.Events.(pos.X, pos.Y);
+				// 	Log.Debug($"Mouse moved to {pos.X}, {pos.Y}");
+				// 	MouseX = pos.X;
+				// 	MouseY = pos.Y;
 				// };
 
 				// mouse.Click += Handle_Mouse_Click;
@@ -172,43 +176,127 @@ namespace Kara
 				Anchor = Anchor.Top | Anchor.Left,
 			};
 
-			VisualElement child = new VisualElement()
+			VisualElement childTopLeft = new VisualElement()
 			{
-				Name = "child",
-				Text = "Child",
+				Name = "childTopLeft",
+				Text = "TL",
 				X = 10,
 				Y = 10,
-				Width = 80,
+				Width = 50,
 				Height = 50,
 				FontSize = 20,
 				BorderWidth = 2,
 				BorderColor = Color.Red,
+				Anchor = Anchor.Top | Anchor.Left,
+			};
+
+			VisualElement childTopRight = new VisualElement()
+			{
+				Name = "childTopRight",
+				Text = "TR",
+				X = 340,
+				Y = 10,
+				Width = 50,
+				Height = 50,
+				FontSize = 20,
+				BorderWidth = 3,
+				BorderColor = Color.Purple,
+				Anchor = Anchor.Top | Anchor.Right,
+			};
+
+			VisualElement childLeftRight = new VisualElement()
+			{
+				Name = "childLeftRight",
+				Text = "Center",
+				X = 10,
+				Y = 70,
+				Width = 380,
+				Height = 260,
+				FontSize = 20,
+				BorderWidth = 2,
+				BorderColor = Color.Black,
+				Roundness = 5,
+				Anchor = Anchor.Top | Anchor.Bottom | Anchor.Left | Anchor.Right,
+			};
+
+			VisualElement childLeftBottom = new VisualElement()
+			{
+				Name = "childLeftBottom",
+				Text = "LB",
+				X = 10,
+				Y = 340,
+				Width = 50,
+				Height = 50,
+				FontSize = 20,
+				BorderWidth = 2,
+				BorderColor = Color.Red,
+				Roundness = 2,
 				Anchor = Anchor.Bottom | Anchor.Left,
+			};
+
+			VisualElement childRightBottom = new VisualElement()
+			{
+				Name = "childRightBottom",
+				Text = "RB",
+				X = 340,
+				Y = 340,
+				Width = 50,
+				Height = 50,
+				FontSize = 20,
+				BorderWidth = 2,
+				BorderColor = Color.Red,
+				Roundness = 2,
+				Anchor = Anchor.Bottom | Anchor.Right,
+			};
+
+			VisualElement test = new VisualElement()
+			{
+				Name = "test",
+				Text = ":)",
+				X = childLeftRight.Width - 50,
+				Y = childLeftRight.Height - 70,
+				Width = 40,
+				Height = 60,
+				FontSize = 20,
+				Roundness = 20,
+				TextAlignment = TextAlign.Center,
+				FontColor = Color.White,
+				BackColor = Color.Blue,
+				Anchor = Anchor.Bottom | Anchor.Right,
 			};
 
 			Name = "MainView";
 			Events.OnKeyDown += (int K) =>
 			{
-				Log.Debug($"{K}");
-
 				if (K == 114) parent.X += 5;
 				if (K == 113) parent.X -= 5;
 				if (K == 116) parent.Y += 5;
 				if (K == 111) parent.Y -= 5;
 
-				if (K == 38) parent.Width -= 5;
-				if (K == 40) parent.Width += 5;
+				if (K == 38) parent.Height -= 5;
+				if (K == 40) parent.Height += 5;
 			};
 
 			Elements.AddElement(ref parent, this);
-			Elements.AddElement(ref child, this);
+			Elements.AddElement(ref childTopLeft, this);
+			Elements.AddElement(ref childTopRight, this);
+			Elements.AddElement(ref childLeftRight, this);
+			Elements.AddElement(ref childLeftBottom, this);
+			Elements.AddElement(ref childRightBottom, this);
+			Elements.AddElement(ref test, this);
 
-			parent.AddChild(child);
+			parent.AddChild(childTopLeft);
+			parent.AddChild(childTopRight);
+			parent.AddChild(childLeftRight);
+			parent.AddChild(childLeftBottom);
+			parent.AddChild(childRightBottom);
+
+			childLeftRight.AddChild(test);
 
 			new Thread(() =>
 			{
 				var from = 50;
-				var to = 200;
+				var to = 120;
 				var oscilateDirectiton = true;
 
 				// oscilate between from and to
@@ -218,7 +306,7 @@ namespace Kara
 					{
 						if (parent.X < to)
 						{
-							parent.X += 1;
+							parent.X += 0.4f;
 							parent.Width = parent.X * 2.3f;
 							parent.Height = parent.X * 2.3f;
 						}
@@ -229,7 +317,7 @@ namespace Kara
 					{
 						if (parent.X > from)
 						{
-							parent.X -= 1;
+							parent.X -= 0.4f;
 							parent.Width = parent.X * 2.3f;
 							parent.Height = parent.X * 2.3f;
 						}
@@ -237,7 +325,7 @@ namespace Kara
 							oscilateDirectiton = true;
 					}
 
-					Thread.Sleep(15);
+					Thread.Sleep(10);
 				}
 			}).Start();
 		}

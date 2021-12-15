@@ -28,5 +28,4 @@ namespace Kara.Core.Delegates.Common
 namespace Kara.Core.Visual
 {
 	public delegate void ForDispose(VisualElement e);
-	public delegate void ForResizeType(ResizeType type);
 }

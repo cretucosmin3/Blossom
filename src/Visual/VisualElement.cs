@@ -1,3 +1,5 @@
+using System.Net.Security;
+using System.Runtime.CompilerServices;
 using System;
 using System.Drawing;
 using System.Numerics;
@@ -35,7 +37,7 @@ namespace Kara.Core.Visual
 
 		internal event ForDispose OnDisposing;
 		public event ForV4 OnResized;
-		internal event ForResizeType OnComputedSize;
+		internal event ForVoid OnComputedSize;
 
 		public void AddChild(VisualElement child)
 		{
@@ -70,20 +72,16 @@ namespace Kara.Core.Visual
 			get
 			{
 				if (Parent != null)
-				{
 					return Visible ? ParentView.Elements.ComponentsIntersect(this, Parent) : false;
-				}
 				else
-				{
 					return Visible;
-				}
 			}
 		}
 
 		private int _Layer;
 		public int Layer
 		{
-			get => _Layer;
+			get => Parent != null ? Parent.Layer + 1 : 0;
 			set
 			{
 				_Layer = value;
@@ -277,33 +275,18 @@ namespace Kara.Core.Visual
 		{
 			if (!Browser.IsLoaded) return;
 
-			ComputeX();
-			ComputeY();
-			ComputeWidth();
-			ComputeHeight();
+			ComputeHorizontalTransform(true);
+			ComputeVerticalTransform(true);
 		}
 
 		internal RectangleF LocalTransform = new RectangleF(0, 0, 0, 0);
 		internal RectangleF ComputedTransform = new RectangleF(0, 0, 0, 0);
 		public RectangleF GlobalTransform { get => ComputedTransform; }
 
-		internal void HandleParentResized(ResizeType prop)
+		internal void HandleParentResized()
 		{
-			switch (prop)
-			{
-				case ResizeType.X:
-					ComputeX();
-					break;
-				case ResizeType.Y:
-					ComputeY();
-					break;
-				case ResizeType.Width:
-					ComputeWidth();
-					break;
-				case ResizeType.Height:
-					ComputeHeight();
-					break;
-			}
+			ComputeHorizontalTransform();
+			ComputeVerticalTransform();
 		}
 
 		private bool XChanged = false;
@@ -311,107 +294,107 @@ namespace Kara.Core.Visual
 		private bool WidthChanged = false;
 		private bool HeightChanged = false;
 
-		private void ComputeX()
+		private void ComputeHorizontalTransform(bool recalculate = false)
 		{
-			if (_Anchor.HasFlag(Anchor.Left))
+			var ParentWidth = Parent != null ? Parent.ComputedTransform.Width : Browser.RenderRect.Width;
+
+			if (XChanged || recalculate)
 			{
 				FixedLeft = X;
+				RelativeLeft = FixedLeft / ParentWidth;
+				XChanged = false;
+			}
+
+			if (WidthChanged || recalculate)
+			{
+				FixedRight = ParentWidth - (X + Width);
+				RelativeRight = FixedRight / ParentWidth;
+				WidthChanged = false;
+			}
+
+			if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
+			{
 				ComputedTransform.X = FixedLeft;
-			}
-			else if (!_Anchor.HasFlag(Anchor.Right))
-			{
-				if (XChanged)
-				{
-					RelativeLeft = (X + (Width / 2f)) / Parent.Width;
-					XChanged = false;
-				}
-
-				ComputedTransform.X = (Parent.Width * RelativeLeft) - (Width / 2f);
-			}
-
-			// Add parent X
-			if (Parent != null) ComputedTransform.X += Parent.X;
-
-			// Add app offset render
-			if (Parent != null)
-				ComputedTransform.X += ParentApplication.OffsetX;
-		}
-
-		private void ComputeY()
-		{
-			if (_Anchor.HasFlag(Anchor.Top))
-			{
-				FixedTop = Y;
-				ComputedTransform.Y = FixedTop;
-			}
-			else if (!_Anchor.HasFlag(Anchor.Bottom))
-			{
-				if (YChanged)
-				{
-					RelativeTop = (Y + (Height / 2f)) / Parent.Height;
-					YChanged = false;
-				}
-
-				ComputedTransform.Y = (Parent.Height * RelativeTop) - (Height / 2f);
-			}
-
-			// Add parent Y
-			if (Parent != null) ComputedTransform.Y += Parent.Y;
-
-			// Add app offset render
-			if (Parent != null)
-				ComputedTransform.Y += ParentApplication.OffsetY;
-		}
-
-		private void ComputeWidth()
-		{
-			if (_Anchor.HasFlag(Anchor.Left))
-			{
 				ComputedTransform.Width = Width;
 			}
-			else if (!_Anchor.HasFlag(Anchor.Right))
+			else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
 			{
-				if (WidthChanged)
-				{
-					RelativeRight = (Parent.Width - (X + Width)) / Parent.Width;
-					WidthChanged = false;
-				}
+				ComputedTransform.X = ParentWidth - FixedRight - Width;
+				ComputedTransform.Width = Width;
+			}
+			else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
+			{
+				ComputedTransform.X = FixedLeft;
+				ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
+			}
+			else
+			{
+				ComputedTransform.X = RelativeLeft * ParentWidth;
+				ComputedTransform.Width = RelativeRight * ParentWidth;
+			}
 
-				ComputedTransform.Width = Parent.Width * RelativeRight;
+			if (ComputedTransform.Width < 0)
+			{
+				ComputedTransform.Width = 0;
 			}
 
 			// Add parent X
-			// if (Parent != null) ComputedTransform.Width += Parent.X;
+			ComputedTransform.X += Parent != null ? Parent.ComputedTransform.X : Browser.RenderRect.X;
 
-			// Add app offset render
-			// if (Parent != null)
-			// 	ComputedTransform.Width += ParentApplication.OffsetX;
+			OnComputedSize?.Invoke();
 		}
 
-		private void ComputeHeight()
+		private void ComputeVerticalTransform(bool recalculate = false)
 		{
-			if (_Anchor.HasFlag(Anchor.Top))
+			var ParentHeight = Parent != null ? Parent.ComputedTransform.Height : Browser.RenderRect.Height;
+
+			if (YChanged || recalculate)
 			{
 				FixedTop = Y;
+				RelativeTop = FixedTop / ParentHeight;
+				YChanged = false;
+			}
+
+			if (HeightChanged || recalculate)
+			{
+				FixedBottom = ParentHeight - (Y + Height);
+				RelativeBottom = FixedBottom / ParentHeight;
+				HeightChanged = false;
+			}
+
+			bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
+			bool topAnchored = _Anchor.HasFlag(Anchor.Top);
+
+			if (_Anchor.HasFlag(Anchor.Top) && !_Anchor.HasFlag(Anchor.Bottom))
+			{
+				ComputedTransform.Y = FixedTop;
 				ComputedTransform.Height = Height;
 			}
-			else if (!_Anchor.HasFlag(Anchor.Bottom))
+			else if (bottomAnchored && !topAnchored)
 			{
-				if (HeightChanged)
-				{
-					RelativeBottom = (Parent.Height - (Y + Height)) / Parent.Height;
-					HeightChanged = false;
-				}
+				ComputedTransform.Y = ParentHeight - FixedBottom - Height;
+				ComputedTransform.Height = Height;
+			}
+			else if (_Anchor.HasFlag(Anchor.Top) && _Anchor.HasFlag(Anchor.Bottom))
+			{
+				ComputedTransform.Y = FixedTop;
+				ComputedTransform.Height = ParentHeight - FixedTop - FixedBottom;
+			}
+			else
+			{
+				ComputedTransform.Y = RelativeTop * ParentHeight;
+				ComputedTransform.Height = RelativeBottom * ParentHeight;
+			}
 
-				ComputedTransform.Height = Parent.Height * RelativeBottom;
+			if (ComputedTransform.Height < 0)
+			{
+				ComputedTransform.Height = 0;
 			}
 
 			// Add parent Y
-			// if (Parent != null) ComputedTransform.Height += Parent.Y;
+			ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : Browser.RenderRect.Y;
 
-			// Add app offset render
-			// if (Parent != null)
-			// 	ComputedTransform.Height += ParentApplication.OffsetY;
+			OnComputedSize?.Invoke();
 		}
 
 		public float X
@@ -421,8 +404,7 @@ namespace Kara.Core.Visual
 			{
 				XChanged = true;
 				LocalTransform.X = value;
-				ComputeX();
-				ComputeWidth();
+				ComputeHorizontalTransform();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -430,8 +412,6 @@ namespace Kara.Core.Visual
 					LocalTransform.Width,
 					LocalTransform.Height
 				);
-
-				OnComputedSize?.Invoke(ResizeType.X);
 
 				//! queue render
 			}
@@ -444,8 +424,7 @@ namespace Kara.Core.Visual
 			{
 				YChanged = true;
 				LocalTransform.Y = value;
-				ComputeY();
-				ComputeHeight();
+				ComputeVerticalTransform();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -453,8 +432,6 @@ namespace Kara.Core.Visual
 					LocalTransform.Width,
 					LocalTransform.Height
 				);
-
-				OnComputedSize?.Invoke(ResizeType.Y);
 
 				//! queue render
 			}
@@ -467,8 +444,7 @@ namespace Kara.Core.Visual
 			{
 				WidthChanged = true;
 				LocalTransform.Width = value;
-				ComputeWidth();
-				ComputeX();
+				ComputeHorizontalTransform();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -476,8 +452,6 @@ namespace Kara.Core.Visual
 					LocalTransform.Width,
 					LocalTransform.Height
 				);
-
-				OnComputedSize?.Invoke(ResizeType.Width);
 
 				//! queue render
 			}
@@ -490,8 +464,7 @@ namespace Kara.Core.Visual
 			{
 				HeightChanged = true;
 				LocalTransform.Height = value;
-				ComputeHeight();
-				ComputeX();
+				ComputeVerticalTransform();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -499,8 +472,6 @@ namespace Kara.Core.Visual
 					LocalTransform.Width,
 					LocalTransform.Height
 				);
-
-				OnComputedSize?.Invoke(ResizeType.Height);
 
 				//! queue render
 			}
