@@ -169,8 +169,8 @@ namespace Kara
 				Width = 400,
 				Height = 400,
 				FontSize = 20,
-				BorderWidth = 2,
-				BorderColor = Color.Black,
+				BorderWidth = 2f,
+				BorderColor = Color.DarkGray,
 				TextAlignment = TextAlign.Bottom,
 				TextPadding = 10,
 				Anchor = Anchor.Top | Anchor.Left,
@@ -185,7 +185,7 @@ namespace Kara
 				Width = 50,
 				Height = 50,
 				FontSize = 20,
-				BorderWidth = 2,
+				BorderWidth = 0.5f,
 				BorderColor = Color.Red,
 				Anchor = Anchor.Top | Anchor.Left,
 			};
@@ -199,7 +199,7 @@ namespace Kara
 				Width = 50,
 				Height = 50,
 				FontSize = 20,
-				BorderWidth = 3,
+				BorderWidth = 0.5f,
 				BorderColor = Color.Purple,
 				Anchor = Anchor.Top | Anchor.Right,
 			};
@@ -213,9 +213,8 @@ namespace Kara
 				Width = 380,
 				Height = 260,
 				FontSize = 20,
-				BorderWidth = 2,
+				BorderWidth = 0.5f,
 				BorderColor = Color.Black,
-				Roundness = 5,
 				Anchor = Anchor.Top | Anchor.Bottom | Anchor.Left | Anchor.Right,
 			};
 
@@ -228,9 +227,8 @@ namespace Kara
 				Width = 50,
 				Height = 50,
 				FontSize = 20,
-				BorderWidth = 2,
+				BorderWidth = 0.5f,
 				BorderColor = Color.Red,
-				Roundness = 2,
 				Anchor = Anchor.Bottom | Anchor.Left,
 			};
 
@@ -243,7 +241,7 @@ namespace Kara
 				Width = 50,
 				Height = 50,
 				FontSize = 20,
-				BorderWidth = 2,
+				BorderWidth = 0.5f,
 				BorderColor = Color.Red,
 				Roundness = 2,
 				Anchor = Anchor.Bottom | Anchor.Right,
@@ -254,15 +252,14 @@ namespace Kara
 				Name = "test",
 				Text = ":)",
 				X = childLeftRight.Width - 50,
-				Y = childLeftRight.Height - 70,
+				Y = 10,
 				Width = 40,
-				Height = 60,
+				Height = 240,
 				FontSize = 20,
-				Roundness = 20,
 				TextAlignment = TextAlign.Center,
 				FontColor = Color.White,
 				BackColor = Color.Blue,
-				Anchor = Anchor.Bottom | Anchor.Right,
+				Anchor = Anchor.Bottom | Anchor.Right | Anchor.Top,
 			};
 
 			Name = "MainView";
@@ -295,8 +292,8 @@ namespace Kara
 
 			new Thread(() =>
 			{
-				var from = 50;
-				var to = 120;
+				var from = 40;
+				var to = 140;
 				var oscilateDirectiton = true;
 
 				// oscilate between from and to
@@ -306,7 +303,7 @@ namespace Kara
 					{
 						if (parent.X < to)
 						{
-							parent.X += 0.4f;
+							parent.X += 1f;
 							parent.Width = parent.X * 2.3f;
 							parent.Height = parent.X * 2.3f;
 						}
@@ -317,7 +314,7 @@ namespace Kara
 					{
 						if (parent.X > from)
 						{
-							parent.X -= 0.4f;
+							parent.X -= 1f;
 							parent.Width = parent.X * 2.3f;
 							parent.Height = parent.X * 2.3f;
 						}
@@ -325,7 +322,7 @@ namespace Kara
 							oscilateDirectiton = true;
 					}
 
-					Thread.Sleep(10);
+					Thread.Sleep(15);
 				}
 			}).Start();
 		}
