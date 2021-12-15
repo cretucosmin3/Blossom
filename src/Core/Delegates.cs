@@ -13,6 +13,7 @@ namespace Kara.Core.Delegates.Inputs
 	public delegate void ForChar(char c);
 	public delegate void ForHotkey(Hotkey hotkey);
 	public delegate void ForPosition(int x, int y);
+	public delegate void ForMouseButton(int btn, int x, int y);
 }
 
 namespace Kara.Core.Delegates.Common

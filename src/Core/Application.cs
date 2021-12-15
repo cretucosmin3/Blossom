@@ -31,9 +31,6 @@ namespace Kara.Core
 			}
 		}
 
-		internal int OffsetX = Browser.RenderOffsetX;
-		internal int OffsetY = Browser.RenderOffsetY;
-
 		private Dictionary<string, View> Views = new();
 		private string _ActiveView = "";
 		public View ActiveView

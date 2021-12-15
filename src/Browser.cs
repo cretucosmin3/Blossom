@@ -25,11 +25,8 @@ namespace Kara
 		internal static Nvg RenderPipeline;
 		internal static IWindow window;
 
-		internal static int RenderOffsetX = 0;
-		internal static int RenderOffsetY = 0;
-
 		internal static Application BrowserApp = new BrowserApplication();
-		internal static RectangleF RenderRect = new RectangleF(0, 0, 0, 0);
+		internal static RectangleF RenderRect = new(0, 0, 0, 0);
 
 		public static event ForVoid OnLoaded;
 		public static bool IsLoaded { get; private set; } = false;
@@ -97,24 +94,26 @@ namespace Kara
 			// Register mouse events
 			foreach (IMouse mouse in input.Mice)
 			{
-				// mouse.MouseMove += (IMouse _, Vector2 pos) =>
-				// {
-				// 	Log.Debug($"Mouse moved to {pos.X}, {pos.Y}");
-				// 	MouseX = pos.X;
-				// 	MouseY = pos.Y;
-				// };
+                mouse.MouseMove += (IMouse _, Vector2 pos) =>
+                {
+                    Log.Debug($"Mouse moved to {pos.X}, {pos.Y}");
+					BrowserApp.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
+                };
 
-				// mouse.Click += Handle_Mouse_Click;
-				// mouse.DoubleClick += Handle_Mouse_Double_Click;
+                mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
+				{
+					BrowserApp.Events.Handle_Mouse_Click()
+				};
+                mouse.DoubleClick += Handle_Mouse_Double_Click;
 
-				// mouse.MouseDown += Handle_Mouse_Down;
-				// mouse.MouseUp += Handle_Mouse_Up;
+                mouse.MouseDown += Handle_Mouse_Down;
+                mouse.MouseUp += Handle_Mouse_Up;
 
-				// mouse.Scroll += Handle_Mouse_Scroll;
-			}
+                mouse.Scroll += Handle_Mouse_Scroll;
+            }
 		}
 
-		private static void Closing()
+        private static void Closing()
 		{
 			BrowserApp.Dispose();
 			RenderPipeline.Dispose();

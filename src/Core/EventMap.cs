@@ -35,10 +35,10 @@ namespace Kara.Core.Input
 		// Mouse
 		public event ForPosition OnMouseMove;
 		public event ForPosition OnMouseScroll;
-		public event ForKey OnMouseDown;
-		public event ForKey OnMouseUp;
-		public event ForKey OnMouseClick;
-		public event ForKey OnMouseDoubleClick;
+		public event ForMouseButton OnMouseDown;
+		public event ForMouseButton OnMouseUp;
+		public event ForMouseButton OnMouseClick;
+		public event ForMouseButton OnMouseDoubleClick;
 
 		/// <summary>
 		/// Register series of keys to one event
@@ -159,12 +159,12 @@ namespace Kara.Core.Input
 
 		internal void Handle_Mouse_Scroll(int x, int y) =>
 			OnMouseScroll?.Invoke(x, y);
+		#endregion
 
 		public void Dispose()
 		{
 			Hotkeys.Clear();
 		}
-		#endregion
 	}
 
 	public enum EventAccess

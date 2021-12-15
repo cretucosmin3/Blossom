@@ -24,6 +24,7 @@ namespace Kara
 			Log.Info(_appDataPathConfig);
 			Log.Info(_appDataPathLog);
 			Log.Info(_appDataPathScreenshot);
+
 			AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
 			{
 				Log.Debug("Closing");
