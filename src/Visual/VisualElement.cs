@@ -595,7 +595,7 @@ namespace Kara.Core.Visual
 				_ => cy + ch * 0.5f, // Center, other
 			};
 
-			textY += 4f;
+			textY += 2f;
 
 			// Early return if there's no text
 			if (string.IsNullOrEmpty(Text))
