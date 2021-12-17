@@ -6,6 +6,22 @@ using Kara.Core.Input;
 
 namespace Kara
 {
+	class Holder
+    {
+		public Holder parent;
+
+		private int _val = 5;
+        public int value {
+			get
+			{
+				return parent != null ? parent.value + 5 : _val;
+			}
+			set {
+				_val = value;
+			}
+		}
+    }
+
 	internal class KaraEntry
 	{
 		private static readonly string[] _args = Environment.GetCommandLineArgs();
@@ -15,6 +31,8 @@ namespace Kara
 		private static readonly string _appDataPathConfig = Path.Combine(_appDataPath, "config.json");
 		private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
 		private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
+
+		static Holder child = new Holder();
 
 		static void Main(string[] args)
 		{

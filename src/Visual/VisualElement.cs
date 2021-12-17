@@ -37,19 +37,32 @@ namespace Kara.Core.Visual
 
 		internal event ForDispose OnDisposing;
 		public event ForV4 OnResized;
-		internal event ForVoid OnComputedSize;
+		internal event ForVoid OnComputedHorizontal;
+		internal event ForVoid OnComputedVertical;
 
 		public void AddChild(VisualElement child)
 		{
 			child.Parent = this;
-			OnComputedSize += child.HandleParentResized;
+
+			OnComputedHorizontal += () =>
+			{
+				child.ComputeHorizontalTransform();
+			};
+
+			OnComputedVertical += () =>
+			{
+				child.ComputeVerticalTransform();
+			};
+
+			ComputeHorizontalTransform();
+			ComputeVerticalTransform();
 			Children.Add(child);
 		}
 
 		public void RemoveChild(VisualElement child)
 		{
 			child.Parent = null;
-			OnComputedSize -= child.HandleParentResized;
+			//OnComputedSize -= child.HandleParentResized;
 			Children.Remove(child);
 		}
 
@@ -78,16 +91,9 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private int _Layer;
 		public int Layer
 		{
 			get => Parent != null ? Parent.Layer + 1 : 0;
-			set
-			{
-				_Layer = value;
-				//! #render
-				//! OnLayerChanged?.Invoke(this, value);
-			}
 		}
 
 		private float _BorderWidth = 0f;
@@ -283,11 +289,8 @@ namespace Kara.Core.Visual
 		internal RectangleF ComputedTransform = new RectangleF(0, 0, 0, 0);
 		public RectangleF GlobalTransform { get => ComputedTransform; }
 
-		internal void HandleParentResized()
-		{
-			ComputeHorizontalTransform();
-			ComputeVerticalTransform();
-		}
+		internal void HandleParentHorizontalResized() => ComputeHorizontalTransform();
+		internal void HandleParentVerticalResized() => ComputeVerticalTransform();
 
 		private bool XChanged = false;
 		private bool YChanged = false;
@@ -341,7 +344,7 @@ namespace Kara.Core.Visual
 			// Add parent X
 			ComputedTransform.X += Parent != null ? Parent.ComputedTransform.X : Browser.RenderRect.X;
 
-			OnComputedSize?.Invoke();
+			OnComputedHorizontal?.Invoke();
 		}
 
 		private void ComputeVerticalTransform(bool recalculate = false)
@@ -394,7 +397,7 @@ namespace Kara.Core.Visual
 			// Add parent Y
 			ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : Browser.RenderRect.Y;
 
-			OnComputedSize?.Invoke();
+			OnComputedVertical?.Invoke();
 		}
 
 		public float X
@@ -629,7 +632,7 @@ namespace Kara.Core.Visual
 
 		public void Dispose()
 		{
-			Parent.OnComputedSize -= HandleParentResized;
+			//Parent.OnComputedSize -= HandleParentResized;
 			OnDisposing?.Invoke(this);
 
 			if (Parent != null)

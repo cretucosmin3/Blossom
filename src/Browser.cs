@@ -16,6 +16,9 @@ using System.Drawing;
 using Kara.Core.Delegates.Common;
 using System;
 using System.Numerics;
+using SilkyNvg.Text;
+using SilkyNvg.Graphics;
+using Kara.Utils;
 
 namespace Kara
 {
@@ -31,9 +34,11 @@ namespace Kara
 		public static event ForVoid OnLoaded;
 		public static bool IsLoaded { get; private set; } = false;
 
+		public static Action RenderCycle;
+
 		public static void Initialize()
 		{
-			RenderRect = new RectangleF(0, 0, 1000, 600);
+			RenderRect = new RectangleF(10, 10, 1000, 600);
 
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
@@ -54,6 +59,7 @@ namespace Kara
 
 			while (!window.IsClosing)
 			{
+				RenderCycle?.Invoke();
 				window.DoRender();
 				window.DoEvents();
 				window.ContinueEvents();
@@ -96,20 +102,19 @@ namespace Kara
 			{
                 mouse.MouseMove += (IMouse _, Vector2 pos) =>
                 {
-                    Log.Debug($"Mouse moved to {pos.X}, {pos.Y}");
 					BrowserApp.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
                 };
 
-                mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
-				{
-					BrowserApp.Events.Handle_Mouse_Click()
-				};
-                mouse.DoubleClick += Handle_Mouse_Double_Click;
+    //            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
+				//{
+				//	BrowserApp.Events.Handle_Mouse_Click()
+				//};
+    //            mouse.DoubleClick += Handle_Mouse_Double_Click;
 
-                mouse.MouseDown += Handle_Mouse_Down;
-                mouse.MouseUp += Handle_Mouse_Up;
+    //            mouse.MouseDown += Handle_Mouse_Down;
+    //            mouse.MouseUp += Handle_Mouse_Up;
 
-                mouse.Scroll += Handle_Mouse_Scroll;
+    //            mouse.Scroll += Handle_Mouse_Scroll;
             }
 		}
 
@@ -131,8 +136,13 @@ namespace Kara
 			ManageInputEvents();
 			IsLoaded = true;
 			OnLoaded?.Invoke();
+			timer.Start();
 		}
 
+		private static float frames = 0;
+		private static double fps_avg = 0;
+		private static float fps = 0;
+		private static Stopwatch timer = new Stopwatch();
 		private static void Render(double time)
 		{
 			Vector2D<float> winSize = window.Size.As<float>();
@@ -145,8 +155,23 @@ namespace Kara
 			gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
 			RenderPipeline.BeginFrame(winSize.X, winSize.Y, pxRatio);
-			BrowserApp.Render();
+            BrowserApp.Render();
+
+            // Draw fps
+            RenderPipeline.FillColour(Conversion.fromColor(Color.Red));
+			RenderPipeline.Text(10, 15, $"FPS {fps:0}");
+
 			RenderPipeline.EndFrame();
+
+			frames++;
+			fps_avg += time;
+
+			if(frames == 20)
+            {
+				fps = 1f / (float)(fps_avg / 20d);
+				fps_avg = 0;
+				frames = 0;
+            }
 		}
 	}
 
@@ -159,172 +184,79 @@ namespace Kara
 	{
 		public override void Main()
 		{
-			VisualElement parent = new VisualElement()
+
+			float s = 700f;
+			int elements = 300;
+			float height = s / (float)elements;
+
+			VisualElement p = new VisualElement()
 			{
-				Name = "parent",
-				Text = "Parent",
-				X = 50,
-				Y = 50,
-				Width = 400,
-				Height = 400,
+				Name = "p",
+				Text = "",
+				X = 10,
+				Y = 10,
+				Width = 200f,
+				Height = 700f,
 				FontSize = 20,
-				BorderWidth = 2f,
+				BorderWidth = 1f,
 				BorderColor = Color.DarkGray,
 				TextAlignment = TextAlign.Bottom,
 				TextPadding = 10,
 				Anchor = Anchor.Top | Anchor.Left,
 			};
 
-			VisualElement childTopLeft = new VisualElement()
-			{
-				Name = "childTopLeft",
-				Text = "TL",
-				X = 10,
-				Y = 10,
-				Width = 50,
-				Height = 50,
-				FontSize = 20,
-				BorderWidth = 0.5f,
-				BorderColor = Color.Red,
-				Anchor = Anchor.Top | Anchor.Left,
-			};
+			Elements.AddElement(ref p, this);
 
-			VisualElement childTopRight = new VisualElement()
-			{
-				Name = "childTopRight",
-				Text = "TR",
-				X = 340,
-				Y = 10,
-				Width = 50,
-				Height = 50,
-				FontSize = 20,
-				BorderWidth = 0.5f,
-				BorderColor = Color.Purple,
-				Anchor = Anchor.Top | Anchor.Right,
-			};
-
-			VisualElement childLeftRight = new VisualElement()
-			{
-				Name = "childLeftRight",
-				Text = "Center",
-				X = 10,
-				Y = 70,
-				Width = 380,
-				Height = 260,
-				FontSize = 20,
-				BorderWidth = 0.5f,
-				BorderColor = Color.Black,
-				Anchor = Anchor.Top | Anchor.Bottom | Anchor.Left | Anchor.Right,
-			};
-
-			VisualElement childLeftBottom = new VisualElement()
-			{
-				Name = "childLeftBottom",
-				Text = "LB",
-				X = 10,
-				Y = 340,
-				Width = 50,
-				Height = 50,
-				FontSize = 20,
-				BorderWidth = 0.5f,
-				BorderColor = Color.Red,
-				Anchor = Anchor.Bottom | Anchor.Left,
-			};
-
-			VisualElement childRightBottom = new VisualElement()
-			{
-				Name = "childRightBottom",
-				Text = "RB",
-				X = 340,
-				Y = 340,
-				Width = 50,
-				Height = 50,
-				FontSize = 20,
-				BorderWidth = 0.5f,
-				BorderColor = Color.Red,
-				Roundness = 2,
-				Anchor = Anchor.Bottom | Anchor.Right,
-			};
-
-			VisualElement test = new VisualElement()
-			{
-				Name = "test",
-				Text = ":)",
-				X = childLeftRight.Width - 50,
-				Y = 10,
-				Width = 40,
-				Height = 240,
-				FontSize = 20,
-				TextAlignment = TextAlign.Center,
-				FontColor = Color.White,
-				BackColor = Color.Blue,
-				Anchor = Anchor.Bottom | Anchor.Right | Anchor.Top,
-			};
-
-			Name = "MainView";
-			Events.OnKeyDown += (int K) =>
-			{
-				if (K == 114) parent.X += 5;
-				if (K == 113) parent.X -= 5;
-				if (K == 116) parent.Y += 5;
-				if (K == 111) parent.Y -= 5;
-
-				if (K == 38) parent.Height -= 5;
-				if (K == 40) parent.Height += 5;
-			};
-
-			Elements.AddElement(ref parent, this);
-			Elements.AddElement(ref childTopLeft, this);
-			Elements.AddElement(ref childTopRight, this);
-			Elements.AddElement(ref childLeftRight, this);
-			Elements.AddElement(ref childLeftBottom, this);
-			Elements.AddElement(ref childRightBottom, this);
-			Elements.AddElement(ref test, this);
-
-			parent.AddChild(childTopLeft);
-			parent.AddChild(childTopRight);
-			parent.AddChild(childLeftRight);
-			parent.AddChild(childLeftBottom);
-			parent.AddChild(childRightBottom);
-
-			childLeftRight.AddChild(test);
-
-			new Thread(() =>
-			{
-				var from = 40;
-				var to = 140;
-				var oscilateDirectiton = true;
-
-				// oscilate between from and to
-				while (true)
+			float y = 0;
+			for (int i = 0; i < elements; i++)
+            {
+				var opacity = (float)i / (float)elements;
+				VisualElement newElement = new VisualElement()
 				{
-					if (oscilateDirectiton)
-					{
-						if (parent.X < to)
-						{
-							parent.X += 1f;
-							parent.Width = parent.X * 2.3f;
-							parent.Height = parent.X * 2.3f;
-						}
-						else
-							oscilateDirectiton = false;
-					}
-					else
-					{
-						if (parent.X > from)
-						{
-							parent.X -= 1f;
-							parent.Width = parent.X * 2.3f;
-							parent.Height = parent.X * 2.3f;
-						}
-						else
-							oscilateDirectiton = true;
-					}
+					Name = "c" + i,
+					Text = "",
+					X = 0,
+					Y = y,
+					Width = p.Width,
+					Height = height,
+					BackColor = Color.FromArgb((int)(255f * opacity), Color.Black),
+					Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
+				};
 
-					Thread.Sleep(15);
-				}
-			}).Start();
-		}
+				y += height;
+
+				Elements.AddElement(ref newElement, this);
+				p.AddChild(newElement);
+			}
+
+            var from = 10;
+            var to = 100;
+            var oscilateDirectiton = true;
+
+			Browser.RenderCycle += () =>
+			{
+                if (oscilateDirectiton)
+                {
+                    if (p.X < to)
+                    {
+						p.X += 3f;
+                        p.Width += 3f;
+                    }
+                    else
+                        oscilateDirectiton = false;
+                }
+                else
+                {
+                    if (p.X > from)
+					{
+						p.X -= 3f;
+						p.Width -= 3f;
+                    }
+                    else
+                        oscilateDirectiton = true;
+                }
+			};
+        }
 	}
 
 	public class BrowserApplication : Application

@@ -145,17 +145,17 @@ namespace Kara.Core.Input
 		internal void Handle_Mouse_Move(int x, int y) =>
 			OnMouseMove?.Invoke(x, y);
 
-		internal void Handle_Mouse_Down(int ButtonName) =>
-			OnMouseDown?.Invoke((int)ButtonName);
+		//internal void Handle_Mouse_Down(int ButtonName) =>
+		//	OnMouseDown?.Invoke((int)ButtonName);
 
-		internal void Handle_Mouse_Up(int ButtonName) =>
-			OnMouseUp?.Invoke((int)ButtonName);
+		//internal void Handle_Mouse_Up(int ButtonName) =>
+		//	OnMouseUp?.Invoke((int)ButtonName);
 
-		internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
-			OnMouseClick?.Invoke((int)ButtonName);
+		//internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
+		//	OnMouseClick?.Invoke((int)ButtonName);
 
-		internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
-			OnMouseDoubleClick?.Invoke((int)ButtonName);
+		//internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
+		//	OnMouseDoubleClick?.Invoke((int)ButtonName);
 
 		internal void Handle_Mouse_Scroll(int x, int y) =>
 			OnMouseScroll?.Invoke(x, y);
