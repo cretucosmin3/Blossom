@@ -1,7 +1,7 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System;
+using System.Drawing;
+using System.Numerics;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -9,16 +9,13 @@ using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using SilkyNvg;
 using SilkyNvg.Rendering.OpenGL;
-using Kara.Core;
-using Kara.Core.Input;
-using Kara.Core.Visual;
-using System.Drawing;
-using Kara.Core.Delegates.Common;
-using System;
-using System.Numerics;
 using SilkyNvg.Text;
 using SilkyNvg.Graphics;
 using Kara.Utils;
+using Kara.Core;
+using Kara.Core.Input;
+using Kara.Core.Delegates.Common;
+using Kara.Testing;
 
 namespace Kara
 {
@@ -28,23 +25,25 @@ namespace Kara
 		internal static Nvg RenderPipeline;
 		internal static IWindow window;
 
-		internal static Application BrowserApp = new BrowserApplication();
+		internal static Application BrowserApp = new TestingApplication();
 		internal static RectangleF RenderRect = new(0, 0, 0, 0);
 
 		public static event ForVoid OnLoaded;
 		public static bool IsLoaded { get; private set; } = false;
 
-		public static Action RenderCycle;
+		private static bool FpsVisible = false;
+		public static void ShowFps() => FpsVisible = true;
+		public static void HideFps() => FpsVisible = false;
 
 		public static void Initialize()
 		{
-			RenderRect = new RectangleF(10, 10, 1000, 600);
+			RenderRect = new RectangleF(0, 0, 1000, 600);
 
 			WindowOptions windowOptions = WindowOptions.Default;
 			windowOptions.FramesPerSecond = -1;
 			windowOptions.ShouldSwapAutomatically = true;
 			windowOptions.Size = new Vector2D<int>(1000, 600);
-			windowOptions.Title = "Kara";
+			windowOptions.Title = "UI";
 			windowOptions.VSync = false;
 			windowOptions.PreferredDepthBufferBits = 24;
 			windowOptions.PreferredStencilBufferBits = 8;
@@ -59,11 +58,10 @@ namespace Kara
 
 			while (!window.IsClosing)
 			{
-				RenderCycle?.Invoke();
+				BrowserApp.ActiveView.TriggerLoop();
 				window.DoRender();
 				window.DoEvents();
 				window.ContinueEvents();
-				Thread.Sleep(1);
 			}
 
 			window.Dispose();
@@ -100,25 +98,25 @@ namespace Kara
 			// Register mouse events
 			foreach (IMouse mouse in input.Mice)
 			{
-                mouse.MouseMove += (IMouse _, Vector2 pos) =>
-                {
+				mouse.MouseMove += (IMouse _, Vector2 pos) =>
+				{
 					BrowserApp.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
-                };
+				};
 
-    //            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
+				//            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
 				//{
 				//	BrowserApp.Events.Handle_Mouse_Click()
 				//};
-    //            mouse.DoubleClick += Handle_Mouse_Double_Click;
+				//            mouse.DoubleClick += Handle_Mouse_Double_Click;
 
-    //            mouse.MouseDown += Handle_Mouse_Down;
-    //            mouse.MouseUp += Handle_Mouse_Up;
+				//            mouse.MouseDown += Handle_Mouse_Down;
+				//            mouse.MouseUp += Handle_Mouse_Up;
 
-    //            mouse.Scroll += Handle_Mouse_Scroll;
-            }
+				//            mouse.Scroll += Handle_Mouse_Scroll;
+			}
 		}
 
-        private static void Closing()
+		private static void Closing()
 		{
 			BrowserApp.Dispose();
 			RenderPipeline.Dispose();
@@ -155,119 +153,26 @@ namespace Kara
 			gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
 			RenderPipeline.BeginFrame(winSize.X, winSize.Y, pxRatio);
-            BrowserApp.Render();
+			BrowserApp.Render();
 
-            // Draw fps
-            RenderPipeline.FillColour(Conversion.fromColor(Color.Red));
-			RenderPipeline.Text(10, 15, $"FPS {fps:0}");
-
-			RenderPipeline.EndFrame();
-
-			frames++;
-			fps_avg += time;
-
-			if(frames == 20)
-            {
-				fps = 1f / (float)(fps_avg / 20d);
-				fps_avg = 0;
-				frames = 0;
-            }
-		}
-	}
-
-	public class Button : VisualElement
-	{
-
-	}
-
-	public class MainView : View
-	{
-		public override void Main()
-		{
-
-			float s = 700f;
-			int elements = 300;
-			float height = s / (float)elements;
-
-			VisualElement p = new VisualElement()
+			if (FpsVisible)
 			{
-				Name = "p",
-				Text = "",
-				X = 10,
-				Y = 10,
-				Width = 200f,
-				Height = 700f,
-				FontSize = 20,
-				BorderWidth = 1f,
-				BorderColor = Color.DarkGray,
-				TextAlignment = TextAlign.Bottom,
-				TextPadding = 10,
-				Anchor = Anchor.Top | Anchor.Left,
-			};
+				RenderPipeline.FillColour(Conversion.fromColor(Color.Red));
+				RenderPipeline.Text(15, window.Size.Y - 15, $"FPS {fps:0}");
 
-			Elements.AddElement(ref p, this);
 
-			float y = 0;
-			for (int i = 0; i < elements; i++)
-            {
-				var opacity = (float)i / (float)elements;
-				VisualElement newElement = new VisualElement()
+				frames++;
+				fps_avg += time;
+
+				if (frames == 20)
 				{
-					Name = "c" + i,
-					Text = "",
-					X = 0,
-					Y = y,
-					Width = p.Width,
-					Height = height,
-					BackColor = Color.FromArgb((int)(255f * opacity), Color.Black),
-					Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
-				};
-
-				y += height;
-
-				Elements.AddElement(ref newElement, this);
-				p.AddChild(newElement);
+					fps = 1f / (float)(fps_avg / 20d);
+					fps_avg = 0;
+					frames = 0;
+				}
 			}
 
-            var from = 10;
-            var to = 100;
-            var oscilateDirectiton = true;
-
-			Browser.RenderCycle += () =>
-			{
-                if (oscilateDirectiton)
-                {
-                    if (p.X < to)
-                    {
-						p.X += 3f;
-                        p.Width += 3f;
-                    }
-                    else
-                        oscilateDirectiton = false;
-                }
-                else
-                {
-                    if (p.X > from)
-					{
-						p.X -= 3f;
-						p.Width -= 3f;
-                    }
-                    else
-                        oscilateDirectiton = true;
-                }
-			};
-        }
-	}
-
-	public class BrowserApplication : Application
-	{
-		private View mainView = new MainView();
-		public BrowserApplication()
-		{
-			this.Events.Access = EventAccess.Keyboard;
-
-			AddView(mainView);
-			SetActiveView(mainView);
+			RenderPipeline.EndFrame();
 		}
 	}
 }

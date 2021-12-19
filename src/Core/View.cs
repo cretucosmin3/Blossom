@@ -1,20 +1,7 @@
-using System.Diagnostics;
-using System.Net;
-using System.IO;
-using System.Runtime.InteropServices.ComTypes;
-using System.Drawing;
 using System;
-using SilkyNvg;
-using SilkyNvg.Images;
-using SilkyNvg.Text;
-using Silk.NET.Input;
 using Kara.Core.Visual;
 using Kara.Core.Input;
-using System.Collections.Generic;
-using Kara.Utils;
-using SilkyNvg.Graphics;
-using SilkyNvg.Paths;
-using StbImageSharp;
+using Kara.Core.Delegates.Common;
 
 namespace Kara.Core
 {
@@ -22,7 +9,7 @@ namespace Kara.Core
 	{
 		public EventMap Events = new();
 		public ElementsMap Elements = new();
-
+		public event ForVoid Loop;
 		private int DefaultFont;
 		private string _title = "";
 		public string Title
@@ -46,16 +33,18 @@ namespace Kara.Core
 			}
 		}
 
-		internal Application ParentApp { get; set; }
+		public Application Application { get; internal set; }
 		public VisualElement FocusedElement { get; set; }
-		public VisualElement Element;
 
 		public abstract void Main();
 
-		internal View()
+		internal View(string name)
 		{
+			Name = name;
 			Browser.OnLoaded += () => Main();
 		}
+
+		internal void TriggerLoop() => Loop?.Invoke();
 
 		public void AddElement(VisualElement element)
 		{
@@ -71,7 +60,7 @@ namespace Kara.Core
 		{
 			foreach (var element in Elements.Items)
 			{
-				element.Draw();
+				element.Render();
 			}
 		}
 

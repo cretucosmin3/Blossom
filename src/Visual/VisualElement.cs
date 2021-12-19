@@ -37,22 +37,10 @@ namespace Kara.Core.Visual
 
 		internal event ForDispose OnDisposing;
 		public event ForV4 OnResized;
-		internal event ForVoid OnComputedHorizontal;
-		internal event ForVoid OnComputedVertical;
 
 		public void AddChild(VisualElement child)
 		{
 			child.Parent = this;
-
-			OnComputedHorizontal += () =>
-			{
-				child.ComputeHorizontalTransform();
-			};
-
-			OnComputedVertical += () =>
-			{
-				child.ComputeVerticalTransform();
-			};
 
 			ComputeHorizontalTransform();
 			ComputeVerticalTransform();
@@ -62,7 +50,6 @@ namespace Kara.Core.Visual
 		public void RemoveChild(VisualElement child)
 		{
 			child.Parent = null;
-			//OnComputedSize -= child.HandleParentResized;
 			Children.Remove(child);
 		}
 
@@ -129,7 +116,7 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private Colour _BackColor = new(255, 255, 255, 255);
+		private Colour _BackColor = new(0, 0, 0, 0);
 		public Color BackColor
 		{
 			get => Conversion.toColor(_BackColor);
@@ -281,6 +268,9 @@ namespace Kara.Core.Visual
 		{
 			if (!Browser.IsLoaded) return;
 
+			CalculateHorizontalAnchors();
+			CalculateVerticalAnchors();
+
 			ComputeHorizontalTransform(true);
 			ComputeVerticalTransform(true);
 		}
@@ -297,23 +287,20 @@ namespace Kara.Core.Visual
 		private bool WidthChanged = false;
 		private bool HeightChanged = false;
 
-		private void ComputeHorizontalTransform(bool recalculate = false)
+		private void CalculateHorizontalAnchors()
 		{
 			var ParentWidth = Parent != null ? Parent.ComputedTransform.Width : Browser.RenderRect.Width;
 
-			if (XChanged || recalculate)
-			{
-				FixedLeft = X;
-				RelativeLeft = FixedLeft / ParentWidth;
-				XChanged = false;
-			}
+			FixedLeft = X;
+			RelativeLeft = FixedLeft / ParentWidth;
 
-			if (WidthChanged || recalculate)
-			{
-				FixedRight = ParentWidth - (X + Width);
-				RelativeRight = FixedRight / ParentWidth;
-				WidthChanged = false;
-			}
+			FixedRight = ParentWidth - (X + Width);
+			RelativeRight = FixedRight / ParentWidth;
+		}
+
+		private void ComputeHorizontalTransform(bool recalculate = false)
+		{
+			var ParentWidth = Parent != null ? Parent.ComputedTransform.Width : Browser.RenderRect.Width;
 
 			if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
 			{
@@ -343,8 +330,17 @@ namespace Kara.Core.Visual
 
 			// Add parent X
 			ComputedTransform.X += Parent != null ? Parent.ComputedTransform.X : Browser.RenderRect.X;
+		}
 
-			OnComputedHorizontal?.Invoke();
+		private void CalculateVerticalAnchors()
+		{
+			var ParentHeight = Parent != null ? Parent.ComputedTransform.Height : Browser.RenderRect.Height;
+
+			FixedTop = Y;
+			RelativeTop = FixedTop / ParentHeight;
+
+			FixedBottom = ParentHeight - (Y + Height);
+			RelativeBottom = FixedBottom / ParentHeight;
 		}
 
 		private void ComputeVerticalTransform(bool recalculate = false)
@@ -355,14 +351,12 @@ namespace Kara.Core.Visual
 			{
 				FixedTop = Y;
 				RelativeTop = FixedTop / ParentHeight;
-				YChanged = false;
 			}
 
 			if (HeightChanged || recalculate)
 			{
 				FixedBottom = ParentHeight - (Y + Height);
 				RelativeBottom = FixedBottom / ParentHeight;
-				HeightChanged = false;
 			}
 
 			bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
@@ -396,8 +390,6 @@ namespace Kara.Core.Visual
 
 			// Add parent Y
 			ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : Browser.RenderRect.Y;
-
-			OnComputedVertical?.Invoke();
 		}
 
 		public float X
@@ -407,7 +399,7 @@ namespace Kara.Core.Visual
 			{
 				XChanged = true;
 				LocalTransform.X = value;
-				ComputeHorizontalTransform();
+				CalculateHorizontalAnchors();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -427,7 +419,7 @@ namespace Kara.Core.Visual
 			{
 				YChanged = true;
 				LocalTransform.Y = value;
-				ComputeVerticalTransform();
+				CalculateVerticalAnchors();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -447,7 +439,7 @@ namespace Kara.Core.Visual
 			{
 				WidthChanged = true;
 				LocalTransform.Width = value;
-				ComputeHorizontalTransform();
+				CalculateHorizontalAnchors();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -467,7 +459,7 @@ namespace Kara.Core.Visual
 			{
 				HeightChanged = true;
 				LocalTransform.Height = value;
-				ComputeVerticalTransform();
+				CalculateVerticalAnchors();
 
 				OnResized?.Invoke(
 					LocalTransform.X,
@@ -480,19 +472,49 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		internal void Draw()
+		internal void PreRender()
 		{
+			if (XChanged || WidthChanged) CalculateHorizontalAnchors();
+
+			if (YChanged || HeightChanged) CalculateVerticalAnchors();
+
+			if (Parent != null)
+			{
+				if (Parent.XChanged || Parent.WidthChanged)
+					ComputeHorizontalTransform();
+
+				if (Parent.YChanged || Parent.HeightChanged)
+					ComputeVerticalTransform();
+			}
+			else
+			{
+				ComputeHorizontalTransform();
+				ComputeVerticalTransform();
+			}
+		}
+
+		internal void Render()
+		{
+			PreRender();
+
 			if (CanRender)
 			{
 				DrawBase();
-				DrawText();
-				Renderer.Pipe.Reset();
 
+				if (!String.IsNullOrEmpty(Text))
+					DrawText();
+
+				Renderer.Pipe.Reset();
 				foreach (var child in Children)
 				{
-					child.Draw();
+					child.Render();
 				}
 			}
+
+			XChanged = false;
+			YChanged = false;
+			WidthChanged = false;
+			HeightChanged = false;
 		}
 
 		internal void DrawBase()
@@ -531,7 +553,7 @@ namespace Kara.Core.Visual
 				Roundness
 			);
 
-			if (_BorderColor.A > 0f && BorderWidth > 0f)
+			if (_BorderColor.A > 0 && BorderWidth > 0)
 			{
 				Renderer.Pipe.StrokeWidth(BorderWidth);
 				Renderer.Pipe.StrokeColour(_BorderColor);

@@ -61,7 +61,7 @@ namespace Kara.Core
 			if (!Views.ContainsKey(view.Name))
 			{
 				Views.Add(view.Name, view);
-				view.ParentApp = this;
+				view.Application = this;
 			}
 			else
 				Log.Error($"View with name {view.Name} already exists!");

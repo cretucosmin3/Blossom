@@ -90,7 +90,7 @@ namespace Kara.Core
 				return;
 			}
 
-			e.ParentApplication = view.ParentApp;
+			e.ParentApplication = view.Application;
 			e.ParentView = view;
 			var tracker = AddTracker(ref e);
 
