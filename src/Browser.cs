@@ -101,6 +101,7 @@ namespace Kara
 				mouse.MouseMove += (IMouse _, Vector2 pos) =>
 				{
 					BrowserApp.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
+					BrowserApp.ActiveView.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
 				};
 
 				//            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>

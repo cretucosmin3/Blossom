@@ -40,9 +40,13 @@ namespace Kara.Core
 			return Result;
 		}
 
-		public VisualElement FirstFromPoint(PointF point)
+		public VisualElement FirstFromPoint(PointF point) =>
+			FirstFromPoint(point.X, point.Y);
+
+
+		public VisualElement FirstFromPoint(float x, float y)
 		{
-			var components = QuadTree.GetObjects(new RectangleF(point.X, point.Y, 2, 2));
+			var components = QuadTree.GetObjects(new RectangleF(x, y, 1, 1));
 			if (!components.Any()) return null;
 
 			int maxLayer = components.Max(t => t.Element.Layer);

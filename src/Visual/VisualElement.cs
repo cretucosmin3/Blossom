@@ -127,7 +127,7 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private string _Text;
+		private string _Text = "";
 		public string Text
 		{
 			get => _Text;

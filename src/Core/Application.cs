@@ -54,7 +54,7 @@ namespace Kara.Core
 
 		public void SetActiveView(View view) => SetActiveView(view.Name);
 
-		public EventMap Events = new();
+		public readonly EventMap Events = new();
 
 		public void AddView(View view)
 		{

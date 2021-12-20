@@ -24,6 +24,7 @@ namespace Kara.Testing
 		VisualElement TopRight;
 		VisualElement BottomLeft;
 		VisualElement BottomRight;
+		VisualElement InfoLabel;
 
 		public PrettyUi() : base("PrettyUi View") { }
 
@@ -92,11 +93,24 @@ namespace Kara.Testing
 				Anchor = Anchor.Top | Anchor.Left,
 			};
 
+			InfoLabel = new VisualElement()
+			{
+				Name = "InfoLabel",
+				X = 20,
+				Y = 60,
+				Width = 300,
+				Height = 50,
+				FontSize = 18,
+				BorderWidth = 1f,
+				BorderColor = Color.Black,
+				Anchor = Anchor.Top | Anchor.Left,
+			};
+
 			AnimatedParent = new VisualElement()
 			{
 				Name = "AnimatedParent",
 				X = 20,
-				Y = 75,
+				Y = 120,
 				Width = 200,
 				Height = 200,
 				Roundness = 2f,
@@ -172,6 +186,8 @@ namespace Kara.Testing
 			Elements.AddElement(ref BottomLeft, this);
 			Elements.AddElement(ref BottomRight, this);
 
+			Elements.AddElement(ref InfoLabel, this);
+
 			AnimatedParent.AddChild(TopLeft);
 			AnimatedParent.AddChild(TopRight);
 			AnimatedParent.AddChild(BottomLeft);
@@ -182,7 +198,15 @@ namespace Kara.Testing
 			parent.AddChild(SearchButton);
 
 			Loop += Update;
+			Events.OnMouseMove += OnMouseMove;
 			watch.Start();
+		}
+
+		private VisualElement previousHovered;
+		public void OnMouseMove(float x, float y)
+		{
+			VisualElement hovered = Elements.FirstFromPoint(x, y);
+			InfoLabel.Text = hovered?.Name ?? "";
 		}
 
 		private Stopwatch watch = new Stopwatch();
@@ -211,7 +235,6 @@ namespace Kara.Testing
 			}
 		}
 
-		// create a function to smoothly interpolate between two values
 		float smoothLerp(float from, float to, float progress)
 		{
 			return from + (to - from) * (progress * progress * (3 - 2 * progress));
