@@ -264,7 +264,7 @@ namespace Kara.Core.Visual
 			}
 		}
 
-		private void SetAnchorValues()
+		internal void SetAnchorValues()
 		{
 			if (!Browser.IsLoaded) return;
 
@@ -475,7 +475,6 @@ namespace Kara.Core.Visual
 		internal void PreRender()
 		{
 			if (XChanged || WidthChanged) CalculateHorizontalAnchors();
-
 			if (YChanged || HeightChanged) CalculateVerticalAnchors();
 
 			if (Parent != null)
@@ -497,21 +496,21 @@ namespace Kara.Core.Visual
 		{
 			PreRender();
 
-			if (CanRender)
-			{
-				DrawBase();
+            //if (CanRender)
+            //{
+                DrawBase();
 
-				if (!String.IsNullOrEmpty(Text))
-					DrawText();
+                if (!String.IsNullOrEmpty(Text))
+                    DrawText();
 
-				Renderer.Pipe.Reset();
-				foreach (var child in Children)
-				{
-					child.Render();
-				}
-			}
+                Renderer.Pipe.Reset();
+                foreach (var child in Children)
+                {
+                    child.Render();
+                }
+            //}
 
-			XChanged = false;
+            XChanged = false;
 			YChanged = false;
 			WidthChanged = false;
 			HeightChanged = false;

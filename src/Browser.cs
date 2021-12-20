@@ -165,9 +165,9 @@ namespace Kara
 				frames++;
 				fps_avg += time;
 
-				if (frames == 20)
+				if (frames == 100)
 				{
-					fps = 1f / (float)(fps_avg / 20d);
+					fps = 1f / (float)(fps_avg / 100d);
 					fps_avg = 0;
 					frames = 0;
 				}

@@ -10,7 +10,7 @@ namespace Kara.Testing
 {
 	public class PrettyUi : View
 	{
-		float time = 3000f; // seconds
+		float time = 500f; // seconds
 		float from = 200;
 		float to = 400;
 		bool moveTo = true;
@@ -123,17 +123,18 @@ namespace Kara.Testing
 			TopLeft = new VisualElement()
 			{
 				Name = "TopLeft",
-				Text = "Hello World",
 				X = 0,
 				Y = 0,
-				Width = 70,
-				Height = 70,
+				Width = 50,
+				Height = 50,
 				BorderWidth = 1f,
 				BorderColor = Color.Black,
 				FontColor = Color.Black,
 				BackColor = Color.AliceBlue,
-				Anchor = Anchor.Top | Anchor.Right | Anchor.Left | Anchor.Bottom,
+				Anchor = Anchor.Top | Anchor.Left,
 			};
+
+			TopLeft.SetAnchorValues();
 
 			TopRight = new VisualElement()
 			{
@@ -213,16 +214,18 @@ namespace Kara.Testing
 		private void Update()
 		{
 			float progress = (float)watch.ElapsedMilliseconds / (time / 2f);
-			float Cycleprogress = (float)watch.ElapsedMilliseconds / time;
+			if (progress > 1f) progress = 1f;
+
 			float newVal = moveTo ? smoothLerp(from, to, progress) : smoothLerp(to, from, progress);
 
 			int alpha = (int)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
 
-			TopLeft.BackColor = Color.FromArgb(alpha, Color.LightYellow);
+			TopLeft.BackColor = Color.FromArgb(alpha, Color.Yellow);
 			TopLeft.FontColor = Color.FromArgb(alpha, Color.Black);
 			TopRight.BackColor = Color.FromArgb(alpha, Color.RoyalBlue);
 			BottomLeft.BackColor = Color.FromArgb(alpha, Color.YellowGreen);
 			BottomRight.BackColor = Color.FromArgb(alpha, Color.Red);
+			AnimatedParent.BackColor = Color.FromArgb(alpha, Color.Black);
 
 			AnimatedParent.Width = newVal;
 			AnimatedParent.Height = newVal;
