@@ -1,3 +1,4 @@
+// Launch settings
 {
   // Use IntelliSense to learn about possible attributes.
   // Hover to view descriptions of existing attributes.
@@ -18,7 +19,7 @@
       "cwd": "${workspaceFolder}/bin/Debug/net5.0/",
       // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
       "console": "externalTerminal",
-      "stopAtEntry": false,
+      "stopAtEntry": false
     },
     {
       "name": ".NET Core Attach",
