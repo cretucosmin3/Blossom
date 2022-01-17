@@ -1,3 +1,4 @@
+using System;
 using Kara.Core;
 using Kara.Core.Input;
 using Kara.Core.Visual;
@@ -5,19 +6,23 @@ using System.Drawing;
 
 namespace Kara.Testing
 {
-	public class TestingApplication : Application
-	{
-		private View ParentingView = new Parenting();
-		private View PrettyView = new PrettyUi();
+    public class TestingApplication : Application
+    {
+        private Parenting ParentingView;
+        private PrettyUi PrettyView;
 
-		public TestingApplication()
-		{
-			this.Events.Access = EventAccess.Keyboard;
+        public TestingApplication()
+        {
+            Console.WriteLine("TestingApplication()");
+            this.Events.Access = EventAccess.Keyboard;
 
-			AddView(ParentingView);
-			AddView(PrettyView);
+            ParentingView = new Parenting();
+            PrettyView = new PrettyUi();
 
-			SetActiveView(PrettyView);
-		}
-	}
+            AddView(ParentingView);
+            AddView(PrettyView);
+
+            SetActiveView(PrettyView);
+        }
+    }
 }
