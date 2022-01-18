@@ -13,7 +13,6 @@ namespace Kara.Testing
 
         public TestingApplication()
         {
-            Console.WriteLine("TestingApplication()");
             this.Events.Access = EventAccess.Keyboard;
 
             ParentingView = new Parenting();

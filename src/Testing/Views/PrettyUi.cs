@@ -149,6 +149,8 @@ namespace Kara.Testing
                 BorderWidth = 1f,
                 BorderColor = Color.Black,
                 BackColor = Color.AliceBlue,
+                FixedWidth = true,
+                FixedHeight = true,
             };
 
             Elements.AddElement(ref parent, this);
@@ -182,6 +184,7 @@ namespace Kara.Testing
         private Stopwatch watch = new Stopwatch();
         private void Update()
         {
+
             float progress = (float)watch.ElapsedMilliseconds / (time / 2f);
             if (progress > 1f) progress = 1f;
 

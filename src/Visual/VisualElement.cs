@@ -323,6 +323,13 @@ namespace Kara.Core.Visual
             {
                 ComputedTransform.X = RelativeLeft * ParentWidth;
                 ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
+
+                if (FixedWidth)
+                {
+                    var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
+                    ComputedTransform.X = centerX - (Width / 2f);
+                    ComputedTransform.Width = Width;
+                }
             }
 
             if (ComputedTransform.Width < 0)
@@ -371,6 +378,13 @@ namespace Kara.Core.Visual
             {
                 ComputedTransform.Y = RelativeTop * ParentHeight;
                 ComputedTransform.Height = ParentHeight - (RelativeBottom * ParentHeight) - ComputedTransform.Y;
+
+                if (FixedHeight)
+                {
+                    var centerY = ComputedTransform.Y + (ComputedTransform.Height / 2f);
+                    ComputedTransform.Y = centerY - (Height / 2f);
+                    ComputedTransform.Height = Height;
+                }
             }
 
             if (ComputedTransform.Height < 0)
