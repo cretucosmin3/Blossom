@@ -5,13 +5,14 @@ using Kara.Core.Input;
 using Kara.Core.Visual;
 using System.Drawing;
 using System.Threading;
+using SkiaSharp;
 
 namespace Kara.Testing
 {
     public class PrettyUi : View
     {
         float time = 2000f; // seconds
-        float from = 10;
+        float from = 150;
         float to = 400;
         bool moveTo = true;
 
@@ -48,6 +49,14 @@ namespace Kara.Testing
                 {
                     AnimatedParent.Height += 50;
                 }
+                else if (x == 328)
+                {
+                    CenterElement.FixedHeight = !CenterElement.FixedHeight;
+                }
+                else if (x == 336)
+                {
+                    CenterElement.FixedWidth = !CenterElement.FixedWidth;
+                }
             };
 
             parent = new VisualElement()
@@ -59,7 +68,7 @@ namespace Kara.Testing
                 Width = Browser.RenderRect.Width,
                 Height = 40f,
                 FontSize = 20,
-                BackColor = Color.FromArgb(222, Color.Black),
+                BackColor = SKColors.Black,
                 Anchor = Anchor.Top | Anchor.Left,
             };
 
@@ -73,8 +82,8 @@ namespace Kara.Testing
                 Height = 32f,
                 FontSize = 18,
                 Roundness = 3f,
-                BackColor = Color.DimGray,
-                FontColor = Color.White,
+                BackColor = SKColors.DimGray,
+                FontColor = SKColors.White,
                 Anchor = Anchor.Top | Anchor.Left,
             };
 
@@ -89,9 +98,9 @@ namespace Kara.Testing
                 FontSize = 18,
                 BorderWidth = 0.5f,
                 Roundness = 2f,
-                BorderColor = Color.DarkGray,
-                BackColor = Color.White,
-                FontColor = Color.FromArgb(222, Color.Black),
+                BorderColor = SKColors.Black,
+                BackColor = SKColors.White,
+                FontColor = SKColors.White,
                 TextAlignment = TextAlign.Left,
                 TextPadding = 10,
                 Anchor = Anchor.Top | Anchor.Left,
@@ -107,8 +116,8 @@ namespace Kara.Testing
                 Height = 32f,
                 FontSize = 18,
                 Roundness = 2f,
-                BackColor = Color.Aquamarine,
-                FontColor = Color.Black,
+                BackColor = SKColors.Aquamarine,
+                FontColor = SKColors.Black,
                 Anchor = Anchor.Top | Anchor.Left,
             };
 
@@ -121,7 +130,7 @@ namespace Kara.Testing
                 Height = 50,
                 FontSize = 18,
                 BorderWidth = 1f,
-                BorderColor = Color.Black,
+                BorderColor = SKColors.Black,
                 Anchor = Anchor.Top | Anchor.Left,
             };
 
@@ -134,8 +143,8 @@ namespace Kara.Testing
                 Height = 200,
                 BorderWidth = 1f,
                 Roundness = 10f,
-                BorderColor = Color.Black,
-                BackColor = Color.AliceBlue,
+                BorderColor = SKColors.Black,
+                BackColor = SKColors.AliceBlue,
                 Anchor = Anchor.Top | Anchor.Left,
             };
 
@@ -147,8 +156,8 @@ namespace Kara.Testing
                 Width = 50,
                 Height = 50,
                 BorderWidth = 1f,
-                BorderColor = Color.Black,
-                BackColor = Color.AliceBlue,
+                BorderColor = SKColors.Black,
+                BackColor = SKColors.AliceBlue,
                 FixedWidth = true,
                 FixedHeight = true,
             };
@@ -184,16 +193,13 @@ namespace Kara.Testing
         private Stopwatch watch = new Stopwatch();
         private void Update()
         {
-
+            return;
             float progress = (float)watch.ElapsedMilliseconds / (time / 2f);
             if (progress > 1f) progress = 1f;
 
             float newVal = moveTo ? smoothLerp(from, to, progress) : smoothLerp(to, from, progress);
 
             int alpha = (int)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
-
-            CenterElement.BackColor = Color.FromArgb(alpha, Color.Red);
-            AnimatedParent.BackColor = Color.FromArgb(alpha, Color.Black);
 
             AnimatedParent.Width = newVal;
             AnimatedParent.Height = newVal;

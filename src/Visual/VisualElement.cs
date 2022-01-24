@@ -1,16 +1,10 @@
-using System.Net.Security;
-using System.Runtime.CompilerServices;
 using System;
 using System.Drawing;
 using System.Numerics;
 using System.Collections.Generic;
-using SilkyNvg;
-using SilkyNvg.Graphics;
-using SilkyNvg.Paths;
-using SilkyNvg.Scissoring;
-using SilkyNvg.Text;
 using Kara.Core.Delegates.Common;
 using Kara.Utils;
+using SkiaSharp;
 
 namespace Kara.Core.Visual
 {
@@ -93,13 +87,13 @@ namespace Kara.Core.Visual
             }
         }
 
-        private Colour _BorderColor = new(0, 0, 0, 0);
-        public Color BorderColor
+        private SKColor _BorderColor = new(0, 0, 0, 0);
+        public SKColor BorderColor
         {
-            get => Conversion.toColor(_BorderColor);
+            get => _BorderColor;
             set
             {
-                _BorderColor = Conversion.fromColor(value);
+                _BorderColor = value;
                 //! #render
             }
         }
@@ -115,13 +109,13 @@ namespace Kara.Core.Visual
             }
         }
 
-        private Colour _BackColor = new(0, 0, 0, 0);
-        public Color BackColor
+        private SKColor _BackColor = new(0, 0, 0, 0);
+        public SKColor BackColor
         {
-            get => Conversion.toColor(_BackColor);
+            get => _BackColor;
             set
             {
-                _BackColor = Conversion.fromColor(value);
+                _BackColor = value;
                 //! #render
             }
         }
@@ -161,13 +155,13 @@ namespace Kara.Core.Visual
             }
         }
 
-        private Colour _FontColor = new(0, 0, 0, 255);
-        public Color FontColor
+        private SKColor _FontColor = new(0, 0, 0, 255);
+        public SKColor FontColor
         {
-            get => Conversion.toColor(_FontColor);
+            get => _FontColor;
             set
             {
-                _FontColor = Conversion.fromColor(value);
+                _FontColor = value;
                 //! #render
             }
         }
@@ -195,13 +189,13 @@ namespace Kara.Core.Visual
             }
         }
 
-        private Colour _TextShadowColor = new(0, 0, 0, 0);
-        public Color TextShadowColor
+        private SKColor _TextShadowColor = new(0, 0, 0, 0);
+        public SKColor TextShadowColor
         {
-            get { return Conversion.toColor(_TextShadowColor); }
+            get { return _TextShadowColor; }
             set
             {
-                _TextShadowColor = Conversion.fromColor(value);
+                _TextShadowColor = value;
                 //! #render
             }
         }
@@ -238,8 +232,6 @@ namespace Kara.Core.Visual
                 //! #render
             }
         }
-
-        private Silk.NET.Maths.Rectangle<float> TextBounds;
 
         private Anchor _Anchor;
 
@@ -507,7 +499,6 @@ namespace Kara.Core.Visual
             if (!String.IsNullOrEmpty(Text))
                 DrawText();
 
-            Renderer.Pipe.Reset();
             foreach (var child in Children)
             {
                 child.Render();
@@ -522,55 +513,52 @@ namespace Kara.Core.Visual
 
         internal void DrawBase()
         {
-            if (Parent != null)
-            {
-                Renderer.Pipe.Scissor(
-                    Parent.GlobalTransform.X + (Parent.BorderWidth / 2f),
-                    Parent.GlobalTransform.Y + (Parent.BorderWidth / 2f),
-                    Parent.GlobalTransform.Width - Parent.BorderWidth,
-                    Parent.GlobalTransform.Height - Parent.BorderWidth
-                );
-            }
-
-            Renderer.Pipe.BeginPath();
-            Renderer.Pipe.RoundedRect(
+            SKRect rect = new SKRect(
                 ComputedTransform.X,
                 ComputedTransform.Y,
-                ComputedTransform.Width,
-                ComputedTransform.Height,
-                Roundness
+                ComputedTransform.X + ComputedTransform.Width,
+                ComputedTransform.Y + ComputedTransform.Height
             );
 
-            if (_BackColor.A > 0)
+            SKRoundRect roundRect = new SKRoundRect(rect, Roundness);
+
+            // if (Parent != null)
+            // {
+            //     SKRect parentRect = new SKRect(
+            //         Parent.ComputedTransform.X,
+            //         Parent.ComputedTransform.Y,
+            //         Parent.ComputedTransform.X + Parent.ComputedTransform.Width,
+            //         Parent.ComputedTransform.Y + Parent.ComputedTransform.Height
+            //     );
+
+            //     SKRoundRect parentRoundRect = new SKRoundRect(parentRect, Parent.Roundness);
+
+            //     Renderer.Canvas.ClipRoundRect(roundRect, SKClipOperation.Intersect, true);
+            // }
+
+            SKPaint paint = new SKPaint
             {
-                Renderer.Pipe.FillColour(_BackColor);
-                Renderer.Pipe.Fill();
+                Style = SKPaintStyle.Fill,
+                Color = BackColor,
+                IsAntialias = true,
+            };
+
+            if (BorderWidth > 0)
+            {
+                paint.Style = SKPaintStyle.Stroke;
+                paint.StrokeWidth = BorderWidth;
+                paint.Color = BorderColor;
             }
 
-            Renderer.Pipe.BeginPath();
-            Renderer.Pipe.RoundedRect(
-                ComputedTransform.X,
-                ComputedTransform.Y,
-                ComputedTransform.Width,
-                ComputedTransform.Height,
-                Roundness
-            );
-
-            if (_BorderColor.A > 0 && BorderWidth > 0)
-            {
-                Renderer.Pipe.StrokeWidth(BorderWidth);
-                Renderer.Pipe.StrokeColour(_BorderColor);
-                Renderer.Pipe.Stroke();
-            }
-
-            Renderer.Pipe.ClosePath();
+            Renderer.Canvas.DrawRoundRect(roundRect, paint);
         }
 
         private float TextWidth = 0;
+        private Silk.NET.Maths.Rectangle<float> TextBounds;
         private void CalculateTextBounds()
         {
-            if (Browser.IsLoaded)
-                TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
+            // if (Browser.IsLoaded)
+            //     TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
         }
 
         internal void DrawText()
@@ -580,23 +568,8 @@ namespace Kara.Core.Visual
             var cw = ComputedTransform.Width;
             var ch = ComputedTransform.Height;
 
-            Renderer.Pipe.FontSize(FontSize);
-            Renderer.Pipe.FontFace("sans");
-
             var halfBorder = (BorderWidth / 2);
 
-            if (Parent != null)
-            {
-                Renderer.Pipe.Scissor(
-                    Parent.GlobalTransform.X + (Parent.BorderWidth / 2f),
-                    Parent.GlobalTransform.Y + (Parent.BorderWidth / 2f),
-                    Parent.GlobalTransform.Width - Parent.BorderWidth,
-                    Parent.GlobalTransform.Height - Parent.BorderWidth
-                );
-            }
-            else Renderer.Pipe.Scissor(cx + halfBorder, cy + halfBorder, cw - BorderWidth, ch - BorderWidth);
-
-            Renderer.Pipe.TextAlign(Align.Middle | Align.Middle);
             CalculateTextBounds();
 
             float textX = TextAlignment switch
@@ -625,23 +598,32 @@ namespace Kara.Core.Visual
 
             textY += 2f;
 
-            // Early return if there's no text
-            if (string.IsNullOrEmpty(Text))
+            // Early return if there's no text or color
+            if (string.IsNullOrEmpty(Text) || TextShadowColor.Alpha > 0)
                 return;
 
-            if (TextShadowColor.A > 0 && TextShadow != Vector2.Zero)
+            // Draw shadow
+            // if (TextShadow != Vector2.Zero)
+            // {
+            //     if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
+
+            //     var aria = TextBounds.Size.X + TextBounds.Size.Y;
+            //     Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
+            //     Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
+
+            //     if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
+            // }
+
+            var TextPoint = new SKPoint(textX, 15);
+            var TextPaint = new SKPaint()
             {
-                if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
+                IsAntialias = true,
+                Color = FontColor,
+                TextSize = FontSize,
+                TextAlign = SKTextAlign.Center,
+            };
 
-                var aria = TextBounds.Size.X + TextBounds.Size.Y;
-                Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
-                Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
-
-                if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
-            }
-
-            Renderer.Pipe.FillColour(Conversion.fromColor(FontColor));
-            Renderer.Pipe.Text(textX, textY, Text);
+            Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }
 
         internal void DrawTextShadow()

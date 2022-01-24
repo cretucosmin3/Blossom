@@ -8,13 +8,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="FontStash.NET" Version="1.1.2"/>
-    <PackageReference Include="SafeStbImageSharp" Version="2.22.4"/>
     <PackageReference Include="Silk.NET" Version="2.9.0"/>
-    <PackageReference Include="SilkyNvg" Version="*"/>
-    <PackageReference Include="SilkyNvg.Rendering.OpenGL" Version="*"/>
-    <PackageReference Include="StbImageWriteSharp" Version="1.13.5"/>
-    <PackageReference Include="SilkyNvg.Rendering.Vulkan" Version="*"/>
+    <PackageReference Include="Silk.NET.Core" Version="2.11.0" />
+    <PackageReference Include="Silk.NET.Windowing.Common" Version="2.11.0" />
+    <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.11.0" />
     <PackageReference Include="System.Drawing.Common" Version="6.0.0-rc.2.21480.5"/>
     <PackageReference Include="SkiaSharp" Version="2.88.0-preview.179"/>
   </ItemGroup>

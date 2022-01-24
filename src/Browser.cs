@@ -1,28 +1,24 @@
+using System.ComponentModel;
 using System;
 using System.Drawing;
 using System.Numerics;
 using System.Diagnostics;
-using System.Threading;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using SilkyNvg;
-using SilkyNvg.Rendering.OpenGL;
-using SilkyNvg.Text;
-using SilkyNvg.Graphics;
 using Kara.Utils;
 using Kara.Core;
 using Kara.Core.Input;
 using Kara.Core.Delegates.Common;
 using Kara.Testing;
+using Silk.NET.Windowing.Glfw;
+using SkiaSharp;
 
 namespace Kara
 {
     public static class Browser
     {
-        private static GL gl;
-        internal static Nvg RenderPipeline;
         internal static IWindow window;
 
         internal static TestingApplication BrowserApp = new TestingApplication();
@@ -34,30 +30,51 @@ namespace Kara
         private static bool FpsVisible = false;
         public static void ShowFps() => FpsVisible = true;
         public static void HideFps() => FpsVisible = false;
+        public static float FontSize = 100;
 
         public static void Initialize()
         {
-            Console.WriteLine("Initializing Browser...");
-            RenderRect = new RectangleF(0, 0, 1000, 600);
+            OnLoaded = () =>
+            {
+                ManageInputEvents();
+                BrowserApp.ActiveView.Main();
+            };
 
-            WindowOptions windowOptions = WindowOptions.Default;
-            windowOptions.FramesPerSecond = -1;
-            windowOptions.ShouldSwapAutomatically = true;
-            windowOptions.Size = new Vector2D<int>(1000, 600);
-            windowOptions.Title = "UI";
-            windowOptions.VSync = false;
-            windowOptions.PreferredDepthBufferBits = 24;
-            windowOptions.PreferredStencilBufferBits = 8;
+            SetWindow();
 
-            window = Window.Create(windowOptions);
+            Renderer.SetCanvas(window);
+
+            StartWindow();
+        }
+
+        private static void SetWindow()
+        {
+            RenderRect = new RectangleF(0, 0, 800, 800);
+
+            var options = WindowOptions.Default;
+            options.Size = new Vector2D<int>(800, 800);
+            options.Title = "UI";
+            options.PreferredDepthBufferBits = 24;
+            options.PreferredStencilBufferBits = 8;
+            options.VSync = false;
+            options.PreferredBitDepth = new Vector4D<int>(4, 4, 4, 4);
+            options.IsEventDriven = true;
+
+            GlfwWindowing.Use();
+
+            window = Window.Create(options);
+
             window.Load += Load;
             window.Render += Render;
             window.Closing += Closing;
-            window.IsEventDriven = true;
 
             window.Initialize();
+        }
 
+        public static void StartWindow()
+        {
             int x = 0;
+
             while (!window.IsClosing)
             {
                 if (x > 5)
@@ -111,6 +128,11 @@ namespace Kara
                     BrowserApp.ActiveView.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
                 };
 
+                mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
+                {
+                    FontSize += wheel.Y;
+                };
+
                 //            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
                 //{
                 //	BrowserApp.Events.Handle_Mouse_Click()
@@ -127,21 +149,11 @@ namespace Kara
         private static void Closing()
         {
             BrowserApp.Dispose();
-            RenderPipeline.Dispose();
-            gl.Dispose();
         }
 
         private static void Load()
         {
-            gl = window.CreateOpenGL();
-
-            OpenGLRenderer nvgRenderer = new(CreateFlags.Antialias | CreateFlags.StencilStrokes | CreateFlags.Debug, gl);
-            RenderPipeline = Nvg.Create(nvgRenderer);
-            Renderer.Initialize(RenderPipeline);
-
-            ManageInputEvents();
-
-            OnLoaded();
+            OnLoaded.Invoke();
             timer.Start();
             IsLoaded = true;
         }
@@ -155,32 +167,64 @@ namespace Kara
             Vector2D<float> winSize = window.Size.As<float>();
             Vector2D<float> fbSize = window.FramebufferSize.As<float>();
 
-            float pxRatio = fbSize.X / winSize.X;
+            // Renderer.ResetContext();
+            Renderer.Canvas.Clear(SKColors.White);
+            // float pxRatio = fbSize.X / winSize.X;
 
-            gl.Viewport(0, 0, (uint)winSize.X, (uint)winSize.Y);
-            gl.ClearColor(255, 255, 255, 255);
-            gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+            float x = 250;
+            float y = 200;
 
-            RenderPipeline.BeginFrame(winSize.X, winSize.Y, pxRatio);
-            BrowserApp.Render();
-
-            if (FpsVisible)
+            SKPaint testPaint = new SKPaint()
             {
-                RenderPipeline.FillColour(Conversion.fromColor(Color.Red));
-                RenderPipeline.Text(15, window.Size.Y - 15, $"FPS {fps:0}");
+                Color = SKColors.Black,
+                TextSize = FontSize,
+                IsAntialias = true,
+                IsStroke = false,
+                TextAlign = SKTextAlign.Left,
+            };
 
-                frames++;
-                fps_avg += time;
+            string text = "Hello world!";
 
-                if (frames == 100)
-                {
-                    fps = 1f / (float)(fps_avg / 100d);
-                    fps_avg = 0;
-                    frames = 0;
-                }
-            }
+            SKFontMetrics metrics = testPaint.FontMetrics;
+            var textWidth = testPaint.MeasureText(text);
+            var textHeight = testPaint.TextSize - metrics.Descent;
 
-            RenderPipeline.EndFrame();
+            Renderer.Canvas.DrawText(text, x, y + (textHeight / 2f), testPaint);
+
+            testPaint.Color = SKColors.Red;
+            testPaint.StrokeWidth = 5;
+
+            Renderer.Canvas.DrawPoint(new SKPoint(x, y), testPaint);
+
+            testPaint.Color = new SKColor(255, 0, 0, 100);
+            Renderer.Canvas.DrawRect(x, y - (textHeight / 2f), textWidth, testPaint.TextSize - metrics.Descent, testPaint);
+
+            // BrowserApp.Render();
+
+            // if (true)
+            // {
+            //     SKPaint fpsPaint = new SKPaint()
+            //     {
+            //         Color = SKColors.Black,
+            //         TextSize = 20,
+            //         IsAntialias = true,
+            //         IsStroke = false,
+            //     };
+
+            //     Renderer.Canvas.DrawText($"FPS {fps:0}", 15, 15, fpsPaint);
+
+            //     frames++;
+            //     fps_avg += time;
+
+            //     if (frames == 100)
+            //     {
+            //         fps = 1f / (float)(fps_avg / 100d);
+            //         fps_avg = 0;
+            //         frames = 0;
+            //     }
+            // }
+
+            Renderer.Canvas.Flush();
         }
     }
 }

@@ -5,68 +5,72 @@ using Kara.Core.Delegates.Common;
 
 namespace Kara.Core
 {
-	public abstract class View : IDisposable
-	{
-		public EventMap Events = new();
-		public ElementsMap Elements = new();
-		public event ForVoid Loop;
-		private int DefaultFont;
-		private string _title = "";
-		public string Title
-		{
-			get => _title;
-			set
-			{
-				_title = value;
-				//! #render title only
-			}
-		}
+    public abstract class View : IDisposable
+    {
+        public EventMap Events = new();
+        public ElementsMap Elements = new();
+        public event ForVoid Loop;
+        private int DefaultFont;
 
-		private string _name = "";
-		public string Name
-		{
-			get => _name;
-			set
-			{
-				_name = value;
-				//! #render title only
-			}
-		}
+        private string _title = "";
+        public string Title
+        {
+            get => _title;
+            set
+            {
+                _title = value;
+                //! #render title only
+            }
+        }
 
-		public Application Application { get; internal set; }
-		public VisualElement FocusedElement { get; set; }
+        private string _name = "";
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                _name = value;
+                //! #render title only
+            }
+        }
 
-		public abstract void Main();
+        public Application Application { get; internal set; }
+        public VisualElement FocusedElement { get; set; }
 
-		internal View(string name)
-		{
-			Name = name;
-			Browser.OnLoaded += () => Main();
-		}
+        public abstract void Main();
 
-		internal void TriggerLoop() => Loop?.Invoke();
+        internal View(string name)
+        {
+            Name = name;
+            Browser.OnLoaded += () =>
+            {
+                Main();
+            };
+        }
 
-		public void AddElement(VisualElement element)
-		{
-			Elements.AddElement(ref element, this);
-		}
+        internal void TriggerLoop() => Loop?.Invoke();
 
-		public void RemoveElement(VisualElement element)
-		{
-			Elements.RemoveElement(element);
-		}
+        public void AddElement(VisualElement element)
+        {
+            Elements.AddElement(ref element, this);
+        }
 
-		internal void Render()
-		{
-			foreach (var element in Elements.Items)
-			{
-				element.Render();
-			}
-		}
+        public void RemoveElement(VisualElement element)
+        {
+            Elements.RemoveElement(element);
+        }
 
-		public void Dispose()
-		{
+        internal void Render()
+        {
+            foreach (var element in Elements.Items)
+            {
+                element.Render();
+            }
+        }
 
-		}
-	}
+        public void Dispose()
+        {
+
+        }
+    }
 }
