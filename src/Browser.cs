@@ -155,6 +155,7 @@ namespace Kara
         {
             OnLoaded.Invoke();
             timer.Start();
+            d.Start();
             IsLoaded = true;
         }
 
@@ -162,6 +163,7 @@ namespace Kara
         private static double fps_avg = 0;
         private static float fps = 0;
         private static Stopwatch timer = new Stopwatch();
+        private static Stopwatch d = new Stopwatch();
         private static void Render(double time)
         {
             Vector2D<float> winSize = window.Size.As<float>();
@@ -180,49 +182,77 @@ namespace Kara
                 TextSize = FontSize,
                 IsAntialias = true,
                 IsStroke = false,
-                TextAlign = SKTextAlign.Left,
+                TextAlign = SKTextAlign.Center,
             };
 
             string text = "Hello world!";
 
-            SKFontMetrics metrics = testPaint.FontMetrics;
-            var textWidth = testPaint.MeasureText(text);
-            var textHeight = testPaint.TextSize - metrics.Descent;
+            // var textMetrics = Fonts.Measure(testPaint, text);
 
-            Renderer.Canvas.DrawText(text, x, y + (textHeight / 2f), testPaint);
+            // Renderer.Canvas.DrawText(text, x, y, testPaint);
 
-            testPaint.Color = SKColors.Red;
-            testPaint.StrokeWidth = 5;
+            // testPaint.Color = SKColors.Red;
+            // testPaint.StrokeWidth = 5;
 
-            Renderer.Canvas.DrawPoint(new SKPoint(x, y), testPaint);
+            // Renderer.Canvas.DrawPoint(new SKPoint(x, y), testPaint);
 
-            testPaint.Color = new SKColor(255, 0, 0, 100);
-            Renderer.Canvas.DrawRect(x, y - (textHeight / 2f), textWidth, testPaint.TextSize - metrics.Descent, testPaint);
+            // testPaint.Color = new SKColor(0, 255, 0, 25);
+            // Renderer.Canvas.DrawRect(x, y - (textMetrics.Y / 2f), textMetrics.X, textMetrics.Y, testPaint);
+
+            SKPaint crossPaint = new SKPaint()
+            {
+                Color = SKColors.Black,
+                IsAntialias = true,
+                IsStroke = true,
+                StrokeWidth = 2,
+                TextSize = 35,
+            };
+
+            var outer = new SKRoundRect(new (100, 100, 300, 550), 3, 3);
+            var inner = new SKRoundRect(new (150, 150, 500, 500), 30, 30);
+
+            Renderer.Canvas.DrawRoundRect(outer, crossPaint);
+            // Renderer.Canvas.DrawRoundRect(inner, crossPaint);
+
+            using(new SKAutoCanvasRestore(Renderer.Canvas))
+            {
+                if(d.ElapsedMilliseconds <= 800){
+                    Renderer.Canvas.ClipRoundRect(outer, SKClipOperation.Intersect);
+                }
+                else if (d.ElapsedMilliseconds > 1600) {
+                    d.Restart();
+                }
+
+                Renderer.Canvas.DrawRoundRect(inner, crossPaint);
+
+                crossPaint.IsStroke = false;
+                Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
+            }
 
             // BrowserApp.Render();
 
-            // if (true)
-            // {
-            //     SKPaint fpsPaint = new SKPaint()
-            //     {
-            //         Color = SKColors.Black,
-            //         TextSize = 20,
-            //         IsAntialias = true,
-            //         IsStroke = false,
-            //     };
+            if (true)
+            {
+                SKPaint fpsPaint = new SKPaint()
+                {
+                    Color = SKColors.Black,
+                    TextSize = 20,
+                    IsAntialias = true,
+                    IsStroke = false,
+                };
 
-            //     Renderer.Canvas.DrawText($"FPS {fps:0}", 15, 15, fpsPaint);
+                Renderer.Canvas.DrawText($"FPS {fps:0}", 15, 15, fpsPaint);
 
-            //     frames++;
-            //     fps_avg += time;
+                frames++;
+                fps_avg += time;
 
-            //     if (frames == 100)
-            //     {
-            //         fps = 1f / (float)(fps_avg / 100d);
-            //         fps_avg = 0;
-            //         frames = 0;
-            //     }
-            // }
+                if (frames == 100)
+                {
+                    fps = 1f / (float)(fps_avg / 100d);
+                    fps_avg = 0;
+                    frames = 0;
+                }
+            }
 
             Renderer.Canvas.Flush();
         }
