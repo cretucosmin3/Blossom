@@ -66,8 +66,8 @@ namespace Kara.Core.Visual
             {
                 if (Parent != null)
                     return Visible ? ParentView.Elements.ComponentsIntersect(this, Parent) : false;
-                else
-                    return Visible;
+                
+                return Visible;
             }
         }
 

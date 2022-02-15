@@ -199,6 +199,8 @@ namespace Kara
             // testPaint.Color = new SKColor(0, 255, 0, 25);
             // Renderer.Canvas.DrawRect(x, y - (textMetrics.Y / 2f), textMetrics.X, textMetrics.Y, testPaint);
 
+            // BrowserApp.Render();
+
             SKPaint crossPaint = new SKPaint()
             {
                 Color = SKColors.Black,
@@ -228,8 +230,6 @@ namespace Kara
                 crossPaint.IsStroke = false;
                 Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
             }
-
-            // BrowserApp.Render();
 
             if (true)
             {
