@@ -9,203 +9,203 @@ using Kara.Utils;
 
 namespace Kara.Core.Input
 {
-	public class EventMap : IDisposable
-	{
+    public class EventMap : IDisposable
+    {
 
-		// TODO: manage events by access
-		public EventAccess Access = EventAccess.All;
+        // TODO: manage events by access
+        public EventAccess Access = EventAccess.All;
 
-		private List<Key> CtrlKeys = new List<Key> {
-			Key.ControlLeft,
-			Key.ControlRight,
-			Key.AltLeft,
-			Key.AltRight
-		};
+        private List<Key> CtrlKeys = new List<Key> {
+            Key.ControlLeft,
+            Key.ControlRight,
+            Key.AltLeft,
+            Key.AltRight
+        };
 
-		private bool IsCommand = false;
-		private List<Key> KeySequence = new List<Key>();
-		private Dictionary<string, Hotkey> Hotkeys = new Dictionary<string, Hotkey>();
+        private bool IsCommand = false;
+        private List<Key> KeySequence = new List<Key>();
+        private Dictionary<string, Hotkey> Hotkeys = new Dictionary<string, Hotkey>();
 
-		// Keyboard
-		public event ForKey OnKeyDown;
-		public event ForKey OnKeyUp;
-		public event ForChar OnKeyType;
-		public event ForHotkey OnHotkey;
+        // Keyboard
+        public event ForKey OnKeyDown;
+        public event ForKey OnKeyUp;
+        public event ForChar OnKeyType;
+        public event ForHotkey OnHotkey;
 
-		// Mouse
-		public event ForPosition OnMouseMove;
-		public event ForPosition OnMouseScroll;
-		public event ForMouseButton OnMouseDown;
-		public event ForMouseButton OnMouseUp;
-		public event ForMouseButton OnMouseClick;
-		public event ForMouseButton OnMouseDoubleClick;
+        // Mouse
+        public event ForPosition OnMouseMove;
+        public event ForPosition OnMouseScroll;
+        public event ForMouseButton OnMouseDown;
+        public event ForMouseButton OnMouseUp;
+        public event ForMouseButton OnMouseClick;
+        public event ForMouseButton OnMouseDoubleClick;
 
-		/// <summary>
-		/// Register series of keys to one event
-		/// </summary>
-		public Hotkey AddHotkey(Key[] keybind, string id = "")
-		{
-			int[] karr;
-			Arr.Map<int>(keybind, out karr);
-			Array.Sort(karr);
+        /// <summary>
+        /// Register series of keys to one event
+        /// </summary>
+        public Hotkey AddHotkey(Key[] keybind, string id = "")
+        {
+            int[] karr;
+            Arr.Map<int>(keybind, out karr);
+            Array.Sort(karr);
 
-			string StringKey = String.Join(':', karr);
+            string StringKey = String.Join(':', karr);
 
-			if (Hotkeys.ContainsKey(StringKey))
-			{
-				Log.Error($"Keybind {StringKey} already exists");
-				OnHotkey -= Hotkeys[StringKey].Method;
-				return Hotkeys[StringKey];
-			}
+            if (Hotkeys.ContainsKey(StringKey))
+            {
+                Log.Error($"Keybind {StringKey} already exists");
+                OnHotkey -= Hotkeys[StringKey].Method;
+                return Hotkeys[StringKey];
+            }
 
-			var newHotkey = new Hotkey(id, this);
-			Hotkeys.Add(StringKey, newHotkey);
+            var newHotkey = new Hotkey(id, this);
+            Hotkeys.Add(StringKey, newHotkey);
 
-			return newHotkey;
-		}
+            return newHotkey;
+        }
 
-		#region Keyboard
-		internal bool HandleKeyDown(Key key, int i)
-		{
-			bool FoundEvent = false;
+        #region Keyboard
+        internal bool HandleKeyDown(Key key, int i)
+        {
+            bool FoundEvent = false;
 
-			// Start keybind
-			if (CtrlKeys.Contains(key))
-			{
-				IsCommand = true;
-				KeySequence.Add(key);
-			}
+            // Start keybind
+            if (CtrlKeys.Contains(key))
+            {
+                IsCommand = true;
+                KeySequence.Add(key);
+            }
 
-			// Check for keybind
-			if (IsCommand && !CtrlKeys.Contains(key))
-			{
-				KeySequence.Add(key);
+            // Check for keybind
+            if (IsCommand && !CtrlKeys.Contains(key))
+            {
+                KeySequence.Add(key);
 
-				int[] karr; ;
-				Arr.Map<int>(KeySequence.ToArray(), out karr);
+                int[] karr;
+                Arr.Map<int>(KeySequence.ToArray(), out karr);
 
-				//  sort an array of integers
-				Array.Sort(karr);
+                // sort an array of integers
+                Array.Sort(karr);
 
-				string StringKey = string.Join(':', karr);
+                string StringKey = string.Join(':', karr);
 
-				if (Hotkeys.ContainsKey(StringKey))
-				{
-					var Hotkey = Hotkeys[StringKey];
-					if (string.IsNullOrEmpty(Hotkey.Name))
-					{
-						Hotkey.Invoke();
-						FoundEvent = true;
-					}
-					else
-					{
-						OnHotkey.Invoke(Hotkey);
-						FoundEvent = true;
-					}
-				}
-			}
-			else
-			{
-				if (OnKeyDown != null)
-				{
-					OnKeyDown.Invoke(i);
-					FoundEvent = true;
-				}
-			}
+                if (Hotkeys.ContainsKey(StringKey))
+                {
+                    var Hotkey = Hotkeys[StringKey];
+                    if (string.IsNullOrEmpty(Hotkey.Name))
+                    {
+                        Hotkey.Invoke();
+                        FoundEvent = true;
+                    }
+                    else
+                    {
+                        OnHotkey.Invoke(Hotkey);
+                        FoundEvent = true;
+                    }
+                }
+            }
+            else
+            {
+                if (OnKeyDown != null)
+                {
+                    OnKeyDown.Invoke(i);
+                    FoundEvent = true;
+                }
+            }
 
-			return FoundEvent;
-		}
+            return FoundEvent;
+        }
 
-		internal void HandleKeyUp(Key key, int i)
-		{
-			if (CtrlKeys.Contains(key))
-			{
-				IsCommand = false;
-				KeySequence.Clear();
-			}
+        internal void HandleKeyUp(Key key, int i)
+        {
+            if (CtrlKeys.Contains(key))
+            {
+                IsCommand = false;
+                KeySequence.Clear();
+            }
 
-			// Check for keybind
-			if (IsCommand && !CtrlKeys.Contains(key))
-			{
-				KeySequence.Remove(key);
-			}
-			else
-			{
-				OnKeyUp?.Invoke(i);
-			}
-		}
+            // Check for keybind
+            if (IsCommand && !CtrlKeys.Contains(key))
+            {
+                KeySequence.Remove(key);
+            }
+            else
+            {
+                OnKeyUp?.Invoke(i);
+            }
+        }
 
-		internal void HandleKeyChar(char ch)
-		{
-			OnKeyType?.Invoke(ch);
-		}
-		#endregion
+        internal void HandleKeyChar(char ch)
+        {
+            OnKeyType?.Invoke(ch);
+        }
+        #endregion
 
-		#region Mouse
-		internal void Handle_Mouse_Move(int x, int y) =>
-			OnMouseMove?.Invoke(x, y);
+        #region Mouse
+        internal void Handle_Mouse_Move(int x, int y) =>
+            OnMouseMove?.Invoke(x, y);
 
-		//internal void Handle_Mouse_Down(int ButtonName) =>
-		//	OnMouseDown?.Invoke((int)ButtonName);
+        //internal void Handle_Mouse_Down(int ButtonName) =>
+        //	OnMouseDown?.Invoke((int)ButtonName);
 
-		//internal void Handle_Mouse_Up(int ButtonName) =>
-		//	OnMouseUp?.Invoke((int)ButtonName);
+        //internal void Handle_Mouse_Up(int ButtonName) =>
+        //	OnMouseUp?.Invoke((int)ButtonName);
 
-		//internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
-		//	OnMouseClick?.Invoke((int)ButtonName);
+        //internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
+        //	OnMouseClick?.Invoke((int)ButtonName);
 
-		//internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
-		//	OnMouseDoubleClick?.Invoke((int)ButtonName);
+        //internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
+        //	OnMouseDoubleClick?.Invoke((int)ButtonName);
 
-		internal void Handle_Mouse_Scroll(int x, int y) =>
-			OnMouseScroll?.Invoke(x, y);
-		#endregion
+        internal void Handle_Mouse_Scroll(int x, int y) =>
+            OnMouseScroll?.Invoke(x, y);
+        #endregion
 
-		public void Dispose()
-		{
-			Hotkeys.Clear();
-		}
-	}
+        public void Dispose()
+        {
+            Hotkeys.Clear();
+        }
+    }
 
-	public enum EventAccess
-	{
-		All,
-		Keyboard,
-		Mouse,
-		Gamepad
-	}
+    public enum EventAccess
+    {
+        All,
+        Keyboard,
+        Mouse,
+        Gamepad
+    }
 
-	public class Hotkey
-	{
-		public string Name { get; set; }
-		private EventMap Parent;
-		internal ForHotkey Method;
+    public class Hotkey
+    {
+        public string Name { get; set; }
+        private EventMap Parent;
+        internal ForHotkey Method;
 
-		/// <summary>
-		/// Create new input event
-		/// </summary>
-		internal Hotkey(string name, EventMap map)
-		{
-			(Name, Parent) = (name, map);
-		}
+        /// <summary>
+        /// Create new input event
+        /// </summary>
+        internal Hotkey(string name, EventMap map)
+        {
+            (Name, Parent) = (name, map);
+        }
 
-		/// <summary>
-		/// Add an action to this event
-		/// </summary>
-		/// <param name="action">Action to handle</param>
-		public void Handle(ForHotkey action)
-		{
-			if (!String.IsNullOrEmpty(Name))
-				Parent.OnHotkey += action;
+        /// <summary>
+        /// Add an action to this event
+        /// </summary>
+        /// <param name="action">Action to handle</param>
+        public void Handle(ForHotkey action)
+        {
+            if (!String.IsNullOrEmpty(Name))
+                Parent.OnHotkey += action;
 
-			Method = action;
-		}
+            Method = action;
+        }
 
-		internal void Invoke()
-		{
-			Method?.Invoke(this);
-		}
+        internal void Invoke()
+        {
+            Method?.Invoke(this);
+        }
 
-		public override string ToString() => Name;
-	}
+        public override string ToString() => Name;
+    }
 }

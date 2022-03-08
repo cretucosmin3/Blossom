@@ -1,4 +1,6 @@
-﻿using System;
+﻿using System.Security;
+using System.Globalization;
+using System;
 using System.IO;
 using Kara.Core.Visual;
 using Kara.Core;
