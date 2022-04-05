@@ -23,7 +23,7 @@ namespace Kara.Core.Visual
             set
             {
                 _Parent = value;
-                SetAnchorValues();
+                Transform.Parent = value.Transform;
             }
         }
 
@@ -32,11 +32,11 @@ namespace Kara.Core.Visual
         internal event ForDispose OnDisposing;
         public event ForV4 OnResized;
 
+        public Transform Transform { get; set; } = new Transform();
+
         public void AddChild(VisualElement child)
         {
             child.Parent = this;
-
-            SetAnchorValues();
             Children.Add(child);
         }
 
@@ -50,14 +50,7 @@ namespace Kara.Core.Visual
         public bool Visible
         {
             get => _Visible;
-            set
-            {
-                if (value != _Visible)
-                {
-
-                }
-                else _Visible = value;
-            }
+            set => _Visible = value;
         }
 
         public bool CanRender
@@ -233,264 +226,10 @@ namespace Kara.Core.Visual
             }
         }
 
-        private Anchor _Anchor;
-
-        internal float FixedLeft = 0f;
-        internal float FixedRight = 0f;
-        internal float FixedTop = 0f;
-        internal float FixedBottom = 0f;
-
-        internal float RelativeLeft = 0f;
-        internal float RelativeRight = 0f;
-        internal float RelativeTop = 0f;
-        internal float RelativeBottom = 0f;
-
-        public Anchor Anchor
-        {
-            get => _Anchor;
-            set
-            {
-                _Anchor = value;
-                SetAnchorValues();
-            }
-        }
-
-        public bool FixedHeight { get; set; } = false;
-        public bool FixedWidth { get; set; } = false;
-
-        internal void SetAnchorValues()
-        {
-            if (!Browser.IsLoaded) return;
-
-            CalculateHorizontalAnchors();
-            CalculateVerticalAnchors();
-
-            ComputeHorizontalTransform();
-            ComputeVerticalTransform();
-        }
-
-        internal RectangleF LocalTransform = new RectangleF(0, 0, 0, 0);
-        internal RectangleF ComputedTransform = new RectangleF(0, 0, 0, 0);
-        public RectangleF GlobalTransform { get => ComputedTransform; }
-
-        internal void HandleParentHorizontalResized() => ComputeHorizontalTransform();
-        internal void HandleParentVerticalResized() => ComputeVerticalTransform();
-
-        private bool XChanged = false;
-        private bool YChanged = false;
-        private bool WidthChanged = false;
-        private bool HeightChanged = false;
-
-        private void CalculateHorizontalAnchors()
-        {
-            var ParentWidth = Parent != null ? Parent.LocalTransform.Width : Browser.RenderRect.Width;
-
-            FixedLeft = X;
-            RelativeLeft = FixedLeft / ParentWidth;
-
-            FixedRight = ParentWidth - (X + Width);
-            RelativeRight = FixedRight / ParentWidth;
-        }
-
-        private void ComputeHorizontalTransform()
-        {
-            var ParentWidth = Parent != null ? Parent.ComputedTransform.Width : Browser.RenderRect.Width;
-
-            if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
-            {
-                ComputedTransform.X = FixedLeft;
-                ComputedTransform.Width = Width;
-            }
-            else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
-            {
-                ComputedTransform.X = ParentWidth - FixedRight - Width;
-                ComputedTransform.Width = Width;
-            }
-            else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
-            {
-                ComputedTransform.X = FixedLeft;
-                ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
-            }
-            else
-            {
-                ComputedTransform.X = RelativeLeft * ParentWidth;
-                ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
-
-                if (FixedWidth)
-                {
-                    var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
-                    ComputedTransform.X = centerX - (Width / 2f);
-                    ComputedTransform.Width = Width;
-                }
-            }
-
-            if (ComputedTransform.Width < 0)
-            {
-                ComputedTransform.Width = 0;
-            }
-
-            // Add parent X
-            ComputedTransform.X += Parent != null ? Parent.ComputedTransform.X : Browser.RenderRect.X;
-        }
-
-        private void CalculateVerticalAnchors()
-        {
-            var ParentHeight = Parent != null ? Parent.LocalTransform.Height : Browser.RenderRect.Height;
-
-            FixedTop = Y;
-            RelativeTop = FixedTop / ParentHeight;
-
-            FixedBottom = ParentHeight - (Y + Height);
-            RelativeBottom = FixedBottom / ParentHeight;
-        }
-
-        private void ComputeVerticalTransform()
-        {
-            var ParentHeight = Parent != null ? Parent.ComputedTransform.Height : Browser.RenderRect.Height;
-
-            bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
-            bool topAnchored = _Anchor.HasFlag(Anchor.Top);
-
-            if (_Anchor.HasFlag(Anchor.Top) && !_Anchor.HasFlag(Anchor.Bottom))
-            {
-                ComputedTransform.Y = FixedTop;
-                ComputedTransform.Height = Height;
-            }
-            else if (bottomAnchored && !topAnchored)
-            {
-                ComputedTransform.Y = ParentHeight - FixedBottom - Height;
-                ComputedTransform.Height = Height;
-            }
-            else if (_Anchor.HasFlag(Anchor.Top) && _Anchor.HasFlag(Anchor.Bottom))
-            {
-                ComputedTransform.Y = FixedTop;
-                ComputedTransform.Height = ParentHeight - FixedTop - FixedBottom;
-            }
-            else
-            {
-                ComputedTransform.Y = RelativeTop * ParentHeight;
-                ComputedTransform.Height = ParentHeight - (RelativeBottom * ParentHeight) - ComputedTransform.Y;
-
-                if (FixedHeight)
-                {
-                    var centerY = ComputedTransform.Y + (ComputedTransform.Height / 2f);
-                    ComputedTransform.Y = centerY - (Height / 2f);
-                    ComputedTransform.Height = Height;
-                }
-            }
-
-            if (ComputedTransform.Height < 0)
-            {
-                ComputedTransform.Height = 0;
-            }
-
-            // Add parent Y
-            ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : Browser.RenderRect.Y;
-        }
-
-        public float X
-        {
-            get => LocalTransform.X;
-            set
-            {
-                XChanged = true;
-                LocalTransform.X = value;
-                CalculateHorizontalAnchors();
-
-                OnResized?.Invoke(
-                    LocalTransform.X,
-                    LocalTransform.Y,
-                    LocalTransform.Width,
-                    LocalTransform.Height
-                );
-
-                //! queue render
-            }
-        }
-
-        public float Y
-        {
-            get => LocalTransform.Y;
-            set
-            {
-                YChanged = true;
-                LocalTransform.Y = value;
-                CalculateVerticalAnchors();
-
-                OnResized?.Invoke(
-                    LocalTransform.X,
-                    LocalTransform.Y,
-                    LocalTransform.Width,
-                    LocalTransform.Height
-                );
-
-                //! queue render
-            }
-        }
-
-        public float Width
-        {
-            get => LocalTransform.Width;
-            set
-            {
-                WidthChanged = true;
-                LocalTransform.Width = value;
-                CalculateHorizontalAnchors();
-
-                OnResized?.Invoke(
-                    LocalTransform.X,
-                    LocalTransform.Y,
-                    LocalTransform.Width,
-                    LocalTransform.Height
-                );
-
-                //! queue render
-            }
-        }
-
-        public float Height
-        {
-            get => LocalTransform.Height;
-            set
-            {
-                HeightChanged = true;
-                LocalTransform.Height = value;
-                CalculateVerticalAnchors();
-
-                OnResized?.Invoke(
-                    LocalTransform.X,
-                    LocalTransform.Y,
-                    LocalTransform.Width,
-                    LocalTransform.Height
-                );
-
-                //! queue render
-            }
-        }
-
-        internal void PreRender()
-        {
-            if (XChanged || WidthChanged) CalculateHorizontalAnchors();
-            if (YChanged || HeightChanged) CalculateVerticalAnchors();
-
-            if (Parent != null)
-            {
-                if (Parent.XChanged || Parent.WidthChanged)
-                    ComputeHorizontalTransform();
-
-                if (Parent.YChanged || Parent.HeightChanged)
-                    ComputeVerticalTransform();
-            }
-            else
-            {
-                ComputeHorizontalTransform();
-                ComputeVerticalTransform();
-            }
-        }
-
         internal void Render()
         {
-            PreRender();
+            // Validate transform
+            this.Transform.Evaluate();
 
             //if (CanRender)
             //{
@@ -504,44 +243,26 @@ namespace Kara.Core.Visual
                 child.Render();
             }
             //}
-
-            XChanged = false;
-            YChanged = false;
-            WidthChanged = false;
-            HeightChanged = false;
         }
+
+        SKPaint paint = new SKPaint();
 
         internal void DrawBase()
         {
             SKRect rect = new SKRect(
-                ComputedTransform.X,
-                ComputedTransform.Y,
-                ComputedTransform.X + ComputedTransform.Width,
-                ComputedTransform.Y + ComputedTransform.Height
+                Transform.Computed.X,
+                Transform.Computed.Y,
+                Transform.Computed.X + Transform.Computed.Width,
+                Transform.Computed.Y + Transform.Computed.Height
             );
 
             SKRoundRect roundRect = new SKRoundRect(rect, Roundness);
 
-            // if (Parent != null)
-            // {
-            //     SKRect parentRect = new SKRect(
-            //         Parent.ComputedTransform.X,
-            //         Parent.ComputedTransform.Y,
-            //         Parent.ComputedTransform.X + Parent.ComputedTransform.Width,
-            //         Parent.ComputedTransform.Y + Parent.ComputedTransform.Height
-            //     );
-
-            //     SKRoundRect parentRoundRect = new SKRoundRect(parentRect, Parent.Roundness);
-
-            //     Renderer.Canvas.ClipRoundRect(roundRect, SKClipOperation.Intersect, true);
-            // }
-
-            SKPaint paint = new SKPaint
-            {
-                Style = SKPaintStyle.Fill,
-                Color = BackColor,
-                IsAntialias = true,
-            };
+            paint.Style = SKPaintStyle.Fill;
+            paint.Color = BackColor;
+            paint.IsAntialias = true;
+            
+            Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
             if (BorderWidth > 0)
             {
@@ -563,10 +284,10 @@ namespace Kara.Core.Visual
 
         internal void DrawText()
         {
-            var cx = ComputedTransform.X;
-            var cy = ComputedTransform.Y;
-            var cw = ComputedTransform.Width;
-            var ch = ComputedTransform.Height;
+            var cx = Transform.Computed.X;
+            var cy = Transform.Computed.Y;
+            var cw = Transform.Computed.Width;
+            var ch = Transform.Computed.Height;
 
             var halfBorder = (BorderWidth / 2);
 
@@ -581,7 +302,7 @@ namespace Kara.Core.Visual
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
-                    x == TextAlign.BottomRight => (X + cw - TextWidth) - TextPadding,
+                    x == TextAlign.BottomRight => (Transform.X + cw - TextWidth) - TextPadding,
                 _ => cx + cw * 0.5f - TextWidth * 0.5f, // Center, other
             };
 

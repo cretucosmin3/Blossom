@@ -29,7 +29,7 @@ namespace Kara.Core
 
 		public List<VisualElement> CollidedComponents(VisualElement element)
 		{
-			var Collided = QuadTree.GetObjects(element.GlobalTransform);
+			var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
 			List<VisualElement> Result = new();
 			foreach (var Tracker in Collided)
 			{
@@ -64,7 +64,7 @@ namespace Kara.Core
 
 		public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
 		{
-			var Intersected = QuadTree.GetObjects(elm1.GlobalTransform);
+			var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
 
 			foreach (var Tracker in Intersected)
 				if (Tracker.Element == elm2) return true;

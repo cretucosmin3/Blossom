@@ -171,19 +171,19 @@ namespace Kara
             Renderer.Canvas.Clear(SKColors.White);
             // float pxRatio = fbSize.X / winSize.X;
 
-            float x = 250;
-            float y = 200;
+            // float x = 250;
+            // float y = 200;
 
-            SKPaint testPaint = new SKPaint()
-            {
-                Color = SKColors.Black,
-                TextSize = FontSize,
-                IsAntialias = true,
-                IsStroke = false,
-                TextAlign = SKTextAlign.Center,
-            };
+            // SKPaint testPaint = new SKPaint()
+            // {
+            //     Color = SKColors.Black,
+            //     TextSize = FontSize,
+            //     IsAntialias = true,
+            //     IsStroke = false,
+            //     TextAlign = SKTextAlign.Center,
+            // };
 
-            string text = "Hello world!";
+            // string text = "Hello world!";
 
             // var textMetrics = Fonts.Measure(testPaint, text);
 
@@ -197,37 +197,37 @@ namespace Kara
             // testPaint.Color = new SKColor(0, 255, 0, 25);
             // Renderer.Canvas.DrawRect(x, y - (textMetrics.Y / 2f), textMetrics.X, textMetrics.Y, testPaint);
 
-            // BrowserApp.Render();
+            BrowserApp.Render();
 
-            SKPaint crossPaint = new SKPaint()
-            {
-                Color = SKColors.Black,
-                IsAntialias = true,
-                IsStroke = true,
-                StrokeWidth = 2,
-                TextSize = 35,
-            };
+            // SKPaint crossPaint = new SKPaint()
+            // {
+            //     Color = SKColors.Black,
+            //     IsAntialias = true,
+            //     IsStroke = true,
+            //     StrokeWidth = 2,
+            //     TextSize = 35,
+            // };
 
-            var outer = new SKRoundRect(new (100, 100, 300, 550), 3, 3);
-            var inner = new SKRoundRect(new (150, 150, 500, 500), 30, 30);
+            // var outer = new SKRoundRect(new (100, 100, 300, 550), 3, 3);
+            // var inner = new SKRoundRect(new (150, 150, 500, 500), 30, 30);
 
-            Renderer.Canvas.DrawRoundRect(outer, crossPaint);
+            // Renderer.Canvas.DrawRoundRect(outer, crossPaint);
             // Renderer.Canvas.DrawRoundRect(inner, crossPaint);
 
-            using(new SKAutoCanvasRestore(Renderer.Canvas))
-            {
-                if(d.ElapsedMilliseconds <= 800){
-                    Renderer.Canvas.ClipRoundRect(outer, SKClipOperation.Intersect);
-                }
-                else if (d.ElapsedMilliseconds > 1600) {
-                    d.Restart();
-                }
+            // using(new SKAutoCanvasRestore(Renderer.Canvas))
+            // {
+            //     if(d.ElapsedMilliseconds <= 800){
+            //         Renderer.Canvas.ClipRoundRect(outer, SKClipOperation.Intersect);
+            //     }
+            //     else if (d.ElapsedMilliseconds > 1600) {
+            //         d.Restart();
+            //     }
 
-                Renderer.Canvas.DrawRoundRect(inner, crossPaint);
+            //     Renderer.Canvas.DrawRoundRect(inner, crossPaint);
 
-                crossPaint.IsStroke = false;
-                Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
-            }
+            //     crossPaint.IsStroke = false;
+            //     Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
+            // }
 
             if (true)
             {

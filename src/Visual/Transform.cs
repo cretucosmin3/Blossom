@@ -1,13 +1,21 @@
-using System.ComponentModel;
 using System;
-using System.Drawing;
+using Kara;
 using Kara.Core.Visual;
 
 public class Transform
 {
-    private Transform ParentRect = null;
+    private Transform _Parent = null;
+    public Transform Parent {
+        get => _Parent;
+        set
+        {
+            _Parent = value;
+            SetAnchorValues();
+        }
+    }
+
     private Rect ComputedTransform = new Rect(0, 0, 0, 0);
-    public Rect Global { get; set; } = new Rect(0, 0, 0, 0);
+    public Rect Computed { get => ComputedTransform; }
     public Rect Local { get; private set; } = new Rect(0, 0, 0, 0);
 
     /// <summary>
@@ -87,26 +95,6 @@ public class Transform
         }
     }
 
-    /// <summary>
-    /// Global x of the transform
-    /// </summary>
-    public float gX { get => Global.X; }
-
-    /// <summary>
-    /// Global y of the transform
-    /// </summary>
-    public float gY { get => Global.Y; }
-
-    /// <summary>
-    /// Global width of the transform
-    /// </summary>
-    public float gWidth { get => Global.Width; }
-
-    /// <summary>
-    /// Global height of the transform
-    /// </summary>
-    public float gHeight { get => Global.Height; }
-
     private Anchor _Anchor;
     public Anchor Anchor
     {
@@ -118,7 +106,9 @@ public class Transform
         }
     }
 
-    public Transform() { }
+    public Transform() {
+        
+    }
 
     public Transform(float x, float y, float width, float height)
     {
@@ -126,15 +116,9 @@ public class Transform
         SetAnchorValues();
     }
 
-    public void SyncWith(Transform transform)
+    public void DetachParent()
     {
-        ParentRect = transform;
-        SetAnchorValues();
-    }
-
-    public void Unsync()
-    {
-        ParentRect = null;
+        Parent = null;
         SetAnchorValues();
     }
 
@@ -153,7 +137,7 @@ public class Transform
 
     internal void SetAnchorValues()
     {
-        if (ParentRect != null)
+        if (Parent != null)
         {
             CalculateHorizontalAnchors();
             CalculateVerticalAnchors();
@@ -170,7 +154,10 @@ public class Transform
 
     private void CalculateHorizontalAnchors()
     {
-        var ParentWidth = ParentRect.Local.Width;
+        float ParentWidth = Browser.window.Size.X;
+        
+        if(Parent is not null)
+            ParentWidth = Parent.Width;
 
         FixedLeft = X;
         RelativeLeft = FixedLeft / ParentWidth;
@@ -181,7 +168,10 @@ public class Transform
 
     private void ComputeHorizontalTransform()
     {
-        var ParentWidth = ParentRect.ComputedTransform.Width;
+        float ParentWidth = Browser.window.Size.X;
+        
+        if(Parent is not null)
+            ParentWidth = Parent.ComputedTransform.Width;
 
         if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
         {
@@ -217,12 +207,15 @@ public class Transform
         }
 
         // Add parent X
-        ComputedTransform.X += ParentRect.ComputedTransform.X;
+        ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
     }
 
     private void CalculateVerticalAnchors()
     {
-        var ParentHeight = ParentRect.Height;
+        float ParentHeight = Browser.window.Size.Y;
+        
+        if(Parent is not null)
+            ParentHeight = Parent.Height;
 
         FixedTop = Y;
         RelativeTop = FixedTop / ParentHeight;
@@ -233,7 +226,10 @@ public class Transform
 
     private void ComputeVerticalTransform()
     {
-        var ParentHeight = ParentRect.ComputedTransform.Height;
+        float ParentHeight = Browser.window.Size.Y;
+        
+        if(Parent != null)
+            ParentHeight = Parent.Computed.Height;
 
         bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
         bool topAnchored = _Anchor.HasFlag(Anchor.Top);
@@ -272,30 +268,76 @@ public class Transform
         }
 
         // Add parent Y
-        ComputedTransform.Y += ParentRect.ComputedTransform.Y;
+        ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : 0;
+    }
+
+    internal void Evaluate()
+    {
+        if (XChanged || WidthChanged) CalculateHorizontalAnchors();
+        if (YChanged || HeightChanged) CalculateVerticalAnchors();
+
+        XChanged = false;
+        YChanged = false;
+
+        if (Parent != null)
+        {
+            if (Parent.XChanged || Parent.WidthChanged)
+                ComputeHorizontalTransform();
+
+            if (Parent.YChanged || Parent.HeightChanged)
+                ComputeVerticalTransform();
+        }
+        else
+        {
+            ComputeHorizontalTransform();
+            ComputeVerticalTransform();
+        }
+        
+        // CalculateHorizontalAnchors();
+        // CalculateVerticalAnchors();
+        // ComputeHorizontalTransform();
+        // ComputeVerticalTransform();
     }
 }
 
 public class Rect
 {
-    public float X { get; set; }
-    public float Y { get; set; }
-    public float Width { get; set; }
-    public float Height { get; set; }
+
+    private System.Drawing.RectangleF _Rect;
+
+    public float X
+    {
+        get => _Rect.X;
+        set =>_Rect.X = value;
+    }
+
+    public float Y
+    {
+        get => _Rect.Y;
+        set => _Rect.Y = value;
+    }
+
+    public float Width
+    {
+        get => _Rect.Width;
+        set => _Rect.Width = value;
+    }
+
+    public float Height
+    {
+        get => _Rect.Height;
+        set => _Rect.Height = value;
+    }
+
+    public System.Drawing.RectangleF RectF { get => _Rect; }
 
     public Rect()
     {
-        X = 0;
-        Y = 0;
-        Width = 0;
-        Height = 0;
+        new System.Drawing.RectangleF(0, 0, 0, 0);
     }
 
     public Rect(float x, float y, float width, float height)
     {
-        X = x;
-        Y = y;
-        Width = width;
-        Height = height;
+        _Rect = new System.Drawing.RectangleF(x, y, width, height);
     }
 }

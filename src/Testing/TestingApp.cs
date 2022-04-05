@@ -17,7 +17,6 @@ namespace Kara.Testing
             PrettyView = new PrettyUi();
 
             AddView(PrettyView);
-
             SetActiveView(PrettyView);
         }
     }
