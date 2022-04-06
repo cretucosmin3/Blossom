@@ -285,12 +285,17 @@ namespace Kara.Core.Visual
         {
             IsAntialias = true,
             Color = SKColors.White,
-            TextSize = 30f,
+            TextSize = 120f,
             TextAlign = SKTextAlign.Center,
+            IsStroke = true,
+            StrokeWidth = 1f,
+            StrokeJoin = SKStrokeJoin.Bevel,
         };
 
+        float advance = 0;
         internal void DrawText()
         {
+            advance += 0.010f;
             var cx = Transform.Computed.X;
             var cy = Transform.Computed.Y;
             var cw = Transform.Computed.Width;
@@ -312,7 +317,7 @@ namespace Kara.Core.Visual
                     x == TextAlign.TopRight ||
                     x == TextAlign.BottomRight
                     => (Transform.X + cw - TextBounds.Width) - TextPadding,
-                _ => cx + cw - (TextBounds.Width / 2), // Center, other
+                _ => cx + (cw / 2f), // Center, other
             };
 
             float textY = TextAlignment switch
@@ -337,18 +342,20 @@ namespace Kara.Core.Visual
             // Draw shadow
             // if (TextShadow != Vector2.Zero)
             // {
-            //     if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
+                // if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
 
-            //     var aria = TextBounds.Size.X + TextBounds.Size.Y;
-            //     Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
-            //     Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
+                // var aria = TextBounds.Size.X + TextBounds.Size.Y;
+                // Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
+                // Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
 
-            //     if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
+                // if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
             // }
-
+            
             var TextPoint = new SKPoint(textX, textY);
             // set paint
 
+            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 4, 10, 10, 2, 2, 5 }, advance);
+            
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }
 

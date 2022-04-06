@@ -30,26 +30,28 @@ namespace Kara.Testing
                 Console.WriteLine($"KeyDown: {x}");
                 if (x == 30)
                 {
-                    AnimatedParent.Transform.X -= 50;
+                    AnimatedParent.Transform.Width -= 25;
                 }
                 else if (x == 32)
                 {
-                    AnimatedParent.Transform.X += 50;
+                    AnimatedParent.Transform.Width += 25;
                 }
                 else if (x == 17)
                 {
-                    AnimatedParent.Transform.Y -= 50;
+                    AnimatedParent.Transform.Height -= 25;
                 }
                 else if (x == 31)
                 {
-                    AnimatedParent.Transform.Y += 50;
+                    AnimatedParent.Transform.Height += 25;
                 }
                 else if (x == 328)
                 {
                     CenterElement.Transform.FixedHeight = !CenterElement.Transform.FixedHeight;
+                    CenterElement.Transform.FixedWidth = !CenterElement.Transform.FixedWidth;
                 }
                 else if (x == 336)
                 {
+                    CenterElement.Transform.FixedHeight = !CenterElement.Transform.FixedHeight;
                     CenterElement.Transform.FixedWidth = !CenterElement.Transform.FixedWidth;
                 }
             };
@@ -61,35 +63,34 @@ namespace Kara.Testing
                 Roundness = 5f,
                 BorderColor = SKColors.Black,
                 BackColor = SKColors.Green,
+                Text = "WTF",
                 Transform = new Transform(100, 100, 200, 200)
                 {
                     Anchor = Anchor.Top | Anchor.Left
                 }
             };
 
-            CenterElement = new VisualElement()
-            {
-                Name = "CenterElement",
-                BorderWidth = 1f,
-                Roundness = 5f,
-                BorderColor = SKColors.White,
-                BackColor = SKColors.Purple,
-                Text = "Hello",
-                TextAlignment = TextAlign.Center,
-                TextPadding = 0f
-            };
+            // CenterElement = new VisualElement()
+            // {
+            //     Name = "CenterElement",
+            //     BorderWidth = 1f,
+            //     Roundness = 5f,
+            //     BorderColor = SKColors.White,
+            //     BackColor = SKColors.Purple,
+            //     Text = "PLM",
+            //     TextAlignment = TextAlign.Center,
+            //     TextPadding = 0f,
+            //     Transform = new Transform(20, 20, 120, 120)
+            //     {
+            //         FixedWidth = true,
+            //         FixedHeight = true,
+            //     }
+            // };
 
-            CenterElement.Transform = new Transform(50, 10, 100, 100)
-            {
-                Anchor = Anchor.Top | Anchor.Bottom,
-                FixedWidth = true,
-                FixedHeight = true
-            };
-
-            AnimatedParent.AddChild(CenterElement);
+            // AnimatedParent.AddChild(CenterElement);
 
             Elements.AddElement(ref AnimatedParent, this);
-            Elements.AddElement(ref CenterElement, this);
+            // Elements.AddElement(ref CenterElement, this);
 
             Loop += Update;
             watch.Start();
@@ -103,8 +104,8 @@ namespace Kara.Testing
 
             float newVal = moveTo ? smoothLerp(from, to, progress) : smoothLerp(to, from, progress);
 
-            byte alpha = (byte)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
-            CenterElement.BorderColor = SKColor.FromHsl(0, 1, 0, alpha);
+            // byte alpha = (byte)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
+            // CenterElement.BorderColor = SKColor.FromHsl(0, 1, 0, alpha);
 
             AnimatedParent.Transform.Width = newVal;
             AnimatedParent.Transform.Height = newVal;
