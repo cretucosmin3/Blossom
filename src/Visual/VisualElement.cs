@@ -1,9 +1,7 @@
 using System;
-using System.Drawing;
 using System.Numerics;
 using System.Collections.Generic;
 using Kara.Core.Delegates.Common;
-using Kara.Utils;
 using SkiaSharp;
 
 namespace Kara.Core.Visual
@@ -59,7 +57,7 @@ namespace Kara.Core.Visual
             {
                 if (Parent != null)
                     return Visible ? ParentView.Elements.ComponentsIntersect(this, Parent) : false;
-                
+
                 return Visible;
             }
         }
@@ -261,7 +259,7 @@ namespace Kara.Core.Visual
             paint.Style = SKPaintStyle.Fill;
             paint.Color = BackColor;
             paint.IsAntialias = true;
-            
+
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
             if (BorderWidth > 0)
@@ -275,12 +273,21 @@ namespace Kara.Core.Visual
         }
 
         private float TextWidth = 0;
-        private Silk.NET.Maths.Rectangle<float> TextBounds;
+        private SKRect TextBounds;
         private void CalculateTextBounds()
         {
-            // if (Browser.IsLoaded)
-            //     TextWidth = Renderer.Pipe.TextBounds(0, 0, Text, out TextBounds);
+            if (Browser.IsLoaded)
+                TextPaint.MeasureText(Text, ref TextBounds);
         }
+
+
+        SKPaint TextPaint = new SKPaint()
+        {
+            IsAntialias = true,
+            Color = SKColors.White,
+            TextSize = 30f,
+            TextAlign = SKTextAlign.Center,
+        };
 
         internal void DrawText()
         {
@@ -298,26 +305,30 @@ namespace Kara.Core.Visual
                 var x when
                     x == TextAlign.Left ||
                     x == TextAlign.TopLeft ||
-                    x == TextAlign.BottomLeft => cx + TextPadding,
+                    x == TextAlign.BottomLeft
+                    => cx + TextPadding + TextBounds.MidX,
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
-                    x == TextAlign.BottomRight => (Transform.X + cw - TextWidth) - TextPadding,
-                _ => cx + cw * 0.5f - TextWidth * 0.5f, // Center, other
+                    x == TextAlign.BottomRight
+                    => (Transform.X + cw - TextBounds.Width) - TextPadding,
+                _ => cx + cw - (TextBounds.Width / 2), // Center, other
             };
 
             float textY = TextAlignment switch
             {
-                var x when x == TextAlign.Top ||
+                var x when
+                    x == TextAlign.Top ||
                     x == TextAlign.TopLeft ||
-                    x == TextAlign.TopRight => cy + TextBounds.HalfSize.Y + TextPadding,
-                var x when x == TextAlign.Bottom ||
+                    x == TextAlign.TopRight
+                    => cy + TextBounds.Height + TextPadding,
+                var x when
+                    x == TextAlign.Bottom ||
                     x == TextAlign.BottomLeft ||
-                    x == TextAlign.BottomRight => cy + ch - TextBounds.HalfSize.Y - TextPadding,
-                _ => cy + ch * 0.5f, // Center, other
+                    x == TextAlign.BottomRight
+                    => (cy + ch) - (TextBounds.Height - TextPadding),
+                _ => (cy + ch * 0.5f) + TextBounds.Height / 2f, // Center, other
             };
-
-            textY += 2f;
 
             // Early return if there's no text or color
             if (string.IsNullOrEmpty(Text) || TextShadowColor.Alpha > 0)
@@ -335,14 +346,8 @@ namespace Kara.Core.Visual
             //     if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
             // }
 
-            var TextPoint = new SKPoint(textX, 15);
-            var TextPaint = new SKPaint()
-            {
-                IsAntialias = true,
-                Color = FontColor,
-                TextSize = FontSize,
-                TextAlign = SKTextAlign.Center,
-            };
+            var TextPoint = new SKPoint(textX, textY);
+            // set paint
 
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }

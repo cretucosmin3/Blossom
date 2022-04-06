@@ -11,7 +11,7 @@ namespace Kara.Testing
 {
     public class PrettyUi : View
     {
-        float time = 3000f; // seconds
+        float time = 3500f; // seconds
         float from = 150;
         float to = 400;
         bool moveTo = true;
@@ -61,7 +61,8 @@ namespace Kara.Testing
                 Roundness = 5f,
                 BorderColor = SKColors.Black,
                 BackColor = SKColors.Green,
-                Transform = new Transform(100, 100, 200, 200) {
+                Transform = new Transform(100, 100, 200, 200)
+                {
                     Anchor = Anchor.Top | Anchor.Left
                 }
             };
@@ -73,9 +74,13 @@ namespace Kara.Testing
                 Roundness = 5f,
                 BorderColor = SKColors.White,
                 BackColor = SKColors.Purple,
+                Text = "Hello",
+                TextAlignment = TextAlign.Center,
+                TextPadding = 0f
             };
 
-            CenterElement.Transform = new Transform(50, 10, 100, 100) {
+            CenterElement.Transform = new Transform(50, 10, 100, 100)
+            {
                 Anchor = Anchor.Top | Anchor.Bottom,
                 FixedWidth = true,
                 FixedHeight = true
@@ -98,7 +103,8 @@ namespace Kara.Testing
 
             float newVal = moveTo ? smoothLerp(from, to, progress) : smoothLerp(to, from, progress);
 
-            int alpha = (int)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
+            byte alpha = (byte)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
+            CenterElement.BorderColor = SKColor.FromHsl(0, 1, 0, alpha);
 
             AnimatedParent.Transform.Width = newVal;
             AnimatedParent.Transform.Height = newVal;
