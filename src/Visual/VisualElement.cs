@@ -32,6 +32,15 @@ namespace Kara.Core.Visual
 
         public Transform Transform { get; set; } = new Transform();
 
+        private ElementStyle _Style = new ElementStyle();
+        public ElementStyle Style { 
+            get => _Style;
+            set {
+                _Style = value;
+                _Style.ElementRef = this;
+            }
+        }
+
         public void AddChild(VisualElement child)
         {
             child.Parent = this;
@@ -67,50 +76,6 @@ namespace Kara.Core.Visual
             get => Parent != null ? Parent.Layer + 1 : 0;
         }
 
-        private float _BorderWidth = 0f;
-        public float BorderWidth
-        {
-            get => _BorderWidth;
-            set
-            {
-                _BorderWidth = value;
-                //! #render
-            }
-        }
-
-        private SKColor _BorderColor = new(0, 0, 0, 0);
-        public SKColor BorderColor
-        {
-            get => _BorderColor;
-            set
-            {
-                _BorderColor = value;
-                //! #render
-            }
-        }
-
-        private float _Roundness = 0f;
-        public float Roundness
-        {
-            get => _Roundness;
-            set
-            {
-                _Roundness = value;
-                //! #render
-            }
-        }
-
-        private SKColor _BackColor = new(0, 0, 0, 0);
-        public SKColor BackColor
-        {
-            get => _BackColor;
-            set
-            {
-                _BackColor = value;
-                //! #render
-            }
-        }
-
         private string _Text = "";
         public string Text
         {
@@ -119,107 +84,6 @@ namespace Kara.Core.Visual
             {
                 _Text = value;
                 CalculateTextBounds();
-                //! #render
-            }
-        }
-
-        private int _Text_Spacing = 2;
-        public int TextSpacing
-        {
-            get => _Text_Spacing;
-            set
-            {
-                _Text_Spacing = value;
-                //! #render
-            }
-        }
-
-        private float _FontSize = 18f;
-        public float FontSize
-        {
-            get => _FontSize;
-            set
-            {
-                _FontSize = value;
-                CalculateTextBounds();
-                //! #render
-            }
-        }
-
-        private SKColor _FontColor = new(0, 0, 0, 255);
-        public SKColor FontColor
-        {
-            get => _FontColor;
-            set
-            {
-                _FontColor = value;
-                //! #render
-            }
-        }
-
-        private string _FontName = "sans";
-        public string Font
-        {
-            get => _FontName;
-            set
-            {
-                _FontName = value;
-                //! #render
-                //! TextFont = Fonts.Get(value);
-            }
-        }
-
-        private Vector2 _TextShadow = Vector2.Zero;
-        public Vector2 TextShadow
-        {
-            get => _TextShadow;
-            set
-            {
-                _TextShadow = value;
-                //! #render
-            }
-        }
-
-        private SKColor _TextShadowColor = new(0, 0, 0, 0);
-        public SKColor TextShadowColor
-        {
-            get { return _TextShadowColor; }
-            set
-            {
-                _TextShadowColor = value;
-                //! #render
-            }
-        }
-
-        private float _TextShadowSpread = 0f;
-        public float TextShadowSpread
-        {
-            get => _TextShadowSpread;
-            set
-            {
-                _TextShadowSpread = value;
-                //! #render
-            }
-        }
-
-        private TextAlign _TextAlignment = TextAlign.Center;
-        public TextAlign TextAlignment
-        {
-            get => _TextAlignment;
-            set
-            {
-                _TextAlignment = value;
-                //! #render
-            }
-        }
-
-        private float _TextPadding = 0f;
-        public float TextPadding
-        {
-            get => _TextPadding;
-            set
-            {
-                _TextPadding = value;
                 //! #render
             }
         }
@@ -256,19 +120,26 @@ namespace Kara.Core.Visual
                 Transform.Computed.Y + Transform.Computed.Height
             );
 
-            SKRoundRect roundRect = new SKRoundRect(rect, Roundness);
+            SKRoundRect roundRect = new SKRoundRect();
+
+            roundRect.SetRectRadii(rect,new SKPoint[] {
+                new SKPoint(10,10),
+                new SKPoint(10,10),
+                new SKPoint(10,10),
+                new SKPoint(10,10),
+            });
 
             paint.Style = SKPaintStyle.Fill;
-            paint.Color = BackColor;
+            paint.Color = Style.BackColor;
             paint.IsAntialias = true;
 
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
-            if (BorderWidth > 0)
+            if (Style.BorderWidth > 0)
             {
                 paint.Style = SKPaintStyle.Stroke;
-                paint.StrokeWidth = BorderWidth;
-                paint.Color = BorderColor;
+                paint.StrokeWidth = Style.BorderWidth;
+                paint.Color = Style.BorderColor;
             }
 
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
@@ -288,7 +159,7 @@ namespace Kara.Core.Visual
             Color = SKColors.SkyBlue,
             TextSize = 75f,
             TextAlign = SKTextAlign.Left,
-            StrokeJoin = SKStrokeJoin.Round,
+            StrokeJoin = SKStrokeJoin.Miter,
             IsStroke = true,
             StrokeWidth = 1f,
             Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
@@ -298,54 +169,64 @@ namespace Kara.Core.Visual
         internal void DrawText()
         {
             // Early return if there's no text or color
-            if (string.IsNullOrEmpty(Text) || TextShadowColor.Alpha > 0)
+            if (string.IsNullOrEmpty(Text))
                 return;
 
-            advance += 0.010f;
+            advance += 0.030f;
             var cx = Transform.Computed.X;
             var cy = Transform.Computed.Y;
             var cw = Transform.Computed.Width;
             var ch = Transform.Computed.Height;
 
-            var halfBorder = (BorderWidth / 2);
+            var halfBorder = (Style.BorderWidth / 2);
 
             CalculateTextBounds();
 
-            float textX = TextAlignment switch
+            float textX = Style.Text.Alignment switch
             {
                 var x when
                     x == TextAlign.Left ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.BottomLeft
-                    => cx + TextPadding,
+                    => cx + Style.Text.Padding,
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
                     x == TextAlign.BottomRight
-                    => cx + cw - TextBounds.Width - TextPadding,
+                    => cx + cw - TextBounds.Width - Style.Text.Padding,
                 _ => cx + (cw / 2f) - TextBounds.MidX // Center, other
             };
 
-            float textY = TextAlignment switch
+            float textY = Style.Text.Alignment switch
             {
                 var x when
                     x == TextAlign.Top ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.TopRight
-                    => (cy + TextBounds.Height + TextPadding) - TextBounds.Bottom,
+                    => (cy + TextBounds.Height + Style.Text.Padding) - TextBounds.Bottom,
                 var x when
                     x == TextAlign.Bottom ||
                     x == TextAlign.BottomLeft ||
                     x == TextAlign.BottomRight
-                    => cy + ch - TextPadding,
+                    => cy + ch - Style.Text.Padding,
                 _ => cy + (ch / 2f) - TextBounds.MidY // Center, other
             };
 
-            var TextPoint = new SKPoint(textX, textY);
+            var TextPoint = new SKPoint(textX - 1, textY - 1);
 
-            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 10, 5, }, advance);
+            TextPaint.StrokeWidth = 0;
+            TextPaint.IsStroke = false;
+            TextPaint.Color = Style.Text.Color;
+            TextPaint.PathEffect = null;
+            TextPaint.TextSize = Style.Text.Size;
 
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
+
+            TextPaint.Color = SKColors.DimGray;
+            TextPaint.IsStroke = true;
+            TextPaint.StrokeWidth = 3;
+            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, advance);
+
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }
 

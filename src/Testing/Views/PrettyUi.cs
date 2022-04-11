@@ -26,16 +26,14 @@ namespace Kara.Testing
                 {
                     case '1':
                         var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
-                        var current = Array.IndexOf(values, TestElement.TextAlignment);
+                        var current = Array.IndexOf(values, TestElement.Style.Text.Alignment);
 
                         current++;
 
                         if (current == values.Length)
-                        {
                             current = 0;
-                        }
 
-                        TestElement.TextAlignment = values[current];
+                        TestElement.Style.Text.Alignment = values[current];
                         TestElement.Text = $"{values[current].ToString()}";
                         break;
                     default:
@@ -46,16 +44,25 @@ namespace Kara.Testing
             TestElement = new VisualElement()
             {
                 Name = "TestElement",
-                BorderWidth = 3f,
-                Roundness = 10f,
-                TextPadding = 20,
-                BorderColor = SKColors.DeepSkyBlue,
-                BackColor = SKColors.DimGray,
                 Text = "Testing",
                 Transform = new Transform(50, 50, 650, 400)
                 {
-                    Anchor = Anchor.Top | Anchor.Left
-                }
+                    Anchor = Anchor.Top | Anchor.Left,
+                    FixedHeight = true,
+                },
+                Style = new ElementStyle() {
+                    BorderWidth = 5f,
+                    Roundness = 10f,
+                    BorderColor = SKColors.DeepSkyBlue,
+                    BackColor = SKColors.DimGray,
+                    Text = new TextStyle()
+                    {
+                        Color = SKColors.White,
+                        Size = 75f,
+                        Padding = 25f,
+                        Alignment = TextAlign.Center
+                    }
+                },
             };
 
             Elements.AddElement(ref TestElement, this);
