@@ -123,10 +123,10 @@ namespace Kara.Core.Visual
             SKRoundRect roundRect = new SKRoundRect();
 
             roundRect.SetRectRadii(rect,new SKPoint[] {
-                new SKPoint(10,10),
-                new SKPoint(10,10),
-                new SKPoint(10,10),
-                new SKPoint(10,10),
+                new SKPoint(Style.Roundness,Style.Roundness),
+                new SKPoint(Style.Roundness,Style.Roundness),
+                new SKPoint(Style.Roundness,Style.Roundness),
+                new SKPoint(Style.Roundness,Style.Roundness),
             });
 
             paint.Style = SKPaintStyle.Fill;
@@ -162,7 +162,7 @@ namespace Kara.Core.Visual
             StrokeJoin = SKStrokeJoin.Miter,
             IsStroke = true,
             StrokeWidth = 1f,
-            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
+            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Normal)
         };
 
         float advance = 0;
@@ -212,7 +212,7 @@ namespace Kara.Core.Visual
                 _ => cy + (ch / 2f) - TextBounds.MidY // Center, other
             };
 
-            var TextPoint = new SKPoint(textX - 1, textY - 1);
+            var TextPoint = new SKPoint(textX, textY);
 
             TextPaint.StrokeWidth = 0;
             TextPaint.IsStroke = false;
@@ -222,12 +222,12 @@ namespace Kara.Core.Visual
 
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
 
-            TextPaint.Color = SKColors.DimGray;
-            TextPaint.IsStroke = true;
-            TextPaint.StrokeWidth = 3;
-            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, advance);
+            // TextPaint.Color = SKColors.DimGray;
+            // TextPaint.IsStroke = true;
+            // TextPaint.StrokeWidth = 3;
+            // TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, advance);
 
-            Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
+            // Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }
 
         internal void DrawTextShadow()

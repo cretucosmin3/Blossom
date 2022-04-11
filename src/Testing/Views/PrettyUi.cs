@@ -7,12 +7,13 @@ using System.Drawing;
 using System.Threading;
 using SkiaSharp;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Kara.Testing
 {
     public class PrettyUi : View
     {
-        VisualElement TestElement;
+        List<VisualElement> TestElements = new List<VisualElement>();
 
         public PrettyUi() : base("PrettyUi View") { }
 
@@ -26,46 +27,55 @@ namespace Kara.Testing
                 {
                     case '1':
                         var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
-                        var current = Array.IndexOf(values, TestElement.Style.Text.Alignment);
+                        var current = Array.IndexOf(values, TestElements[0].Style.Text.Alignment);
 
                         current++;
 
                         if (current == values.Length)
                             current = 0;
 
-                        TestElement.Style.Text.Alignment = values[current];
-                        TestElement.Text = $"{values[current].ToString()}";
+                        foreach (var e in TestElements)
+                        {
+                            e.Style.Text.Alignment = values[current];
+                            e.Text = $"{values[current].ToString()}";
+                        }
                         break;
                     default:
                         break;
                 }
             };
 
-            TestElement = new VisualElement()
+            for (int i = 0; i < 10; i++)
             {
-                Name = "TestElement",
-                Text = "Testing",
-                Transform = new(50, 50, 650, 400)
+                for (int x = 0; x < 10; x++)
                 {
-                    Anchor = Anchor.Top | Anchor.Left,
-                    FixedHeight = true,
-                },
-                Style = new() {
-                    BorderWidth = 5f,
-                    Roundness = 10f,
-                    BorderColor = SKColors.DeepSkyBlue,
-                    BackColor = SKColors.DimGray,
-                    Text = new()
+                    var newE = new VisualElement()
                     {
-                        Color = SKColors.White,
-                        Size = 75f,
-                        Padding = 25f,
-                        Alignment = TextAlign.Center
-                    }
-                },
-            };
+                        Name = "TestElement" + i + x,
+                        Text = ">",
+                        Transform = new(105 * i, 85 * x, 100, 80)
+                        {
+                            Anchor = Anchor.Top | Anchor.Left,
+                            FixedHeight = true,
+                        },
+                        Style = new() {
+                            BorderWidth = 1f,
+                            BorderColor = SKColors.DeepSkyBlue,
+                            BackColor = SKColors.DimGray,
+                            Text = new()
+                            {
+                                Color = SKColors.White,
+                                Size = 18,
+                                Padding = 3f,
+                                Alignment = TextAlign.Center
+                            }
+                        },
+                    };
 
-            Elements.AddElement(ref TestElement, this);
+                    TestElements.Add(newE);
+                    Elements.AddElement(ref newE, this);
+                }
+            }
 
             watch.Start();
         }
