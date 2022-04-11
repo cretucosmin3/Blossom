@@ -45,17 +45,17 @@ namespace Kara.Testing
             {
                 Name = "TestElement",
                 Text = "Testing",
-                Transform = new Transform(50, 50, 650, 400)
+                Transform = new(50, 50, 650, 400)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                     FixedHeight = true,
                 },
-                Style = new ElementStyle() {
+                Style = new() {
                     BorderWidth = 5f,
                     Roundness = 10f,
                     BorderColor = SKColors.DeepSkyBlue,
                     BackColor = SKColors.DimGray,
-                    Text = new TextStyle()
+                    Text = new()
                     {
                         Color = SKColors.White,
                         Size = 75f,
