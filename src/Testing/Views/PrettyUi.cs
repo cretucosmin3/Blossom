@@ -6,18 +6,13 @@ using Kara.Core.Visual;
 using System.Drawing;
 using System.Threading;
 using SkiaSharp;
+using System.Linq;
 
 namespace Kara.Testing
 {
     public class PrettyUi : View
     {
-        float time = 3500f; // seconds
-        float from = 150;
-        float to = 400;
-        bool moveTo = true;
-
-        VisualElement AnimatedParent;
-        VisualElement CenterElement;
+        VisualElement TestElement;
 
         public PrettyUi() : base("PrettyUi View") { }
 
@@ -25,97 +20,53 @@ namespace Kara.Testing
         {
             Browser.ShowFps();
 
-            this.Events.OnKeyDown += (int x) =>
+            this.Events.OnKeyType += (char c) =>
             {
-                Console.WriteLine($"KeyDown: {x}");
-                if (x == 30)
+                switch (c)
                 {
-                    AnimatedParent.Transform.Width -= 25;
-                }
-                else if (x == 32)
-                {
-                    AnimatedParent.Transform.Width += 25;
-                }
-                else if (x == 17)
-                {
-                    AnimatedParent.Transform.Height -= 25;
-                }
-                else if (x == 31)
-                {
-                    AnimatedParent.Transform.Height += 25;
-                }
-                else if (x == 328)
-                {
-                    CenterElement.Transform.FixedHeight = !CenterElement.Transform.FixedHeight;
-                    CenterElement.Transform.FixedWidth = !CenterElement.Transform.FixedWidth;
-                }
-                else if (x == 336)
-                {
-                    CenterElement.Transform.FixedHeight = !CenterElement.Transform.FixedHeight;
-                    CenterElement.Transform.FixedWidth = !CenterElement.Transform.FixedWidth;
+                    case '1':
+                        var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
+                        var current = Array.IndexOf(values, TestElement.TextAlignment);
+
+                        current++;
+
+                        if (current == values.Length)
+                        {
+                            current = 0;
+                        }
+
+                        TestElement.TextAlignment = values[current];
+                        TestElement.Text = $"{values[current].ToString()}";
+                        break;
+                    default:
+                        break;
                 }
             };
 
-            AnimatedParent = new VisualElement()
+            TestElement = new VisualElement()
             {
-                Name = "AnimatedParent",
-                BorderWidth = 1f,
-                Roundness = 5f,
-                BorderColor = SKColors.Black,
-                BackColor = SKColors.Green,
-                Text = "WTF",
-                Transform = new Transform(100, 100, 200, 200)
+                Name = "TestElement",
+                BorderWidth = 3f,
+                Roundness = 10f,
+                TextPadding = 20,
+                BorderColor = SKColors.DeepSkyBlue,
+                BackColor = SKColors.DimGray,
+                Text = "Testing",
+                Transform = new Transform(50, 50, 650, 400)
                 {
                     Anchor = Anchor.Top | Anchor.Left
                 }
             };
 
-            // CenterElement = new VisualElement()
-            // {
-            //     Name = "CenterElement",
-            //     BorderWidth = 1f,
-            //     Roundness = 5f,
-            //     BorderColor = SKColors.White,
-            //     BackColor = SKColors.Purple,
-            //     Text = "PLM",
-            //     TextAlignment = TextAlign.Center,
-            //     TextPadding = 0f,
-            //     Transform = new Transform(20, 20, 120, 120)
-            //     {
-            //         FixedWidth = true,
-            //         FixedHeight = true,
-            //     }
-            // };
+            Elements.AddElement(ref TestElement, this);
 
-            // AnimatedParent.AddChild(CenterElement);
-
-            Elements.AddElement(ref AnimatedParent, this);
-            // Elements.AddElement(ref CenterElement, this);
-
-            Loop += Update;
             watch.Start();
         }
 
         private Stopwatch watch = new Stopwatch();
         private void Update()
         {
-            float progress = (float)watch.ElapsedMilliseconds / (time / 2f);
-            if (progress > 1f) progress = 1f;
 
-            float newVal = moveTo ? smoothLerp(from, to, progress) : smoothLerp(to, from, progress);
-
-            // byte alpha = (byte)(moveTo ? smoothLerp(0, 255, progress) : smoothLerp(255, 0, progress));
-            // CenterElement.BorderColor = SKColor.FromHsl(0, 1, 0, alpha);
-
-            AnimatedParent.Transform.Width = newVal;
-            AnimatedParent.Transform.Height = newVal;
-
-            if (watch.ElapsedMilliseconds >= (time / 2f))
-            {
-                moveTo = !moveTo;
-                watch.Reset();
-                watch.Start();
-            }
         }
 
         float smoothLerp(float from, float to, float progress)

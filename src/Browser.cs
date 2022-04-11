@@ -162,6 +162,15 @@ namespace Kara
         private static float fps = 0;
         private static Stopwatch timer = new Stopwatch();
         private static Stopwatch d = new Stopwatch();
+        private static SKPaint fpsPaint = new SKPaint()
+        {
+            Color = SKColors.Black,
+            TextSize = 20,
+            IsAntialias = true,
+            IsStroke = false,
+            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
+        };
+
         private static void Render(double time)
         {
             Vector2D<float> winSize = window.Size.As<float>();
@@ -231,14 +240,6 @@ namespace Kara
 
             if (true)
             {
-                SKPaint fpsPaint = new SKPaint()
-                {
-                    Color = SKColors.Black,
-                    TextSize = 20,
-                    IsAntialias = true,
-                    IsStroke = false,
-                };
-
                 Renderer.Canvas.DrawText($"FPS {fps:0}", 15, 15, fpsPaint);
 
                 frames++;

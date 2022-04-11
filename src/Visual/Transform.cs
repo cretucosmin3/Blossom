@@ -5,7 +5,8 @@ using Kara.Core.Visual;
 public class Transform
 {
     private Transform _Parent = null;
-    public Transform Parent {
+    public Transform Parent
+    {
         get => _Parent;
         set
         {
@@ -106,8 +107,9 @@ public class Transform
         }
     }
 
-    public Transform() {
-        
+    public Transform()
+    {
+
     }
 
     public Transform(float x, float y, float width, float height)
@@ -119,6 +121,7 @@ public class Transform
     public void DetachParent()
     {
         Parent = null;
+        Console.WriteLine(Local.X);
         SetAnchorValues();
     }
 
@@ -147,16 +150,16 @@ public class Transform
         }
     }
 
-    private bool XChanged = false;
-    private bool YChanged = false;
+    internal bool XChanged = true;
+    internal bool YChanged = true;
     private bool WidthChanged = false;
     private bool HeightChanged = false;
 
     private void CalculateHorizontalAnchors()
     {
         float ParentWidth = Browser.window.Size.X;
-        
-        if(Parent is not null)
+
+        if (Parent is not null)
             ParentWidth = Parent.Width;
 
         FixedLeft = X;
@@ -169,8 +172,8 @@ public class Transform
     private void ComputeHorizontalTransform()
     {
         float ParentWidth = Browser.window.Size.X;
-        
-        if(Parent is not null)
+
+        if (Parent is not null)
             ParentWidth = Parent.ComputedTransform.Width;
 
         if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
@@ -213,8 +216,8 @@ public class Transform
     private void CalculateVerticalAnchors()
     {
         float ParentHeight = Browser.window.Size.Y;
-        
-        if(Parent is not null)
+
+        if (Parent is not null)
             ParentHeight = Parent.Height;
 
         FixedTop = Y;
@@ -227,8 +230,8 @@ public class Transform
     private void ComputeVerticalTransform()
     {
         float ParentHeight = Browser.window.Size.Y;
-        
-        if(Parent != null)
+
+        if (Parent != null)
             ParentHeight = Parent.Computed.Height;
 
         bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
@@ -276,9 +279,6 @@ public class Transform
         if (XChanged || WidthChanged) CalculateHorizontalAnchors();
         if (YChanged || HeightChanged) CalculateVerticalAnchors();
 
-        XChanged = false;
-        YChanged = false;
-
         if (Parent != null)
         {
             if (Parent.XChanged || Parent.WidthChanged)
@@ -292,11 +292,17 @@ public class Transform
             ComputeHorizontalTransform();
             ComputeVerticalTransform();
         }
-        
+
         // CalculateHorizontalAnchors();
         // CalculateVerticalAnchors();
         // ComputeHorizontalTransform();
         // ComputeVerticalTransform();
+    }
+
+    internal void ClearRenderData()
+    {
+        XChanged = false;
+        YChanged = false;
     }
 }
 
@@ -308,7 +314,7 @@ public class Rect
     public float X
     {
         get => _Rect.X;
-        set =>_Rect.X = value;
+        set => _Rect.X = value;
     }
 
     public float Y

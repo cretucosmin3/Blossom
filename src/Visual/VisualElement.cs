@@ -240,6 +240,8 @@ namespace Kara.Core.Visual
             {
                 child.Render();
             }
+
+            Transform.ClearRenderData();
             //}
         }
 
@@ -280,21 +282,25 @@ namespace Kara.Core.Visual
                 TextPaint.MeasureText(Text, ref TextBounds);
         }
 
-
         SKPaint TextPaint = new SKPaint()
         {
             IsAntialias = true,
-            Color = SKColors.White,
-            TextSize = 120f,
-            TextAlign = SKTextAlign.Center,
+            Color = SKColors.SkyBlue,
+            TextSize = 75f,
+            TextAlign = SKTextAlign.Left,
+            StrokeJoin = SKStrokeJoin.Round,
             IsStroke = true,
             StrokeWidth = 1f,
-            StrokeJoin = SKStrokeJoin.Bevel,
+            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
         };
 
         float advance = 0;
         internal void DrawText()
         {
+            // Early return if there's no text or color
+            if (string.IsNullOrEmpty(Text) || TextShadowColor.Alpha > 0)
+                return;
+
             advance += 0.010f;
             var cx = Transform.Computed.X;
             var cy = Transform.Computed.Y;
@@ -311,13 +317,13 @@ namespace Kara.Core.Visual
                     x == TextAlign.Left ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.BottomLeft
-                    => cx + TextPadding + TextBounds.MidX,
+                    => cx + TextPadding,
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
                     x == TextAlign.BottomRight
-                    => (Transform.X + cw - TextBounds.Width) - TextPadding,
-                _ => cx + (cw / 2f), // Center, other
+                    => cx + cw - TextBounds.Width - TextPadding,
+                _ => cx + (cw / 2f) - TextBounds.MidX // Center, other
             };
 
             float textY = TextAlignment switch
@@ -326,36 +332,20 @@ namespace Kara.Core.Visual
                     x == TextAlign.Top ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.TopRight
-                    => cy + TextBounds.Height + TextPadding,
+                    => (cy + TextBounds.Height + TextPadding) - TextBounds.Bottom,
                 var x when
                     x == TextAlign.Bottom ||
                     x == TextAlign.BottomLeft ||
                     x == TextAlign.BottomRight
-                    => (cy + ch) - (TextBounds.Height - TextPadding),
-                _ => (cy + ch * 0.5f) + TextBounds.Height / 2f, // Center, other
+                    => cy + ch - TextPadding,
+                _ => cy + (ch / 2f) - TextBounds.MidY // Center, other
             };
 
-            // Early return if there's no text or color
-            if (string.IsNullOrEmpty(Text) || TextShadowColor.Alpha > 0)
-                return;
-
-            // Draw shadow
-            // if (TextShadow != Vector2.Zero)
-            // {
-                // if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(TextShadowSpread);
-
-                // var aria = TextBounds.Size.X + TextBounds.Size.Y;
-                // Renderer.Pipe.FillColour(Conversion.fromColor(TextShadowColor));
-                // Renderer.Pipe.Text(textX + aria * (TextShadow.X / 100f), textY + (aria * (TextShadow.Y / 100f)), Text);
-
-                // if (TextShadowSpread > 0) Renderer.Pipe.FontBlur(0);
-            // }
-            
             var TextPoint = new SKPoint(textX, textY);
-            // set paint
 
-            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 4, 10, 10, 2, 2, 5 }, advance);
-            
+            TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 10, 5, }, advance);
+
+            Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
         }
 
