@@ -37,7 +37,6 @@ namespace Kara.Testing
                         foreach (var e in TestElements)
                         {
                             e.Style.Text.Alignment = values[current];
-                            e.Text = $"{values[current].ToString()}";
                         }
                         break;
                     default:
@@ -45,29 +44,37 @@ namespace Kara.Testing
                 }
             };
 
-            for (int i = 0; i < 5; i++)
+            var count = 12;
+            for (int i = 1; i <= count * 2; i++)
             {
-                for (int x = 0; x < 5; x++)
+                for (int x = 1; x <= count; x++)
                 {
+                    var z = (byte)(255 - (255 / count) * (x - 1));
+                    SKColor clr = new SKColor(z, z, z);
+
+                    var y = (byte)(255 - z);
+                    SKColor textClr = new SKColor(y, y, y);
+
                     var newE = new VisualElement()
                     {
-                        Name = "TestElement" + i + x,
-                        Text = ">",
-                        Transform = new(165 * i, 125 * x, 150, 100)
+                        Name = i + "TestElement" + x,
+                        Text = "●",
+                        Transform = new(60 * i, 60 * x, 55, 55)
                         {
                             Anchor = Anchor.Top | Anchor.Left,
                             FixedHeight = true,
                         },
                         Style = new()
                         {
-                            // BorderWidth = 1f,
-                            // BorderColor = SKColors.DeepSkyBlue,
-                            // BackColor = SKColors.DimGray,
+                            BorderWidth = 2f,
+                            Roundness = 2f,
+                            BorderColor = SKColors.Black,
+                            BackColor = clr,
                             Text = new()
                             {
-                                Color = SKColors.Black,
-                                Size = 22,
-                                Padding = 3f,
+                                Color = textClr,
+                                Size = 15,
+                                Padding = 5f,
                                 Alignment = TextAlign.Center
                             }
                         },
