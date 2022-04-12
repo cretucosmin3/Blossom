@@ -164,7 +164,7 @@ namespace Kara
         private static Stopwatch d = new Stopwatch();
         private static SKPaint fpsPaint = new SKPaint()
         {
-            Color = SKColors.Black,
+            Color = SKColors.Red,
             TextSize = 20,
             IsAntialias = true,
             IsStroke = false,
@@ -238,9 +238,9 @@ namespace Kara
             //     Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
             // }
 
-            if (true)
+            if (FpsVisible)
             {
-                Renderer.Canvas.DrawText($"FPS {fps:0}", 15, 15, fpsPaint);
+                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
 
                 frames++;
                 fps_avg += time;

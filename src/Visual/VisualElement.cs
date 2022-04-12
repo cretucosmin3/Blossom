@@ -33,9 +33,11 @@ namespace Kara.Core.Visual
         public Transform Transform { get; set; } = new Transform();
 
         private ElementStyle _Style = new ElementStyle();
-        public ElementStyle Style { 
+        public ElementStyle Style
+        {
             get => _Style;
-            set {
+            set
+            {
                 _Style = value;
                 _Style.ElementRef = this;
             }
@@ -106,6 +108,7 @@ namespace Kara.Core.Visual
             }
 
             Transform.ClearRenderData();
+            Style.Text.HasChanged = false;
             //}
         }
 
@@ -122,7 +125,7 @@ namespace Kara.Core.Visual
 
             SKRoundRect roundRect = new SKRoundRect();
 
-            roundRect.SetRectRadii(rect,new SKPoint[] {
+            roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Roundness,Style.Roundness),
                 new SKPoint(Style.Roundness,Style.Roundness),
                 new SKPoint(Style.Roundness,Style.Roundness),
@@ -145,7 +148,6 @@ namespace Kara.Core.Visual
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
         }
 
-        private float TextWidth = 0;
         private SKRect TextBounds;
         private void CalculateTextBounds()
         {
@@ -156,23 +158,20 @@ namespace Kara.Core.Visual
         SKPaint TextPaint = new SKPaint()
         {
             IsAntialias = true,
-            Color = SKColors.SkyBlue,
-            TextSize = 75f,
             TextAlign = SKTextAlign.Left,
-            StrokeJoin = SKStrokeJoin.Miter,
-            IsStroke = true,
-            StrokeWidth = 1f,
-            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Normal)
+            Typeface = SKTypeface.FromFamilyName("aakar", SKTypefaceStyle.Normal)
         };
 
-        float advance = 0;
-        internal void DrawText()
-        {
-            // Early return if there's no text or color
-            if (string.IsNullOrEmpty(Text))
-                return;
+        SKPoint TextPoint;
 
-            advance += 0.030f;
+        private float textX = 0;
+        private float textY = 0;
+
+        internal void CalculateText()
+        {
+            TextPaint.TextSize = Style.Text.Size;
+            TextPaint.Color = Style.Text.Color;
+
             var cx = Transform.Computed.X;
             var cy = Transform.Computed.Y;
             var cw = Transform.Computed.Width;
@@ -182,7 +181,7 @@ namespace Kara.Core.Visual
 
             CalculateTextBounds();
 
-            float textX = Style.Text.Alignment switch
+            textX = Style.Text.Alignment switch
             {
                 var x when
                     x == TextAlign.Left ||
@@ -197,7 +196,7 @@ namespace Kara.Core.Visual
                 _ => cx + (cw / 2f) - TextBounds.MidX // Center, other
             };
 
-            float textY = Style.Text.Alignment switch
+            textY = Style.Text.Alignment switch
             {
                 var x when
                     x == TextAlign.Top ||
@@ -212,13 +211,17 @@ namespace Kara.Core.Visual
                 _ => cy + (ch / 2f) - TextBounds.MidY // Center, other
             };
 
-            var TextPoint = new SKPoint(textX, textY);
+            TextPoint = new SKPoint(textX, textY);
+        }
 
-            TextPaint.StrokeWidth = 0;
-            TextPaint.IsStroke = false;
-            TextPaint.Color = Style.Text.Color;
-            TextPaint.PathEffect = null;
-            TextPaint.TextSize = Style.Text.Size;
+        internal void DrawText()
+        {
+            // Early return if there's no text or color
+            if (string.IsNullOrEmpty(Text))
+                return;
+
+            if (Style.Text.HasChanged)
+                CalculateText();
 
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
 

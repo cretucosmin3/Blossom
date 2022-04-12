@@ -45,27 +45,28 @@ namespace Kara.Testing
                 }
             };
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 5; i++)
             {
-                for (int x = 0; x < 10; x++)
+                for (int x = 0; x < 5; x++)
                 {
                     var newE = new VisualElement()
                     {
                         Name = "TestElement" + i + x,
                         Text = ">",
-                        Transform = new(105 * i, 85 * x, 100, 80)
+                        Transform = new(165 * i, 125 * x, 150, 100)
                         {
                             Anchor = Anchor.Top | Anchor.Left,
                             FixedHeight = true,
                         },
-                        Style = new() {
-                            BorderWidth = 1f,
-                            BorderColor = SKColors.DeepSkyBlue,
-                            BackColor = SKColors.DimGray,
+                        Style = new()
+                        {
+                            // BorderWidth = 1f,
+                            // BorderColor = SKColors.DeepSkyBlue,
+                            // BackColor = SKColors.DimGray,
                             Text = new()
                             {
-                                Color = SKColors.White,
-                                Size = 18,
+                                Color = SKColors.Black,
+                                Size = 22,
                                 Padding = 3f,
                                 Alignment = TextAlign.Center
                             }
@@ -76,11 +77,8 @@ namespace Kara.Testing
                     Elements.AddElement(ref newE, this);
                 }
             }
-
-            watch.Start();
         }
 
-        private Stopwatch watch = new Stopwatch();
         private void Update()
         {
 

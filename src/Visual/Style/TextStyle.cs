@@ -14,6 +14,7 @@ public class TextStyle
     private TextAlign _Alignment = TextAlign.Center;
     private SkiaSharp.SKColor _Color;
     public Shadow Shadow = null;
+    public bool HasChanged = true;
 
     public int Spacing
     {
@@ -21,6 +22,7 @@ public class TextStyle
         set
         {
             _Spacing = value;
+            HasChanged = true;
             //! #render
         }
     }
@@ -31,6 +33,7 @@ public class TextStyle
         set
         {
             _Size = value;
+            HasChanged = true;
             //! #render
         }
     }
@@ -41,6 +44,7 @@ public class TextStyle
         set
         {
             _Padding = value;
+            HasChanged = true;
             //! #render
         }
     }
@@ -51,6 +55,7 @@ public class TextStyle
         set
         {
             _Alignment = value;
+            HasChanged = true;
             //! #render
         }
     }
@@ -61,6 +66,7 @@ public class TextStyle
         set
         {
             _Color = value;
+            HasChanged = true;
             //! #render
         }
     }
