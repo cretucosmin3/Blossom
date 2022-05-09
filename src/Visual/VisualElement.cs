@@ -20,17 +20,32 @@ namespace Kara.Core.Visual
             get => _Parent;
             set
             {
+                if(_Parent != null)
+                    _Parent.TransformChanged -= ParentTransformChanged;
+
                 _Parent = value;
                 Transform.Parent = value.Transform;
+                value.TransformChanged += ParentTransformChanged;
             }
         }
 
         public List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
         internal event ForDispose OnDisposing;
-        public event ForV4 OnResized;
+        internal event Action<Transform> TransformChanged;
 
-        public Transform Transform { get; set; } = new Transform();
+        private Transform _Transform = new Transform();
+        public Transform Transform { 
+            get => _Transform;
+            set {
+                // Detach old
+                _Transform.OnChanged -= ChangedTransform;
+
+                // Attach new
+                _Transform = value;
+                _Transform.OnChanged += ChangedTransform;
+            }
+        }
 
         private ElementStyle _Style = new ElementStyle();
         public ElementStyle Style
@@ -92,11 +107,8 @@ namespace Kara.Core.Visual
 
         internal void Render()
         {
-            // Validate transform
             this.Transform.Evaluate();
 
-            //if (CanRender)
-            //{
             DrawBase();
 
             if (!String.IsNullOrEmpty(Text))
@@ -107,9 +119,8 @@ namespace Kara.Core.Visual
                 child.Render();
             }
 
-            Transform.ClearRenderData();
-            Style.Text.HasChanged = false;
-            //}
+            Transform?.ClearRenderData();
+            Style?.Reset();
         }
 
         SKPaint paint = new SKPaint();
@@ -159,7 +170,7 @@ namespace Kara.Core.Visual
         {
             IsAntialias = true,
             TextAlign = SKTextAlign.Left,
-            Typeface = SKTypeface.FromFamilyName("aakar", SKTypefaceStyle.Normal)
+            Typeface = SKTypeface.CreateDefault()
         };
 
         SKPoint TextPoint;
@@ -169,6 +180,9 @@ namespace Kara.Core.Visual
 
         internal void CalculateText()
         {
+            if(Style.Text == null)
+                return;
+
             TextPaint.TextSize = Style.Text.Size;
             TextPaint.Color = Style.Text.Color;
 
@@ -176,8 +190,6 @@ namespace Kara.Core.Visual
             var cy = Transform.Computed.Y;
             var cw = Transform.Computed.Width;
             var ch = Transform.Computed.Height;
-
-            var halfBorder = (Style.BorderWidth / 2);
 
             CalculateTextBounds();
 
@@ -187,13 +199,13 @@ namespace Kara.Core.Visual
                     x == TextAlign.Left ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.BottomLeft
-                    => cx + Style.Text.Padding,
+                    => cx + (Style.Text.Padding + Style.BorderWidth),
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
                     x == TextAlign.BottomRight
                     => cx + cw - TextBounds.Width - Style.Text.Padding,
-                _ => cx + (cw / 2f) - TextBounds.MidX // Center, other
+                _ => cx + (cw / 2f) - TextBounds.MidX // Center
             };
 
             textY = Style.Text.Alignment switch
@@ -208,10 +220,23 @@ namespace Kara.Core.Visual
                     x == TextAlign.BottomLeft ||
                     x == TextAlign.BottomRight
                     => cy + ch - Style.Text.Padding,
-                _ => cy + (ch / 2f) - TextBounds.MidY // Center, other
+                _ => cy + (ch / 2f) - TextBounds.MidY // Center
             };
 
             TextPoint = new SKPoint(textX, textY);
+        }
+
+        private void ChangedTransform(Transform x)
+        {
+            this.Transform.Evaluate();
+            CalculateText();
+            TransformChanged.Invoke(x);
+        }
+
+        private void ParentTransformChanged(Transform _)
+        {
+            this.Transform.Evaluate();
+            CalculateText();
         }
 
         internal void DrawText()

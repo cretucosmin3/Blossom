@@ -14,6 +14,12 @@ public class ElementStyle
     private float _Roundness = 0f;
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
 
+    internal void Reset()
+    {
+        if(Text != null)
+            Text.HasChanged = false;
+    }
+
     public float BorderWidth
     {
         get => _BorderWidth;

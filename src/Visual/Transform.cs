@@ -22,7 +22,7 @@ public class Transform
     /// <summary>
     /// Called when the transform is updated. (x, y, w, h)
     /// </summary>
-    public Action<float, float, float, float> OnResized = null;
+    public Action<Transform> OnChanged;
 
     public float X
     {
@@ -33,12 +33,7 @@ public class Transform
             Local.X = value;
             CalculateHorizontalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -51,12 +46,7 @@ public class Transform
             Local.Y = value;
             CalculateVerticalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -69,12 +59,7 @@ public class Transform
             Local.Width = value;
             CalculateHorizontalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -87,12 +72,7 @@ public class Transform
             Local.Height = value;
             CalculateVerticalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -144,16 +124,16 @@ public class Transform
         {
             CalculateHorizontalAnchors();
             CalculateVerticalAnchors();
-
-            ComputeHorizontalTransform();
-            ComputeVerticalTransform();
         }
+
+        ComputeHorizontalTransform();
+        ComputeVerticalTransform();
     }
 
     internal bool XChanged = true;
     internal bool YChanged = true;
-    private bool WidthChanged = false;
-    private bool HeightChanged = false;
+    private bool WidthChanged = true;
+    private bool HeightChanged = true;
 
     private void CalculateHorizontalAnchors()
     {
@@ -275,7 +255,7 @@ public class Transform
     }
 
     internal void Evaluate()
-    {
+    {   
         if (XChanged || WidthChanged) CalculateHorizontalAnchors();
         if (YChanged || HeightChanged) CalculateVerticalAnchors();
 
@@ -292,17 +272,14 @@ public class Transform
             ComputeHorizontalTransform();
             ComputeVerticalTransform();
         }
-
-        // CalculateHorizontalAnchors();
-        // CalculateVerticalAnchors();
-        // ComputeHorizontalTransform();
-        // ComputeVerticalTransform();
     }
 
     internal void ClearRenderData()
     {
         XChanged = false;
         YChanged = false;
+        WidthChanged = false;
+        HeightChanged = false;
     }
 }
 

@@ -13,7 +13,8 @@ namespace Kara.Testing
 {
     public class PrettyUi : View
     {
-        List<VisualElement> TestElements = new List<VisualElement>();
+        VisualElement Parent;
+        VisualElement TestElement;
 
         public PrettyUi() : base("PrettyUi View") { }
 
@@ -21,74 +22,160 @@ namespace Kara.Testing
         {
             Browser.ShowFps();
 
+            this.Loop += Update;
+
             this.Events.OnKeyType += (char c) =>
             {
+                bool hasFlag = false;
                 switch (c)
                 {
                     case '1':
                         var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
-                        var current = Array.IndexOf(values, TestElements[0].Style.Text.Alignment);
+                        var current = Array.IndexOf(values, TestElement.Style.Text.Alignment);
 
                         current++;
 
                         if (current == values.Length)
                             current = 0;
 
-                        foreach (var e in TestElements)
-                        {
-                            e.Style.Text.Alignment = values[current];
-                        }
+                        TestElement.Style.Text.Alignment = values[current];
+                        TestElement.Text = values[current].ToString();
+                        break;
+                    case 'a':
+                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Left);
+                        
+                        if (hasFlag)
+                            TestElement.Transform.Anchor &= ~Anchor.Left;
+                        else
+                            TestElement.Transform.Anchor |= Anchor.Left;
+                            
+                        break;
+                    case 'd':
+                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Right);
+
+                        if (hasFlag)
+                            TestElement.Transform.Anchor &= ~Anchor.Right;
+                        else
+                            TestElement.Transform.Anchor |= Anchor.Right;
+
+                        break;
+                    case 'w':
+                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Top);
+
+                        if (hasFlag)
+                            TestElement.Transform.Anchor &= ~Anchor.Top;
+                        else
+                            TestElement.Transform.Anchor |= Anchor.Top;
+
+                        break;
+                    case 's':
+                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Bottom);
+
+                        if (hasFlag)
+                            TestElement.Transform.Anchor &= ~Anchor.Bottom;
+                        else
+                            TestElement.Transform.Anchor |= Anchor.Bottom;
+
                         break;
                     default:
                         break;
                 }
             };
 
-            var count = 12;
-            for (int i = 1; i <= count * 2; i++)
+            this.Events.OnKeyUp += key =>
             {
-                for (int x = 1; x <= count; x++)
-                {
-                    var z = (byte)(255 - (255 / count) * (x - 1));
-                    SKColor clr = new SKColor(z, z, z);
+                // 333 -> right
+                // 331 -> left
+                // 326 -> down
+                // 328 -> up
 
-                    var y = (byte)(255 - z);
-                    SKColor textClr = new SKColor(y, y, y);
+                Console.WriteLine(key);
 
-                    var newE = new VisualElement()
-                    {
-                        Name = i + "TestElement" + x,
-                        Text = "●",
-                        Transform = new(60 * i, 60 * x, 55, 55)
-                        {
-                            Anchor = Anchor.Top | Anchor.Left,
-                            FixedHeight = true,
-                        },
-                        Style = new()
-                        {
-                            BorderWidth = 2f,
-                            Roundness = 2f,
-                            BorderColor = SKColors.Black,
-                            BackColor = clr,
-                            Text = new()
-                            {
-                                Color = textClr,
-                                Size = 15,
-                                Padding = 5f,
-                                Alignment = TextAlign.Center
-                            }
-                        },
-                    };
-
-                    TestElements.Add(newE);
-                    Elements.AddElement(ref newE, this);
+                if(key == 333){
+                    Parent.Transform.Width += 20;
                 }
-            }
+
+                if(key == 331){
+                    Parent.Transform.Width -= 20;
+                }
+
+                if(key == 336){
+                    Parent.Transform.Height += 20;
+                }
+
+                if(key == 328){
+                    Parent.Transform.Height -= 20;
+                }
+            };
+
+            Parent = new VisualElement(){
+                Name = "Parent",
+                Transform = new(50, 50, 400, 400),
+                Style = new()
+                {
+                    BorderColor = SKColors.Black,
+                    BackColor = SKColors.AliceBlue,
+                    BorderWidth = 2,
+                    Roundness = 5
+                }
+            };
+
+            TestElement = new VisualElement()
+            {
+                Name = "TestElement",
+                Text = "Testing",
+                Transform = new(20, 20, 360, 360),
+                Style = new()
+                {
+                    BorderWidth = 2f,
+                    Roundness = 6f,
+                    BorderColor = SKColors.Black,
+                    BackColor = SKColors.DarkGray,
+                    Text = new()
+                    {
+                        Color = SKColors.Black,
+                        Size = 26,
+                        Alignment = TextAlign.Center
+                    }
+                },
+            };
+            Parent.AddChild(TestElement);
+
+            Elements.AddElement(ref TestElement, this);
+            Elements.AddElement(ref Parent, this);
+
+            stopwatch.Start();
         }
 
+        private float progress = 0;
+        private bool increase = true;
+        private float duration = 1000;
+        private Stopwatch stopwatch = new Stopwatch();
         private void Update()
         {
+            if (increase)
+            {
+                progress = stopwatch.ElapsedMilliseconds / duration;
+                if (stopwatch.ElapsedMilliseconds >= duration)
+                {
+                    progress = 1;
+                    increase = false;
+                    stopwatch.Restart();
+                }
+            }
+            else
+            {
+                progress = 1 - (stopwatch.ElapsedMilliseconds / duration);
+                if (stopwatch.ElapsedMilliseconds >= duration)
+                {
+                    progress = 0;
+                    increase = true;
+                    stopwatch.Restart();
+                }
+            }
 
+            Parent.Transform.Width = smoothLerp(200, 450, progress);
+            Parent.Transform.Height = smoothLerp(150, 350, progress);
         }
 
         float smoothLerp(float from, float to, float progress)
