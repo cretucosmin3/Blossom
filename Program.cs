@@ -20,24 +20,24 @@ namespace Kara
 
         static void Main(string[] args)
         {
-            DateTime startTime = new DateTime(2019, 7, 13);
-            DateTime endTime = DateTime.Now;
+            // DateTime startTime = new DateTime(2019, 7, 13);
+            // DateTime endTime = DateTime.Now;
 
-            // calculate the difference between startTime and endTime and display it in years, months and days.
-            TimeSpan difference = endTime - startTime;
-            var years = difference.Days / 365d;
-            var restYears = years - Math.Truncate(years);
-            var months = restYears * 12;
-            var restMonths = months - Math.Truncate(months);
-            var days = restMonths * 30;
-            var restDays = days - Math.Truncate(days);
-            var hours = restDays * 24;
-            var restHours = hours - Math.Truncate(hours);
-            var minutes = restHours * 60;
+            // // calculate the difference between startTime and endTime and display it in years, months and days.
+            // TimeSpan difference = endTime - startTime;
+            // var years = difference.Days / 365d;
+            // var restYears = years - Math.Truncate(years);
+            // var months = restYears * 12;
+            // var restMonths = months - Math.Truncate(months);
+            // var days = restMonths * 30;
+            // var restDays = days - Math.Truncate(days);
+            // var hours = restDays * 24;
+            // var restHours = hours - Math.Truncate(hours);
+            // var minutes = restHours * 60;
 
-            Console.WriteLine($"{(int)years} y, {(int)months} mo, {(int)days} d, {(int)hours} h, {(int)minutes} m");
+            // Console.WriteLine($"{(int)years} y, {(int)months} mo, {(int)days} d, {(int)hours} h, {(int)minutes} m");
 
-            Console.ReadKey();
+            // Console.ReadKey();
             // return;
 
             Log.Info(_appName);

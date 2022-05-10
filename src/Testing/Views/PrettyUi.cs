@@ -43,12 +43,12 @@ namespace Kara.Testing
                         break;
                     case 'a':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Left);
-                        
+
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Left;
                         else
                             TestElement.Transform.Anchor |= Anchor.Left;
-                            
+
                         break;
                     case 'd':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Right);
@@ -91,32 +91,41 @@ namespace Kara.Testing
 
                 Console.WriteLine(key);
 
-                if(key == 333){
+                if (key == 333)
+                {
                     Parent.Transform.Width += 20;
                 }
 
-                if(key == 331){
+                if (key == 331)
+                {
                     Parent.Transform.Width -= 20;
                 }
 
-                if(key == 336){
+                if (key == 336)
+                {
                     Parent.Transform.Height += 20;
                 }
 
-                if(key == 328){
+                if (key == 328)
+                {
                     Parent.Transform.Height -= 20;
                 }
             };
 
-            Parent = new VisualElement(){
+            Parent = new VisualElement()
+            {
                 Name = "Parent",
-                Transform = new(50, 50, 400, 400),
+                Text = "Testing",
+                Transform = new(150, 150, 400, 400),
                 Style = new()
                 {
-                    BorderColor = SKColors.Black,
                     BackColor = SKColors.AliceBlue,
-                    BorderWidth = 2,
-                    Roundness = 5
+                    Border = new()
+                    {
+                        Color = SKColors.Black,
+                        Roundness = 10,
+                        Width = 2
+                    }
                 }
             };
 
@@ -124,21 +133,31 @@ namespace Kara.Testing
             {
                 Name = "TestElement",
                 Text = "Testing",
-                Transform = new(20, 20, 360, 360),
+                Transform = new(110, -18, 180, 40)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true
+                },
                 Style = new()
                 {
-                    BorderWidth = 2f,
-                    Roundness = 6f,
-                    BorderColor = SKColors.Black,
-                    BackColor = SKColors.DarkGray,
+                    BackColor = SKColors.DarkSlateGray,
+                    Border = new()
+                    {
+                        Width = 2f,
+                        Roundness = 10f,
+                        Color = SKColors.Black,
+                    },
                     Text = new()
                     {
-                        Color = SKColors.Black,
-                        Size = 26,
+                        Padding = 0,
+                        Color = SKColors.Red,
+                        Size = 24,
                         Alignment = TextAlign.Center
                     }
                 },
             };
+
             Parent.AddChild(TestElement);
 
             Elements.AddElement(ref TestElement, this);
@@ -149,33 +168,33 @@ namespace Kara.Testing
 
         private float progress = 0;
         private bool increase = true;
-        private float duration = 1000;
+        private float duration = 2500;
         private Stopwatch stopwatch = new Stopwatch();
         private void Update()
         {
-            if (increase)
-            {
-                progress = stopwatch.ElapsedMilliseconds / duration;
-                if (stopwatch.ElapsedMilliseconds >= duration)
-                {
-                    progress = 1;
-                    increase = false;
-                    stopwatch.Restart();
-                }
-            }
-            else
-            {
-                progress = 1 - (stopwatch.ElapsedMilliseconds / duration);
-                if (stopwatch.ElapsedMilliseconds >= duration)
-                {
-                    progress = 0;
-                    increase = true;
-                    stopwatch.Restart();
-                }
-            }
+            // if (increase)
+            // {
+            //     progress = stopwatch.ElapsedMilliseconds / duration;
+            //     if (stopwatch.ElapsedMilliseconds >= duration)
+            //     {
+            //         progress = 1;
+            //         increase = false;
+            //         stopwatch.Restart();
+            //     }
+            // }
+            // else
+            // {
+            //     progress = 1 - (stopwatch.ElapsedMilliseconds / duration);
+            //     if (stopwatch.ElapsedMilliseconds >= duration)
+            //     {
+            //         progress = 0;
+            //         increase = true;
+            //         stopwatch.Restart();
+            //     }
+            // }
 
-            Parent.Transform.Width = smoothLerp(200, 450, progress);
-            Parent.Transform.Height = smoothLerp(150, 350, progress);
+            // Parent.Transform.Width = smoothLerp(250, 450, progress);
+            // Parent.Transform.Height = smoothLerp(320, 365, progress);
         }
 
         float smoothLerp(float from, float to, float progress)

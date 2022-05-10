@@ -20,7 +20,7 @@ namespace Kara.Core.Visual
             get => _Parent;
             set
             {
-                if(_Parent != null)
+                if (_Parent != null)
                     _Parent.TransformChanged -= ParentTransformChanged;
 
                 _Parent = value;
@@ -35,9 +35,11 @@ namespace Kara.Core.Visual
         internal event Action<Transform> TransformChanged;
 
         private Transform _Transform = new Transform();
-        public Transform Transform { 
+        public Transform Transform
+        {
             get => _Transform;
-            set {
+            set
+            {
                 // Detach old
                 _Transform.OnChanged -= ChangedTransform;
 
@@ -47,7 +49,7 @@ namespace Kara.Core.Visual
             }
         }
 
-        private ElementStyle _Style = new ElementStyle();
+        private ElementStyle _Style;
         public ElementStyle Style
         {
             get => _Style;
@@ -110,9 +112,7 @@ namespace Kara.Core.Visual
             this.Transform.Evaluate();
 
             DrawBase();
-
-            if (!String.IsNullOrEmpty(Text))
-                DrawText();
+            DrawText();
 
             foreach (var child in Children)
             {
@@ -120,7 +120,6 @@ namespace Kara.Core.Visual
             }
 
             Transform?.ClearRenderData();
-            Style?.Reset();
         }
 
         SKPaint paint = new SKPaint();
@@ -137,10 +136,10 @@ namespace Kara.Core.Visual
             SKRoundRect roundRect = new SKRoundRect();
 
             roundRect.SetRectRadii(rect, new SKPoint[] {
-                new SKPoint(Style.Roundness,Style.Roundness),
-                new SKPoint(Style.Roundness,Style.Roundness),
-                new SKPoint(Style.Roundness,Style.Roundness),
-                new SKPoint(Style.Roundness,Style.Roundness),
+                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
             });
 
             paint.Style = SKPaintStyle.Fill;
@@ -149,11 +148,11 @@ namespace Kara.Core.Visual
 
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
-            if (Style.BorderWidth > 0)
+            if (Style.Border.Width > 0)
             {
                 paint.Style = SKPaintStyle.Stroke;
-                paint.StrokeWidth = Style.BorderWidth;
-                paint.Color = Style.BorderColor;
+                paint.StrokeWidth = Style.Border.Width;
+                paint.Color = Style.Border.Color;
             }
 
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
@@ -170,7 +169,7 @@ namespace Kara.Core.Visual
         {
             IsAntialias = true,
             TextAlign = SKTextAlign.Left,
-            Typeface = SKTypeface.CreateDefault()
+            Typeface = SKTypeface.FromFamilyName("DejaVu Sans Mono", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
         };
 
         SKPoint TextPoint;
@@ -180,7 +179,7 @@ namespace Kara.Core.Visual
 
         internal void CalculateText()
         {
-            if(Style.Text == null)
+            if (Style.Text == null)
                 return;
 
             TextPaint.TextSize = Style.Text.Size;
@@ -199,7 +198,7 @@ namespace Kara.Core.Visual
                     x == TextAlign.Left ||
                     x == TextAlign.TopLeft ||
                     x == TextAlign.BottomLeft
-                    => cx + (Style.Text.Padding + Style.BorderWidth),
+                    => cx + Style.Text.Padding,
                 var x when
                     x == TextAlign.Right ||
                     x == TextAlign.TopRight ||
@@ -242,11 +241,11 @@ namespace Kara.Core.Visual
         internal void DrawText()
         {
             // Early return if there's no text or color
-            if (string.IsNullOrEmpty(Text))
+            if (string.IsNullOrEmpty(Text) || Style.Text is null)
                 return;
 
-            if (Style.Text.HasChanged)
-                CalculateText();
+            // if (Style.Text.HasChanged)
+            CalculateText();
 
             Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
 
@@ -259,6 +258,11 @@ namespace Kara.Core.Visual
         }
 
         internal void DrawTextShadow()
+        {
+
+        }
+
+        internal void ScheduleRender()
         {
 
         }

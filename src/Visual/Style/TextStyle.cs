@@ -1,20 +1,45 @@
+using System.Net.Mime;
 using System;
-using System.Numerics;
+using SkiaSharp;
 using Kara.Core.Visual;
 
 public class TextStyle
 {
     internal VisualElement ElementRef;
-
-    public TextStyle() { }
+    public readonly SKPaint Paint;
 
     private int _Spacing = 2;
     private float _Size = 18f;
+    private int _Weight = 100;
+    private int _Width = 0;
     private float _Padding = 0f;
     private TextAlign _Alignment = TextAlign.Center;
-    private SkiaSharp.SKColor _Color;
-    public Shadow Shadow = null;
-    public bool HasChanged = true;
+    private SKColor _Color;
+    private string _FontName = "DejaVu Sans Mono";
+
+    public Shadow Shadow;
+
+    public TextStyle()
+    {
+        Paint = new SKPaint()
+        {
+            IsAntialias = true,
+            TextAlign = SKTextAlign.Left,
+            TextSize = _Size,
+            SubpixelText = true,
+            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
+        };
+    }
+
+    private void RedoFont()
+    {
+        var typeFace = SKTypeface.FromFamilyName(_FontName,
+            new SKFontStyle(_Weight, _Width, SKFontStyleSlant.Upright)
+        );
+
+        Paint.Typeface = typeFace;
+        ElementRef?.ScheduleRender();
+    }
 
     public int Spacing
     {
@@ -22,8 +47,7 @@ public class TextStyle
         set
         {
             _Spacing = value;
-            HasChanged = true;
-            //! #render
+            ElementRef?.ScheduleRender();
         }
     }
 
@@ -33,8 +57,7 @@ public class TextStyle
         set
         {
             _Size = value;
-            HasChanged = true;
-            //! #render
+            RedoFont();
         }
     }
 
@@ -44,8 +67,27 @@ public class TextStyle
         set
         {
             _Padding = value;
-            HasChanged = true;
-            //! #render
+            ElementRef?.ScheduleRender();
+        }
+    }
+
+    public int Weight
+    {
+        get => _Weight;
+        set
+        {
+            _Weight = value;
+            RedoFont();
+        }
+    }
+
+    public int Width
+    {
+        get => _Width;
+        set
+        {
+            _Width = value;
+            RedoFont();
         }
     }
 
@@ -55,31 +97,30 @@ public class TextStyle
         set
         {
             _Alignment = value;
-            HasChanged = true;
-            //! #render
+            ElementRef?.ScheduleRender();
         }
     }
 
-    public SkiaSharp.SKColor Color
+    public SKColor Color
     {
         get => _Color;
         set
         {
             _Color = value;
-            HasChanged = true;
-            //! #render
+            Paint.Color = value;
+            ElementRef?.ScheduleRender();
         }
     }
 
-    private string _FontName = "sans";
     public string Font
     {
         get => _FontName;
         set
         {
             _FontName = value;
-            //! #render
-            //! TextFont = Fonts.Get(value);
+            RedoFont();
+
+            var font = SKTypeface.FromFamilyName(value, _Weight, _Width, SKFontStyleSlant.Upright);
         }
     }
 }
