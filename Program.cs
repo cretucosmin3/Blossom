@@ -23,7 +23,6 @@ namespace Kara
             // DateTime startTime = new DateTime(2019, 7, 13);
             // DateTime endTime = DateTime.Now;
 
-            // // calculate the difference between startTime and endTime and display it in years, months and days.
             // TimeSpan difference = endTime - startTime;
             // var years = difference.Days / 365d;
             // var restYears = years - Math.Truncate(years);

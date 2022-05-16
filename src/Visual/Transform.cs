@@ -120,11 +120,8 @@ public class Transform
 
     internal void SetAnchorValues()
     {
-        if (Parent != null)
-        {
-            CalculateHorizontalAnchors();
-            CalculateVerticalAnchors();
-        }
+        CalculateHorizontalAnchors();
+        CalculateVerticalAnchors();
 
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
@@ -254,24 +251,11 @@ public class Transform
         ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : 0;
     }
 
+    private bool once = true;
     internal void Evaluate()
-    {   
-        if (XChanged || WidthChanged) CalculateHorizontalAnchors();
-        if (YChanged || HeightChanged) CalculateVerticalAnchors();
-
-        if (Parent != null)
-        {
-            if (Parent.XChanged || Parent.WidthChanged)
-                ComputeHorizontalTransform();
-
-            if (Parent.YChanged || Parent.HeightChanged)
-                ComputeVerticalTransform();
-        }
-        else
-        {
-            ComputeHorizontalTransform();
-            ComputeVerticalTransform();
-        }
+    {
+        ComputeHorizontalTransform();
+        ComputeVerticalTransform();
     }
 
     internal void ClearRenderData()

@@ -5,8 +5,8 @@ using Kara.Core.Visual;
 public class ElementStyle
 {
     internal VisualElement _ElementRef;
-    public TextStyle Text { get; set; }
-    public BorderStyle Border { get; set; }
+    public TextStyle Text { get; set; } = new();
+    public BorderStyle Border { get; set; } = new();
 
     internal VisualElement ElementRef
     {

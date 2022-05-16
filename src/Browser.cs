@@ -78,6 +78,7 @@ namespace Kara
                 if (x > 5)
                 {
                     BrowserApp.ActiveView.TriggerLoop();
+                    x = 0;
                 }
 
                 x++;
@@ -164,9 +165,9 @@ namespace Kara
         private static Stopwatch d = new Stopwatch();
         private static SKPaint fpsPaint = new SKPaint()
         {
-            Color = SKColors.Red,
+            Color = SKColors.White,
             TextSize = 20,
-            IsAntialias = true,
+            IsAntialias = false,
             IsStroke = false,
             Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
         };
@@ -177,7 +178,7 @@ namespace Kara
             Vector2D<float> fbSize = window.FramebufferSize.As<float>();
 
             // Renderer.ResetContext();
-            Renderer.Canvas.Clear(SKColors.White);
+            Renderer.Canvas.Clear(new(255, 255, 255, 45));
             // float pxRatio = fbSize.X / winSize.X;
 
             // float x = 250;

@@ -14,6 +14,11 @@ namespace Kara.Testing
     public class PrettyUi : View
     {
         VisualElement Parent;
+        VisualElement LeftIndicator;
+        VisualElement RightIndicator;
+        VisualElement TopIndicator;
+        VisualElement BottomIndicator;
+
         VisualElement TestElement;
 
         public PrettyUi() : base("PrettyUi View") { }
@@ -43,6 +48,7 @@ namespace Kara.Testing
                         break;
                     case 'a':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Left);
+                        LeftIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Left;
@@ -52,6 +58,7 @@ namespace Kara.Testing
                         break;
                     case 'd':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Right);
+                        RightIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Right;
@@ -61,6 +68,7 @@ namespace Kara.Testing
                         break;
                     case 'w':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Top);
+                        TopIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Top;
@@ -70,6 +78,7 @@ namespace Kara.Testing
                         break;
                     case 's':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Bottom);
+                        BottomIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Bottom;
@@ -84,33 +93,30 @@ namespace Kara.Testing
 
             this.Events.OnKeyUp += key =>
             {
-                // 333 -> right
-                // 331 -> left
-                // 326 -> down
-                // 328 -> up
-
                 Console.WriteLine(key);
 
-                if (key == 333)
-                {
-                    Parent.Transform.Width += 20;
-                }
-
-                if (key == 331)
-                {
-                    Parent.Transform.Width -= 20;
-                }
-
-                if (key == 336)
+                if (key == 116)
                 {
                     Parent.Transform.Height += 20;
                 }
 
-                if (key == 328)
+                if (key == 111)
                 {
                     Parent.Transform.Height -= 20;
                 }
+
+                if (key == 113)
+                {
+                    Parent.Transform.Width -= 20;
+                }
+
+                if (key == 114)
+                {
+                    Parent.Transform.Width += 20;
+                }
             };
+
+            int iThinckness = 5;
 
             Parent = new VisualElement()
             {
@@ -120,12 +126,58 @@ namespace Kara.Testing
                 Style = new()
                 {
                     BackColor = SKColors.AliceBlue,
-                    Border = new()
-                    {
-                        Color = SKColors.Black,
-                        Roundness = 10,
-                        Width = 2
-                    }
+                }
+            };
+
+            LeftIndicator = new VisualElement()
+            {
+                Name = "LeftIndicator",
+                Transform = new(0, 0, iThinckness, Parent.Transform.Height)
+                {
+                    Anchor = Anchor.Left | Anchor.Top | Anchor.Bottom
+                },
+                Style = new()
+                {
+                    BackColor = SKColors.Black,
+                }
+            };
+
+            RightIndicator = new VisualElement()
+            {
+                Name = "RightIndicator",
+                Transform = new(Parent.Transform.Width - iThinckness, 0, iThinckness, 400)
+                {
+                    Anchor = Anchor.Right | Anchor.Top | Anchor.Bottom
+                },
+                Style = new()
+                {
+                    BackColor = SKColors.LightGray,
+                }
+            };
+
+            TopIndicator = new VisualElement()
+            {
+                Name = "TopIndicator",
+                Transform = new(0, 0, Parent.Transform.Width, iThinckness)
+                {
+                    Anchor = Anchor.Left | Anchor.Right | Anchor.Top
+                },
+                Style = new()
+                {
+                    BackColor = SKColors.Black,
+                }
+            };
+
+            BottomIndicator = new VisualElement()
+            {
+                Name = "BottomIndicator",
+                Transform = new(0, Parent.Transform.Height - iThinckness, Parent.Transform.Width, iThinckness)
+                {
+                    Anchor = Anchor.Left | Anchor.Right | Anchor.Bottom
+                },
+                Style = new()
+                {
+                    BackColor = SKColors.LightGray,
                 }
             };
 
@@ -133,9 +185,9 @@ namespace Kara.Testing
             {
                 Name = "TestElement",
                 Text = "Testing",
-                Transform = new(110, -18, 180, 40)
+                Transform = new(Parent.Transform.Width / 2f - 120 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 120, 80)
                 {
-                    Anchor = Anchor.Top,
+                    Anchor = Anchor.Top | Anchor.Left,
                     FixedWidth = true,
                     FixedHeight = true
                 },
@@ -145,23 +197,30 @@ namespace Kara.Testing
                     Border = new()
                     {
                         Width = 2f,
-                        Roundness = 10f,
                         Color = SKColors.Black,
                     },
                     Text = new()
                     {
                         Padding = 0,
-                        Color = SKColors.Red,
-                        Size = 24,
+                        Color = SKColors.White,
+                        Size = 28,
                         Alignment = TextAlign.Center
                     }
                 },
             };
 
             Parent.AddChild(TestElement);
+            Parent.AddChild(LeftIndicator);
+            Parent.AddChild(RightIndicator);
+            Parent.AddChild(TopIndicator);
+            Parent.AddChild(BottomIndicator);
 
             Elements.AddElement(ref TestElement, this);
             Elements.AddElement(ref Parent, this);
+            Elements.AddElement(ref LeftIndicator, this);
+            Elements.AddElement(ref RightIndicator, this);
+            Elements.AddElement(ref TopIndicator, this);
+            Elements.AddElement(ref BottomIndicator, this);
 
             stopwatch.Start();
         }
