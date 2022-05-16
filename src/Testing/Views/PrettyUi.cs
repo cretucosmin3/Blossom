@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using System;
 using System.Diagnostics;
 using Kara.Core;
@@ -122,7 +123,10 @@ namespace Kara.Testing
             {
                 Name = "Parent",
                 Text = "Testing",
-                Transform = new(30, 30, 150, 150),
+                Transform = new(55, 55, 150, 150)
+                {
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right | Anchor.Bottom
+                },
                 Style = new()
                 {
                     BackColor = SKColors.AliceBlue,
@@ -184,12 +188,13 @@ namespace Kara.Testing
             TestElement = new VisualElement()
             {
                 Name = "TestElement",
+                Text = "Hello",
                 Transform = new(Parent.Transform.Width / 2f - 80 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 80, 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
-                    // FixedWidth = true,
-                    // FixedHeight = true,
-                    ValidateOnAnchor = false,
+                    FixedWidth = true,
+                    FixedHeight = true,
+                    ValidateOnAnchor = true,
                 },
                 Style = new()
                 {
@@ -199,6 +204,11 @@ namespace Kara.Testing
                         Width = 2f,
                         Color = SKColors.White,
                     },
+                    Text = new()
+                    {
+                        Alignment = TextAlign.Center,
+                        Color = SKColors.White,
+                    }
                 },
             };
 
@@ -220,7 +230,7 @@ namespace Kara.Testing
 
         private float progress = 0;
         private bool increase = true;
-        private float duration = 500;
+        private float duration = 200;
         private Stopwatch stopwatch = new Stopwatch();
         private int testStage = 0;
 
@@ -243,15 +253,15 @@ namespace Kara.Testing
             //     {
             //         progress = 0;
             //         increase = true;
-                    
+
             //         testStage++;
             //         ApplyTest(testStage);
             //         stopwatch.Restart();
             //     }
             // }
 
-            // Parent.Transform.Width = smoothLerp(150, 260, progress);
-            // Parent.Transform.Height = smoothLerp(150, 260, progress);
+            // Parent.Transform.Width = smoothLerp(150, 450, progress);
+            // Parent.Transform.Height = smoothLerp(150, 450, progress);
         }
 
         private void ApplyTest(int stage)

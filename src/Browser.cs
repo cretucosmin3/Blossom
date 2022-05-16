@@ -51,7 +51,7 @@ namespace Kara
 
             var options = WindowOptions.Default;
             options.Size = new Vector2D<int>(400, 400);
-            options.Title = "UI";
+            options.Title = "Kara";
             options.PreferredDepthBufferBits = 24;
             options.PreferredStencilBufferBits = 8;
             options.VSync = false;
