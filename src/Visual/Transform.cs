@@ -76,6 +76,8 @@ public class Transform
         }
     }
 
+    public bool ValidateOnAnchor { get; set;} = true;
+
     private Anchor _Anchor;
     public Anchor Anchor
     {
@@ -83,7 +85,9 @@ public class Transform
         set
         {
             _Anchor = value;
-            SetAnchorValues();
+
+            if(ValidateOnAnchor)
+                SetAnchorValues();
         }
     }
 
@@ -251,7 +255,6 @@ public class Transform
         ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : 0;
     }
 
-    private bool once = true;
     internal void Evaluate()
     {
         ComputeHorizontalTransform();

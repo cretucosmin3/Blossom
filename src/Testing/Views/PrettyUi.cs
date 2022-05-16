@@ -48,7 +48,7 @@ namespace Kara.Testing
                         break;
                     case 'a':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Left);
-                        LeftIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
+                        LeftIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Left;
@@ -58,7 +58,7 @@ namespace Kara.Testing
                         break;
                     case 'd':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Right);
-                        RightIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
+                        RightIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Right;
@@ -68,7 +68,7 @@ namespace Kara.Testing
                         break;
                     case 'w':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Top);
-                        TopIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
+                        TopIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Top;
@@ -78,7 +78,7 @@ namespace Kara.Testing
                         break;
                     case 's':
                         hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Bottom);
-                        BottomIndicator.Style.BackColor = !hasFlag ? SKColors.Black : SKColors.LightGray;
+                        BottomIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
 
                         if (hasFlag)
                             TestElement.Transform.Anchor &= ~Anchor.Bottom;
@@ -116,13 +116,13 @@ namespace Kara.Testing
                 }
             };
 
-            int iThinckness = 5;
+            int iThinckness = 8;
 
             Parent = new VisualElement()
             {
                 Name = "Parent",
                 Text = "Testing",
-                Transform = new(150, 150, 400, 400),
+                Transform = new(30, 30, 150, 150),
                 Style = new()
                 {
                     BackColor = SKColors.AliceBlue,
@@ -134,18 +134,18 @@ namespace Kara.Testing
                 Name = "LeftIndicator",
                 Transform = new(0, 0, iThinckness, Parent.Transform.Height)
                 {
-                    Anchor = Anchor.Left | Anchor.Top | Anchor.Bottom
+                    Anchor = Anchor.Left | Anchor.Top | Anchor.Bottom,
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.Black,
+                    BackColor = SKColors.IndianRed,
                 }
             };
 
             RightIndicator = new VisualElement()
             {
                 Name = "RightIndicator",
-                Transform = new(Parent.Transform.Width - iThinckness, 0, iThinckness, 400)
+                Transform = new(Parent.Transform.Width - iThinckness, 0, iThinckness, Parent.Transform.Height)
                 {
                     Anchor = Anchor.Right | Anchor.Top | Anchor.Bottom
                 },
@@ -164,7 +164,7 @@ namespace Kara.Testing
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.Black,
+                    BackColor = SKColors.IndianRed,
                 }
             };
 
@@ -184,28 +184,21 @@ namespace Kara.Testing
             TestElement = new VisualElement()
             {
                 Name = "TestElement",
-                Text = "Testing",
-                Transform = new(Parent.Transform.Width / 2f - 120 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 120, 80)
+                Transform = new(Parent.Transform.Width / 2f - 80 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 80, 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
-                    FixedWidth = true,
-                    FixedHeight = true
+                    // FixedWidth = true,
+                    // FixedHeight = true,
+                    ValidateOnAnchor = false,
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.DarkSlateGray,
+                    BackColor = SKColors.IndianRed,
                     Border = new()
                     {
                         Width = 2f,
-                        Color = SKColors.Black,
-                    },
-                    Text = new()
-                    {
-                        Padding = 0,
                         Color = SKColors.White,
-                        Size = 28,
-                        Alignment = TextAlign.Center
-                    }
+                    },
                 },
             };
 
@@ -227,8 +220,10 @@ namespace Kara.Testing
 
         private float progress = 0;
         private bool increase = true;
-        private float duration = 2500;
+        private float duration = 500;
         private Stopwatch stopwatch = new Stopwatch();
+        private int testStage = 0;
+
         private void Update()
         {
             // if (increase)
@@ -248,12 +243,53 @@ namespace Kara.Testing
             //     {
             //         progress = 0;
             //         increase = true;
+                    
+            //         testStage++;
+            //         ApplyTest(testStage);
             //         stopwatch.Restart();
             //     }
             // }
 
-            // Parent.Transform.Width = smoothLerp(250, 450, progress);
-            // Parent.Transform.Height = smoothLerp(320, 365, progress);
+            // Parent.Transform.Width = smoothLerp(150, 260, progress);
+            // Parent.Transform.Height = smoothLerp(150, 260, progress);
+        }
+
+        private void ApplyTest(int stage)
+        {
+            switch (stage)
+            {
+                case 1:
+                    TestElement.Transform.Anchor = Anchor.Right | Anchor.Bottom;
+                    break;
+                case 2:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
+                    break;
+                case 3:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right;
+                    break;
+                case 4:
+                    TestElement.Transform.Anchor = Anchor.Top | Anchor.Bottom;
+                    break;
+                case 5:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
+                    break;
+                case 6:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
+                    break;
+                case 7:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Bottom;
+                    break;
+                case 8:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Bottom;
+                    break;
+                case 9:
+                    TestElement.Transform.Anchor = Anchor.Top | Anchor.Right;
+                    break;
+                case 10:
+                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Top;
+                    testStage = 0;
+                    break;
+            }
         }
 
         float smoothLerp(float from, float to, float progress)

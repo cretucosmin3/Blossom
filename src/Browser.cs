@@ -47,10 +47,10 @@ namespace Kara
 
         private static void SetWindow()
         {
-            RenderRect = new RectangleF(0, 0, 800, 800);
+            RenderRect = new RectangleF(0, 0, 400, 400);
 
             var options = WindowOptions.Default;
-            options.Size = new Vector2D<int>(800, 800);
+            options.Size = new Vector2D<int>(400, 400);
             options.Title = "UI";
             options.PreferredDepthBufferBits = 24;
             options.PreferredStencilBufferBits = 8;
@@ -239,20 +239,20 @@ namespace Kara
             //     Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
             // }
 
-            if (FpsVisible)
-            {
-                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
+            // if (FpsVisible)
+            // {
+            //     Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
 
-                frames++;
-                fps_avg += time;
+            //     frames++;
+            //     fps_avg += time;
 
-                if (frames == 100)
-                {
-                    fps = 1f / (float)(fps_avg / 100d);
-                    fps_avg = 0;
-                    frames = 0;
-                }
-            }
+            //     if (frames == 100)
+            //     {
+            //         fps = 1f / (float)(fps_avg / 100d);
+            //         fps_avg = 0;
+            //         frames = 0;
+            //     }
+            // }
 
             Renderer.Canvas.Flush();
         }
