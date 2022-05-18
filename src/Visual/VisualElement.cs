@@ -118,8 +118,6 @@ namespace Kara.Core.Visual
             {
                 child.Render();
             }
-
-            Transform?.ClearRenderData();
         }
 
         SKPaint paint = new SKPaint();

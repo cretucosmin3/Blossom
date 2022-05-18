@@ -29,7 +29,6 @@ public class Transform
         get => Local.X;
         set
         {
-            XChanged = true;
             Local.X = value;
             CalculateHorizontalAnchors();
 
@@ -42,7 +41,6 @@ public class Transform
         get => Local.Y;
         set
         {
-            YChanged = true;
             Local.Y = value;
             CalculateVerticalAnchors();
 
@@ -55,7 +53,6 @@ public class Transform
         get => Local.Width;
         set
         {
-            WidthChanged = true;
             Local.Width = value;
             CalculateHorizontalAnchors();
 
@@ -68,7 +65,6 @@ public class Transform
         get => Local.Height;
         set
         {
-            HeightChanged = true;
             Local.Height = value;
             CalculateVerticalAnchors();
 
@@ -76,7 +72,7 @@ public class Transform
         }
     }
 
-    public bool ValidateOnAnchor { get; set;} = true;
+    public bool ValidateOnAnchor { get; set; } = true;
 
     private Anchor _Anchor;
     public Anchor Anchor
@@ -86,7 +82,7 @@ public class Transform
         {
             _Anchor = value;
 
-            if(ValidateOnAnchor)
+            if (ValidateOnAnchor)
                 SetAnchorValues();
         }
     }
@@ -130,11 +126,6 @@ public class Transform
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
     }
-
-    internal bool XChanged = true;
-    internal bool YChanged = true;
-    private bool WidthChanged = true;
-    private bool HeightChanged = true;
 
     private void CalculateHorizontalAnchors()
     {
@@ -259,14 +250,6 @@ public class Transform
     {
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
-    }
-
-    internal void ClearRenderData()
-    {
-        XChanged = false;
-        YChanged = false;
-        WidthChanged = false;
-        HeightChanged = false;
     }
 }
 

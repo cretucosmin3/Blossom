@@ -123,8 +123,8 @@ namespace Kara
             {
                 mouse.MouseMove += (IMouse _, Vector2 pos) =>
                 {
-                    BrowserApp.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
-                    BrowserApp.ActiveView.Events.Handle_Mouse_Move((int)pos.X, (int)pos.Y);
+                    BrowserApp.Events.HandleMouseMove(pos);
+                    BrowserApp.ActiveView.Events.HandleMouseMove(pos);
                 };
 
                 mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
@@ -132,16 +132,37 @@ namespace Kara
                     FontSize += wheel.Y;
                 };
 
-                //            mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
-                //{
-                //	BrowserApp.Events.Handle_Mouse_Click()
-                //};
-                //            mouse.DoubleClick += Handle_Mouse_Double_Click;
+                mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
+                {
+                    Console.WriteLine($"Click {btn.ToString()}");
+                    int mouseButton = (int)btn;
+                    BrowserApp.Events.HandleMouseClick(mouseButton, pos);
+                    BrowserApp.ActiveView.Events.HandleMouseClick(mouseButton, pos);
+                };
 
-                //            mouse.MouseDown += Handle_Mouse_Down;
-                //            mouse.MouseUp += Handle_Mouse_Up;
+                mouse.DoubleClick += (IMouse m, MouseButton btn, Vector2 pos) =>
+                {
+                    Console.WriteLine($"Double click {btn} {pos}");
+                    int mouseButton = (int)btn;
+                    BrowserApp.Events.HandleMouseDoubleClick(mouseButton, pos);
+                    BrowserApp.ActiveView.Events.HandleMouseDoubleClick(mouseButton, pos);
+                };
 
-                //            mouse.Scroll += Handle_Mouse_Scroll;
+                mouse.MouseDown += (IMouse m, MouseButton btn) =>
+                {
+                    // Console.WriteLine($"Mouse Down {btn}");
+                    int mouseButton = (int)btn;
+                    BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
+                    BrowserApp.ActiveView.Events.HandleMouseDown(mouseButton, m.Position);
+                };
+
+                mouse.MouseUp += (IMouse m, MouseButton btn) =>
+                {
+                    // Console.WriteLine($"Mouse Up {btn}");
+                    int mouseButton = (int)btn;
+                    BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
+                    BrowserApp.ActiveView.Events.HandleMouseUp(mouseButton, m.Position);
+                };
             }
         }
 
@@ -153,16 +174,12 @@ namespace Kara
         private static void Load()
         {
             OnLoaded.Invoke();
-            timer.Start();
-            d.Start();
             IsLoaded = true;
         }
 
         private static float frames = 0;
         private static double fps_avg = 0;
         private static float fps = 0;
-        private static Stopwatch timer = new Stopwatch();
-        private static Stopwatch d = new Stopwatch();
         private static SKPaint fpsPaint = new SKPaint()
         {
             Color = SKColors.White,
@@ -239,20 +256,20 @@ namespace Kara
             //     Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
             // }
 
-            // if (FpsVisible)
-            // {
-            //     Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
+            if (FpsVisible)
+            {
+                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
 
-            //     frames++;
-            //     fps_avg += time;
+                frames++;
+                fps_avg += time;
 
-            //     if (frames == 100)
-            //     {
-            //         fps = 1f / (float)(fps_avg / 100d);
-            //         fps_avg = 0;
-            //         frames = 0;
-            //     }
-            // }
+                if (frames == 100)
+                {
+                    fps = 1f / (float)(fps_avg / 100d);
+                    fps_avg = 0;
+                    frames = 0;
+                }
+            }
 
             Renderer.Canvas.Flush();
         }

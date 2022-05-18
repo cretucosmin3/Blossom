@@ -6,6 +6,7 @@ using Silk.NET.Input;
 using Silk.NET.Windowing;
 using Kara.Core.Delegates.Inputs;
 using Kara.Utils;
+using System.Numerics;
 
 namespace Kara.Core.Input
 {
@@ -135,30 +136,29 @@ namespace Kara.Core.Input
             }
         }
 
-        internal void HandleKeyChar(char ch)
-        {
+        internal void HandleKeyChar(char ch) =>
             OnKeyType?.Invoke(ch);
-        }
+
         #endregion
 
         #region Mouse
-        internal void Handle_Mouse_Move(int x, int y) =>
-            OnMouseMove?.Invoke(x, y);
+        internal void HandleMouseMove(Vector2 pos) =>
+            OnMouseMove?.Invoke(pos);
 
-        //internal void Handle_Mouse_Down(int ButtonName) =>
-        //	OnMouseDown?.Invoke((int)ButtonName);
+        internal void HandleMouseDown(int ButtonName, Vector2 pos) =>
+            OnMouseDown?.Invoke(ButtonName, pos);
 
-        //internal void Handle_Mouse_Up(int ButtonName) =>
-        //	OnMouseUp?.Invoke((int)ButtonName);
+        internal void HandleMouseUp(int ButtonName, Vector2 pos) =>
+            OnMouseUp?.Invoke(ButtonName, pos);
 
-        //internal void Handle_Mouse_Click(int ButtonName, int x, int y) =>
-        //	OnMouseClick?.Invoke((int)ButtonName);
+        internal void HandleMouseClick(int ButtonName, Vector2 pos) =>
+            OnMouseClick?.Invoke(ButtonName, pos);
 
-        //internal void Handle_Mouse_Double_Click(int ButtonName, int x, int y) =>
-        //	OnMouseDoubleClick?.Invoke((int)ButtonName);
+        internal void HandleMouseDoubleClick(int ButtonName, Vector2 pos) =>
+            OnMouseDoubleClick?.Invoke(ButtonName, pos);
 
-        internal void Handle_Mouse_Scroll(int x, int y) =>
-            OnMouseScroll?.Invoke(x, y);
+        internal void HandleMouseScroll(Vector2 pos) =>
+            OnMouseScroll?.Invoke(pos);
         #endregion
 
         public void Dispose()

@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Net.Mime;
 using System;
 using System.Diagnostics;
@@ -29,6 +30,13 @@ namespace Kara.Testing
             Browser.ShowFps();
 
             this.Loop += Update;
+
+            this.Events.OnMouseClick += (int button, Vector2 pos) =>
+            {
+                if (button > 0) return;
+                Parent.Transform.X = pos.X;
+                Parent.Transform.Y = pos.Y;
+            };
 
             this.Events.OnKeyType += (char c) =>
             {
@@ -91,6 +99,11 @@ namespace Kara.Testing
                         break;
                 }
             };
+
+            // this.Events.OnMouseClick += (int button, Vector2 position) =>
+            // {
+            //     Console.WriteLine($"{button} {position.ToString("0,0")}");
+            // };
 
             this.Events.OnKeyUp += key =>
             {
@@ -218,12 +231,12 @@ namespace Kara.Testing
             Parent.AddChild(TopIndicator);
             Parent.AddChild(BottomIndicator);
 
-            Elements.AddElement(ref TestElement, this);
-            Elements.AddElement(ref Parent, this);
-            Elements.AddElement(ref LeftIndicator, this);
-            Elements.AddElement(ref RightIndicator, this);
-            Elements.AddElement(ref TopIndicator, this);
-            Elements.AddElement(ref BottomIndicator, this);
+            AddElement(TestElement);
+            AddElement(Parent);
+            AddElement(LeftIndicator);
+            AddElement(RightIndicator);
+            AddElement(TopIndicator);
+            AddElement(BottomIndicator);
 
             stopwatch.Start();
         }

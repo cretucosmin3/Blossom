@@ -1,3 +1,4 @@
+using System.Numerics;
 using Kara.Core.Input;
 
 namespace Kara.Core.Delegates.Window
@@ -12,8 +13,8 @@ namespace Kara.Core.Delegates.Inputs
     public delegate void ForKey(int key);
     public delegate void ForChar(char c);
     public delegate void ForHotkey(Hotkey hotkey);
-    public delegate void ForPosition(float x, float y);
-    public delegate void ForMouseButton(int btn, float x, float y);
+    public delegate void ForPosition(Vector2 pos);
+    public delegate void ForMouseButton(int btn, Vector2 pos);
 }
 
 namespace Kara.Core.Delegates.Common
