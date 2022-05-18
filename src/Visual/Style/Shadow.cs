@@ -1,8 +1,9 @@
+namespace Kara.Core.Visual;
 using System.Numerics;
 
 public class Shadow
 {
-    
+
     private float _X = 0;
     private float _Y = 0;
     private float _Spread = 0f;
@@ -30,7 +31,8 @@ public class Shadow
         }
     }
 
-    public Shadow(float X, float Y) {
+    public Shadow(float X, float Y)
+    {
         _X = X;
         _Y = Y;
     }

@@ -1,8 +1,9 @@
+namespace Kara.Core.Visual;
 using Kara.Core.Visual;
 
 public class BorderStyle
 {
-    internal VisualElement ElementRef;
+    internal ElementStyle StyleContext;
 
     public BorderStyle() { }
 
@@ -21,7 +22,7 @@ public class BorderStyle
         set
         {
             _Width = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -31,7 +32,7 @@ public class BorderStyle
         set
         {
             _Color = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -46,7 +47,7 @@ public class BorderStyle
             _RBottomLeft = value;
             _RBottomRight = value;
 
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -56,7 +57,7 @@ public class BorderStyle
         set
         {
             _RTopLeft = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 }

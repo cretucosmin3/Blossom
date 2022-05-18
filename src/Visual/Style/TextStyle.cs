@@ -1,11 +1,10 @@
-using System.Net.Mime;
-using System;
+namespace Kara.Core.Visual;
+
 using SkiaSharp;
-using Kara.Core.Visual;
 
 public class TextStyle
 {
-    internal VisualElement ElementRef;
+    internal ElementStyle StyleContext;
     public readonly SKPaint Paint;
 
     private int _Spacing = 2;
@@ -38,7 +37,7 @@ public class TextStyle
         );
 
         Paint.Typeface = typeFace;
-        ElementRef?.ScheduleRender();
+        StyleContext?.ScheduleRender();
     }
 
     public int Spacing
@@ -47,7 +46,7 @@ public class TextStyle
         set
         {
             _Spacing = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -67,27 +66,7 @@ public class TextStyle
         set
         {
             _Padding = value;
-            ElementRef?.ScheduleRender();
-        }
-    }
-
-    public int Weight
-    {
-        get => _Weight;
-        set
-        {
-            _Weight = value;
-            RedoFont();
-        }
-    }
-
-    public int Width
-    {
-        get => _Width;
-        set
-        {
-            _Width = value;
-            RedoFont();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -97,7 +76,7 @@ public class TextStyle
         set
         {
             _Alignment = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 
@@ -108,7 +87,7 @@ public class TextStyle
         {
             _Color = value;
             Paint.Color = value;
-            ElementRef?.ScheduleRender();
+            StyleContext?.ScheduleRender();
         }
     }
 

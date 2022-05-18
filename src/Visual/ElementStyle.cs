@@ -1,25 +1,32 @@
-using System.Net.Mime;
-using System;
-using Kara.Core.Visual;
+namespace Kara.Core.Visual;
+using System.Collections.Generic;
 
 public class ElementStyle
 {
-    internal VisualElement _ElementRef;
+    internal List<VisualElement> AssignedElements = new List<VisualElement>();
+
     public TextStyle Text { get; set; } = new();
     public BorderStyle Border { get; set; } = new();
 
-    internal VisualElement ElementRef
+    public ElementStyle() { }
+
+    internal void AssignElement(VisualElement element)
     {
-        get => _ElementRef;
-        set
-        {
-            _ElementRef = value;
-            Text.ElementRef = value;
-            Border.ElementRef = value;
-        }
+        AssignedElements.Add(element);
+        Text.StyleContext = this;
+        Border.StyleContext = this;
     }
 
-    public ElementStyle() { }
+    internal void UnassignElement(ref VisualElement element)
+    {
+        AssignedElements.Remove(element);
+    }
+
+    internal void ScheduleRender()
+    {
+        foreach (var element in AssignedElements)
+            element.ScheduleRender();
+    }
 
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
 
@@ -29,7 +36,7 @@ public class ElementStyle
         set
         {
             _BackColor = value;
-            ElementRef?.ScheduleRender();
+            ScheduleRender();
         }
     }
 }

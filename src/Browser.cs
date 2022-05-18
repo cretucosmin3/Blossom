@@ -51,13 +51,15 @@ namespace Kara
 
             var options = WindowOptions.Default;
             options.Size = new Vector2D<int>(400, 400);
-            options.Title = "Kara";
+            options.Title = "UI";
             options.PreferredDepthBufferBits = 24;
             options.PreferredStencilBufferBits = 8;
             options.VSync = false;
             options.PreferredBitDepth = new Vector4D<int>(4, 4, 4, 4);
             options.IsEventDriven = true;
+            options.WindowBorder = WindowBorder.Resizable;
 
+            GlfwWindowing.RegisterPlatform();
             GlfwWindowing.Use();
 
             window = Window.Create(options);
