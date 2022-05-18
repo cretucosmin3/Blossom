@@ -5,14 +5,14 @@
     <RootNamespace>Kara</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'"/>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
   <ItemGroup>
     <PackageReference Include="Silk.NET" Version="2.15.0" />
-    <PackageReference Include="Silk.NET.Core" Version="2.15.0"/>
-    <PackageReference Include="Silk.NET.Windowing.Common" Version="2.15.0"/>
-    <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.15.0"/>
-    <PackageReference Include="System.Drawing.Common" Version="6.0.0-rc.2.21480.5"/>
-    <PackageReference Include="SkiaSharp" Version="2.88.0-preview.232"/>
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.0-preview.232"/>
+    <PackageReference Include="Silk.NET.Core" Version="2.15.0" />
+    <PackageReference Include="Silk.NET.Windowing.Common" Version="2.15.0" />
+    <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.15.0" />
+    <PackageReference Include="System.Drawing.Common" Version="6.0.0-rc.2.21480.5" />
+    <PackageReference Include="SkiaSharp" Version="2.80.3" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.80.3" />
   </ItemGroup>
 </Project>
