@@ -12,6 +12,7 @@ using Kara.Core.Delegates.Common;
 using Kara.Testing;
 using Silk.NET.Windowing.Glfw;
 using SkiaSharp;
+using System.Threading;
 
 namespace Kara
 {
@@ -40,9 +41,7 @@ namespace Kara
 
             SetWindow();
 
-            Renderer.SetCanvas(window);
-
-            StartWindow();
+            // StartWindow();
         }
 
         private static void SetWindow()
@@ -51,15 +50,11 @@ namespace Kara
 
             var options = WindowOptions.Default;
             options.Size = new Vector2D<int>(400, 400);
-            options.Title = "UI";
-            options.PreferredDepthBufferBits = 24;
-            options.PreferredStencilBufferBits = 8;
+            options.Title = "Kara";
             options.VSync = false;
-            options.PreferredBitDepth = new Vector4D<int>(4, 4, 4, 4);
             options.IsEventDriven = true;
             options.WindowBorder = WindowBorder.Resizable;
 
-            GlfwWindowing.RegisterPlatform();
             GlfwWindowing.Use();
 
             window = Window.Create(options);
@@ -68,13 +63,12 @@ namespace Kara
             window.Render += Render;
             window.Closing += Closing;
 
-            window.Initialize();
+            window.Run();
         }
 
         public static void StartWindow()
         {
             int x = 0;
-
             while (!window.IsClosing)
             {
                 if (x > 5)
@@ -82,14 +76,13 @@ namespace Kara
                     BrowserApp.ActiveView.TriggerLoop();
                     x = 0;
                 }
-
                 x++;
                 window.DoRender();
                 window.DoEvents();
                 window.ContinueEvents();
             }
 
-            window.Dispose();
+                window.Dispose();
         }
 
         private static void ManageInputEvents()
@@ -175,8 +168,11 @@ namespace Kara
 
         private static void Load()
         {
+            Renderer.SetCanvas(window);
             OnLoaded.Invoke();
             IsLoaded = true;
+
+            StartWindow();
         }
 
         private static float frames = 0;

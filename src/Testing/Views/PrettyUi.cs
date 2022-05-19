@@ -31,12 +31,12 @@ namespace Kara.Testing
 
             this.Loop += Update;
 
-            this.Events.OnMouseClick += (int button, Vector2 pos) =>
-            {
-                if (button > 0) return;
-                Parent.Transform.X = pos.X;
-                Parent.Transform.Y = pos.Y;
-            };
+            // this.Events.OnMouseClick += (int button, Vector2 pos) =>
+            // {
+            //     if (button > 0) return;
+            //     Parent.Transform.X = pos.X;
+            //     Parent.Transform.Y = pos.Y;
+            // };
 
             this.Events.OnKeyType += (char c) =>
             {
