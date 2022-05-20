@@ -109,9 +109,30 @@ public class VisualElement : IDisposable
     internal void Render()
     {
         this.Transform.Evaluate();
-
-        DrawBase();
-        DrawText();
+        
+        SKRoundRect prect = null;
+        if(Parent is not null) {
+            prect = new SKRoundRect(
+                new SKRect(
+                    Parent.Transform.Computed.X,
+                    Parent.Transform.Computed.Y,
+                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width,
+                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height
+                ),
+                Style.Border.Roundness, Style.Border.Roundness
+            );
+        
+            using(new SKAutoCanvasRestore(Renderer.Canvas))
+            {
+                Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
+                DrawBase();
+                DrawText();
+            }
+        }
+        else {
+            DrawBase();
+            DrawText();
+        }
 
         foreach (var child in Children)
         {

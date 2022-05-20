@@ -38,6 +38,10 @@ namespace Kara.Testing
                 Parent.Transform.Y = pos.Y;
             };
 
+            this.Events.OnMouseScroll += (Vector2 pos) => {
+                TestElement.Style.Text.Size += pos.Y * 1.5f;
+            };
+
             this.Events.OnKeyType += (char c) =>
             {
                 bool hasFlag = false;
@@ -214,8 +218,8 @@ namespace Kara.Testing
                     BackColor = SKColors.IndianRed,
                     Border = new()
                     {
-                        Width = 2f,
-                        Color = SKColors.White,
+                        Width = 3f,
+                        Color = SKColors.Black,
                     },
                     Text = new()
                     {

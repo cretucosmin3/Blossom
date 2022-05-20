@@ -1,8 +1,5 @@
-using System.ComponentModel;
-using System;
 using System.Drawing;
 using System.Numerics;
-using System.Diagnostics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
@@ -12,7 +9,7 @@ using Kara.Core.Delegates.Common;
 using Kara.Testing;
 using Silk.NET.Windowing.Glfw;
 using SkiaSharp;
-using System.Threading;
+using Kara.Utils;
 
 namespace Kara
 {
@@ -29,7 +26,6 @@ namespace Kara
         private static bool FpsVisible = false;
         public static void ShowFps() => FpsVisible = true;
         public static void HideFps() => FpsVisible = false;
-        public static float FontSize = 100;
 
         public static void Initialize()
         {
@@ -121,12 +117,13 @@ namespace Kara
 
                 mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
                 {
-                    FontSize += wheel.Y;
+                    var pos = new Vector2(wheel.X, wheel.Y);
+                    BrowserApp.Events.HandleMouseScroll(pos);
+                    BrowserApp.ActiveView?.Events.HandleMouseScroll(pos);
                 };
 
                 mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
                 {
-                    Console.WriteLine($"Click {btn.ToString()}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseClick(mouseButton, pos);
                     BrowserApp.ActiveView?.Events.HandleMouseClick(mouseButton, pos);
@@ -134,7 +131,6 @@ namespace Kara
 
                 mouse.DoubleClick += (IMouse m, MouseButton btn, Vector2 pos) =>
                 {
-                    Console.WriteLine($"Double click {btn} {pos}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseDoubleClick(mouseButton, pos);
                     BrowserApp.ActiveView?.Events.HandleMouseDoubleClick(mouseButton, pos);
@@ -142,7 +138,6 @@ namespace Kara
 
                 mouse.MouseDown += (IMouse m, MouseButton btn) =>
                 {
-                    // Console.WriteLine($"Mouse Down {btn}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
                     BrowserApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
@@ -150,7 +145,6 @@ namespace Kara
 
                 mouse.MouseUp += (IMouse m, MouseButton btn) =>
                 {
-                    // Console.WriteLine($"Mouse Up {btn}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
                     BrowserApp.ActiveView?.Events.HandleMouseUp(mouseButton, m.Position);
@@ -169,7 +163,7 @@ namespace Kara
             OnLoaded.Invoke();
             IsLoaded = true;
 
-            // StartWindow();
+            StartWindow();
         }
 
         private static float frames = 0;
@@ -179,6 +173,7 @@ namespace Kara
         {
             Color = SKColors.White,
             TextSize = 20,
+            StrokeWidth = 4,
             IsAntialias = false,
             IsStroke = false,
             Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
@@ -191,68 +186,19 @@ namespace Kara
 
             // Renderer.ResetContext();
             Renderer.Canvas.Clear(new(255, 255, 255, 45));
-            // float pxRatio = fbSize.X / winSize.X;
-
-            // float x = 250;
-            // float y = 200;
-
-            // SKPaint testPaint = new SKPaint()
-            // {
-            //     Color = SKColors.Black,
-            //     TextSize = FontSize,
-            //     IsAntialias = true,
-            //     IsStroke = false,
-            //     TextAlign = SKTextAlign.Center,
-            // };
-
-            // string text = "Hello world!";
-
-            // var textMetrics = Fonts.Measure(testPaint, text);
-
-            // Renderer.Canvas.DrawText(text, x, y, testPaint);
-
-            // testPaint.Color = SKColors.Red;
-            // testPaint.StrokeWidth = 5;
-
-            // Renderer.Canvas.DrawPoint(new SKPoint(x, y), testPaint);
-
-            // testPaint.Color = new SKColor(0, 255, 0, 25);
-            // Renderer.Canvas.DrawRect(x, y - (textMetrics.Y / 2f), textMetrics.X, textMetrics.Y, testPaint);
+            float pxRatio = fbSize.X / winSize.X;
 
             BrowserApp.Render();
 
-            // SKPaint crossPaint = new SKPaint()
-            // {
-            //     Color = SKColors.Black,
-            //     IsAntialias = true,
-            //     IsStroke = true,
-            //     StrokeWidth = 2,
-            //     TextSize = 35,
-            // };
-
-            // var outer = new SKRoundRect(new (100, 100, 300, 550), 3, 3);
-            // var inner = new SKRoundRect(new (150, 150, 500, 500), 30, 30);
-
-            // Renderer.Canvas.DrawRoundRect(outer, crossPaint);
-            // Renderer.Canvas.DrawRoundRect(inner, crossPaint);
-
-            // using(new SKAutoCanvasRestore(Renderer.Canvas))
-            // {
-            //     if(d.ElapsedMilliseconds <= 800){
-            //         Renderer.Canvas.ClipRoundRect(outer, SKClipOperation.Intersect);
-            //     }
-            //     else if (d.ElapsedMilliseconds > 1600) {
-            //         d.Restart();
-            //     }
-
-            //     Renderer.Canvas.DrawRoundRect(inner, crossPaint);
-
-            //     crossPaint.IsStroke = false;
-            //     Renderer.Canvas.DrawText("Hello World", x - 25, y, crossPaint);
-            // }
-
             if (FpsVisible)
             {
+                fpsPaint.IsStroke = true;
+                fpsPaint.Color = SKColors.Black;
+                fpsPaint.StrokeWidth = 4;
+                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
+                
+                fpsPaint.IsStroke = false;
+                fpsPaint.Color = SKColors.IndianRed;
                 Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
 
                 frames++;
