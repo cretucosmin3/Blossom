@@ -40,8 +40,6 @@ namespace Kara
             };
 
             SetWindow();
-
-            // StartWindow();
         }
 
         private static void SetWindow()
@@ -53,7 +51,6 @@ namespace Kara
             options.Title = "Kara";
             options.VSync = false;
             options.IsEventDriven = true;
-            options.WindowBorder = WindowBorder.Resizable;
 
             GlfwWindowing.Use();
 
@@ -82,7 +79,7 @@ namespace Kara
                 window.ContinueEvents();
             }
 
-                window.Dispose();
+            window.Dispose();
         }
 
         private static void ManageInputEvents()
@@ -97,19 +94,19 @@ namespace Kara
                 {
                     if (i == 0) return;
                     var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
-                    var ViewHandled = BrowserApp.ActiveView.Events.HandleKeyDown(key, i);
+                    var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
                 };
 
                 keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
                 {
                     BrowserApp.Events.HandleKeyUp(key, i);
-                    BrowserApp.ActiveView.Events.HandleKeyUp(key, i);
+                    BrowserApp.ActiveView?.Events.HandleKeyUp(key, i);
                 };
 
                 keyboard.KeyChar += (IKeyboard _, char ch) =>
                 {
                     BrowserApp.Events.HandleKeyChar(ch);
-                    BrowserApp.ActiveView.Events.HandleKeyChar(ch);
+                    BrowserApp.ActiveView?.Events.HandleKeyChar(ch);
                 };
             }
 
@@ -119,7 +116,7 @@ namespace Kara
                 mouse.MouseMove += (IMouse _, Vector2 pos) =>
                 {
                     BrowserApp.Events.HandleMouseMove(pos);
-                    BrowserApp.ActiveView.Events.HandleMouseMove(pos);
+                    BrowserApp.ActiveView?.Events.HandleMouseMove(pos);
                 };
 
                 mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
@@ -132,7 +129,7 @@ namespace Kara
                     Console.WriteLine($"Click {btn.ToString()}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseClick(mouseButton, pos);
-                    BrowserApp.ActiveView.Events.HandleMouseClick(mouseButton, pos);
+                    BrowserApp.ActiveView?.Events.HandleMouseClick(mouseButton, pos);
                 };
 
                 mouse.DoubleClick += (IMouse m, MouseButton btn, Vector2 pos) =>
@@ -140,7 +137,7 @@ namespace Kara
                     Console.WriteLine($"Double click {btn} {pos}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseDoubleClick(mouseButton, pos);
-                    BrowserApp.ActiveView.Events.HandleMouseDoubleClick(mouseButton, pos);
+                    BrowserApp.ActiveView?.Events.HandleMouseDoubleClick(mouseButton, pos);
                 };
 
                 mouse.MouseDown += (IMouse m, MouseButton btn) =>
@@ -148,7 +145,7 @@ namespace Kara
                     // Console.WriteLine($"Mouse Down {btn}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
-                    BrowserApp.ActiveView.Events.HandleMouseDown(mouseButton, m.Position);
+                    BrowserApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
                 };
 
                 mouse.MouseUp += (IMouse m, MouseButton btn) =>
@@ -156,7 +153,7 @@ namespace Kara
                     // Console.WriteLine($"Mouse Up {btn}");
                     int mouseButton = (int)btn;
                     BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
-                    BrowserApp.ActiveView.Events.HandleMouseUp(mouseButton, m.Position);
+                    BrowserApp.ActiveView?.Events.HandleMouseUp(mouseButton, m.Position);
                 };
             }
         }
@@ -172,7 +169,7 @@ namespace Kara
             OnLoaded.Invoke();
             IsLoaded = true;
 
-            StartWindow();
+            // StartWindow();
         }
 
         private static float frames = 0;

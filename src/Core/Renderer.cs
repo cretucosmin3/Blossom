@@ -41,10 +41,8 @@ namespace Kara.Core
 
         public static void SetCanvas(IWindow window)
         {
-            grGlInterface = GRGlInterface.Create((name => window.GLContext!.TryGetProcAddress(name, out var addr) ? addr : (IntPtr)0));
-
-            // grGlInterface = GRGlInterface.Create();
-            // grGlInterface.Validate();
+            grGlInterface = GRGlInterface.Create();
+            grGlInterface.Validate();
 
             grContext = GRContext.CreateGl(grGlInterface);
 

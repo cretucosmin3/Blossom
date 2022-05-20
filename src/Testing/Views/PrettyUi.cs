@@ -31,12 +31,12 @@ namespace Kara.Testing
 
             this.Loop += Update;
 
-            // this.Events.OnMouseClick += (int button, Vector2 pos) =>
-            // {
-            //     if (button > 0) return;
-            //     Parent.Transform.X = pos.X;
-            //     Parent.Transform.Y = pos.Y;
-            // };
+            this.Events.OnMouseUp += (int button, Vector2 pos) =>
+            {
+                if (button > 0) return;
+                Parent.Transform.X = pos.X;
+                Parent.Transform.Y = pos.Y;
+            };
 
             this.Events.OnKeyType += (char c) =>
             {
@@ -201,7 +201,7 @@ namespace Kara.Testing
             TestElement = new VisualElement()
             {
                 Name = "TestElement",
-                Text = "Hello",
+                Text = "Merci Beaucoup",
                 Transform = new(Parent.Transform.Width / 2f - 80 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 80, 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
