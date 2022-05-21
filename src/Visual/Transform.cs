@@ -1,6 +1,6 @@
 using System;
-using Kara;
-using Kara.Core.Visual;
+using Rux;
+using Rux.Core.Visual;
 
 public class Transform
 {
@@ -22,23 +22,17 @@ public class Transform
     /// <summary>
     /// Called when the transform is updated. (x, y, w, h)
     /// </summary>
-    public Action<float, float, float, float> OnResized = null;
+    public Action<Transform> OnChanged;
 
     public float X
     {
         get => Local.X;
         set
         {
-            XChanged = true;
             Local.X = value;
             CalculateHorizontalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -47,16 +41,10 @@ public class Transform
         get => Local.Y;
         set
         {
-            YChanged = true;
             Local.Y = value;
             CalculateVerticalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -65,16 +53,10 @@ public class Transform
         get => Local.Width;
         set
         {
-            WidthChanged = true;
             Local.Width = value;
             CalculateHorizontalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -83,18 +65,14 @@ public class Transform
         get => Local.Height;
         set
         {
-            HeightChanged = true;
             Local.Height = value;
             CalculateVerticalAnchors();
 
-            OnResized?.Invoke(
-                Local.X,
-                Local.Y,
-                Local.Width,
-                Local.Height
-            );
+            OnChanged?.Invoke(this);
         }
     }
+
+    public bool ValidateOnAnchor { get; set; } = true;
 
     private Anchor _Anchor;
     public Anchor Anchor
@@ -103,7 +81,9 @@ public class Transform
         set
         {
             _Anchor = value;
-            SetAnchorValues();
+
+            if (ValidateOnAnchor)
+                SetAnchorValues();
         }
     }
 
@@ -140,20 +120,12 @@ public class Transform
 
     internal void SetAnchorValues()
     {
-        if (Parent != null)
-        {
-            CalculateHorizontalAnchors();
-            CalculateVerticalAnchors();
+        CalculateHorizontalAnchors();
+        CalculateVerticalAnchors();
 
-            ComputeHorizontalTransform();
-            ComputeVerticalTransform();
-        }
+        ComputeHorizontalTransform();
+        ComputeVerticalTransform();
     }
-
-    internal bool XChanged = true;
-    internal bool YChanged = true;
-    private bool WidthChanged = false;
-    private bool HeightChanged = false;
 
     private void CalculateHorizontalAnchors()
     {
@@ -276,33 +248,8 @@ public class Transform
 
     internal void Evaluate()
     {
-        if (XChanged || WidthChanged) CalculateHorizontalAnchors();
-        if (YChanged || HeightChanged) CalculateVerticalAnchors();
-
-        if (Parent != null)
-        {
-            if (Parent.XChanged || Parent.WidthChanged)
-                ComputeHorizontalTransform();
-
-            if (Parent.YChanged || Parent.HeightChanged)
-                ComputeVerticalTransform();
-        }
-        else
-        {
-            ComputeHorizontalTransform();
-            ComputeVerticalTransform();
-        }
-
-        // CalculateHorizontalAnchors();
-        // CalculateVerticalAnchors();
-        // ComputeHorizontalTransform();
-        // ComputeVerticalTransform();
-    }
-
-    internal void ClearRenderData()
-    {
-        XChanged = false;
-        YChanged = false;
+        ComputeHorizontalTransform();
+        ComputeVerticalTransform();
     }
 }
 

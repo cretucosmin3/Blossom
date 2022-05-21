@@ -1,10 +1,10 @@
 using System;
-using Kara.Core;
-using Kara.Core.Input;
-using Kara.Core.Visual;
+using Rux.Core;
+using Rux.Core.Input;
+using Rux.Core.Visual;
 using System.Drawing;
 
-namespace Kara.Testing
+namespace Rux.Testing
 {
     public class TestingApplication : Application
     {

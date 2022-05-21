@@ -1,49 +1,34 @@
-using System;
-using Kara.Core.Visual;
+namespace Rux.Core.Visual;
+using System.Collections.Generic;
 
 public class ElementStyle
 {
-    internal VisualElement ElementRef;
+    internal List<VisualElement> AssignedElements = new List<VisualElement>();
+
+    public TextStyle Text { get; set; } = new();
+    public BorderStyle Border { get; set; } = new();
 
     public ElementStyle() { }
 
-    public TextStyle Text { get; set; }
+    internal void AssignElement(VisualElement element)
+    {
+        AssignedElements.Add(element);
+        Text.StyleContext = this;
+        Border.StyleContext = this;
+    }
 
-    private float _BorderWidth = 0f;
-    private SkiaSharp.SKColor _BorderColor = new(0, 0, 0, 0);
-    private float _Roundness = 0f;
+    internal void UnassignElement(ref VisualElement element)
+    {
+        AssignedElements.Remove(element);
+    }
+
+    internal void ScheduleRender()
+    {
+        foreach (var element in AssignedElements)
+            element.ScheduleRender();
+    }
+
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
-
-    public float BorderWidth
-    {
-        get => _BorderWidth;
-        set
-        {
-            _BorderWidth = value;
-            //! #render
-        }
-    }
-
-    public SkiaSharp.SKColor BorderColor
-    {
-        get => _BorderColor;
-        set
-        {
-            _BorderColor = value;
-            //! #render
-        }
-    }
-
-    public float Roundness
-    {
-        get => _Roundness;
-        set
-        {
-            _Roundness = value;
-            //! #render
-        }
-    }
-
 
     public SkiaSharp.SKColor BackColor
     {
@@ -51,7 +36,7 @@ public class ElementStyle
         set
         {
             _BackColor = value;
-            //! #render
+            ScheduleRender();
         }
     }
 }

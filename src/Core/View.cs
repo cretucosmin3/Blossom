@@ -1,9 +1,9 @@
 using System;
-using Kara.Core.Visual;
-using Kara.Core.Input;
-using Kara.Core.Delegates.Common;
+using Rux.Core.Visual;
+using Rux.Core.Input;
+using Rux.Core.Delegates.Common;
 
-namespace Kara.Core
+namespace Rux.Core
 {
     public abstract class View : IDisposable
     {

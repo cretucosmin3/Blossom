@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace Kara.Utils
+namespace Rux.Utils
 {
     internal static class Conversion
     {

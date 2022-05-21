@@ -1,12 +1,12 @@
 using System;
 
-namespace Kara.Core.Visual
+namespace Rux.Core.Visual
 {
-	public enum ResizeType : int
-	{
-		X,
-		Y,
-		Width,
-		Height
-	}
+    public enum ResizeType : int
+    {
+        X,
+        Y,
+        Width,
+        Height
+    }
 }
