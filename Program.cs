@@ -1,14 +1,9 @@
-﻿using System.Security;
-using System.Globalization;
-using System;
+﻿using System;
 using System.IO;
-using Kara.Core.Visual;
-using Kara.Core;
-using Kara.Core.Input;
 
-namespace Kara
+namespace Rux
 {
-    internal class KaraEntry
+    internal class RuxEntry
     {
         private static readonly string[] _args = Environment.GetCommandLineArgs();
         private static readonly string _appName = Path.GetFileNameWithoutExtension(_args[0]);
@@ -23,7 +18,6 @@ namespace Kara
             // DateTime startTime = new DateTime(2019, 7, 13);
             // DateTime endTime = DateTime.Now;
 
-            // // calculate the difference between startTime and endTime and display it in years, months and days.
             // TimeSpan difference = endTime - startTime;
             // var years = difference.Days / 365d;
             // var restYears = years - Math.Truncate(years);

@@ -1,19 +1,25 @@
+using System.Security.Cryptography;
+using System.Numerics;
+using System.Net.Mime;
 using System;
 using System.Diagnostics;
-using Kara.Core;
-using Kara.Core.Input;
-using Kara.Core.Visual;
+using Rux.Core;
+using Rux.Core.Input;
+using Rux.Core.Visual;
 using System.Drawing;
 using System.Threading;
 using SkiaSharp;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Kara.Testing
+namespace Rux.Testing
 {
     public class PrettyUi : View
     {
-        List<VisualElement> TestElements = new List<VisualElement>();
+
+        VisualElement LoginText;
+        VisualElement InputText;
+        VisualElement Button;
 
         public PrettyUi() : base("PrettyUi View") { }
 
@@ -21,66 +27,111 @@ namespace Kara.Testing
         {
             Browser.ShowFps();
 
+            this.Events.OnMouseScroll += (Vector2 pos) =>
+            {
+                InputText.Style.Text.Size += pos.Y * 0.3f;
+            };
+
             this.Events.OnKeyType += (char c) =>
             {
-                switch (c)
+                if (c == '\b')
                 {
-                    case '1':
-                        var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
-                        var current = Array.IndexOf(values, TestElements[0].Style.Text.Alignment);
-
-                        current++;
-
-                        if (current == values.Length)
-                            current = 0;
-
-                        foreach (var e in TestElements)
-                        {
-                            e.Style.Text.Alignment = values[current];
-                            e.Text = $"{values[current].ToString()}";
-                        }
-                        break;
-                    default:
-                        break;
+                    if (InputText.Text.Length > 0)
+                    {
+                        InputText.Text = InputText.Text.Substring(0, InputText.Text.Length - 1);
+                    }
+                }
+                else
+                {
+                    InputText.Text += c;
                 }
             };
 
-            for (int i = 0; i < 10; i++)
+            LoginText = new VisualElement()
             {
-                for (int x = 0; x < 10; x++)
+                Name = "LoginText",
+                Text = "Welcome back!",
+                Transform = new(550 - 200, 130, 400, 80)
                 {
-                    var newE = new VisualElement()
+                    Anchor = Anchor.Top,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
+                    Text = new()
                     {
-                        Name = "TestElement" + i + x,
-                        Text = ">",
-                        Transform = new(105 * i, 85 * x, 100, 80)
-                        {
-                            Anchor = Anchor.Top | Anchor.Left,
-                            FixedHeight = true,
-                        },
-                        Style = new() {
-                            BorderWidth = 1f,
-                            BorderColor = SKColors.DeepSkyBlue,
-                            BackColor = SKColors.DimGray,
-                            Text = new()
-                            {
-                                Color = SKColors.White,
-                                Size = 18,
-                                Padding = 3f,
-                                Alignment = TextAlign.Center
-                            }
-                        },
-                    };
+                        Size = 35f,
+                        Alignment = TextAlign.Center,
+                        Color = SKColors.White,
+                    }
+                },
+            };
 
-                    TestElements.Add(newE);
-                    Elements.AddElement(ref newE, this);
-                }
-            }
+            InputText = new VisualElement()
+            {
+                Name = "InputText",
+                Text = "Type your full name...",
+                Transform = new(550 - 250, 230, 500, 40)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
+                    Border = new()
+                    {
+                        Width = 1f,
+                        Color = SKColors.White,
+                        Roundness = 5f,
+                    },
+                    Text = new()
+                    {
+                        Size = 16f,
+                        Alignment = TextAlign.Left,
+                        Padding = 12f,
+                        Color = SKColors.White,
+                    }
+                },
+            };
 
-            watch.Start();
+            Button = new VisualElement()
+            {
+                Name = "Button",
+                Text = "Submit",
+                Transform = new(550 - 100, 300, 200, 40)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
+                    BackColor = new SKColor(96, 16, 16),
+                    Border = new()
+                    {
+                        Roundness = 6f,
+                        Width = 0.6f,
+                        Color = SKColors.Red,
+                    },
+                    Text = new()
+                    {
+                        Size = 20f,
+                        Alignment = TextAlign.Center,
+                        Color = SKColors.White,
+                    }
+                },
+            };
+
+            AddElement(LoginText);
+            AddElement(InputText);
+            AddElement(Button);
         }
 
-        private Stopwatch watch = new Stopwatch();
         private void Update()
         {
 

@@ -1,131 +1,144 @@
-﻿using Kara.Core;
-using Kara.Core.Visual;
+﻿using Rux.Core.Visual;
 using QuadTrees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Kara.Core
+namespace Rux.Core
 {
-	public class ElementsMap : IDisposable
-	{
-		private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
-		private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
-			float.MinValue / 2f, float.MinValue / 2f,
-			float.MaxValue, float.MaxValue
-		);
+    public class ElementsMap : IDisposable
+    {
+        private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
+        private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
+            float.MinValue / 2f, float.MinValue / 2f,
+            float.MaxValue, float.MaxValue
+        );
 
-		public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
+        public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
 
-		internal ElementsMap() { }
+        internal ElementsMap() { }
 
-		public List<VisualElement> ComponentsFromPoint(PointF point)
-		{
-			return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
-		}
+        public List<VisualElement> ComponentsFromPoint(PointF point)
+        {
+            return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
+        }
 
-		public List<VisualElement> CollidedComponents(VisualElement element)
-		{
-			var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
-			List<VisualElement> Result = new();
-			foreach (var Tracker in Collided)
-			{
-				if (Tracker.Element == element) continue;
-				Result.Add(Tracker.Element);
-			}
+        public List<VisualElement> ComponentsFromPointV2(PointF point)
+        {
+            var RectToSearch = new RectangleF(point.X, point.Y, 2, 2);
 
-			return Result;
-		}
+            var Elements = new List<VisualElement>();
+            foreach (var item in Map)
+            {
+                if (item.Value.Item2.Rect.IntersectsWith(RectToSearch))
+                {
+                    Elements.Add(item.Value.Item1);
+                }
+            }
 
-		public VisualElement FirstFromPoint(PointF point) =>
-			FirstFromPoint(point.X, point.Y);
+            return Elements;
+        }
+
+        public List<VisualElement> CollidedComponents(VisualElement element)
+        {
+            var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
+            List<VisualElement> Result = new();
+            foreach (var Tracker in Collided)
+            {
+                if (Tracker.Element == element) continue;
+                Result.Add(Tracker.Element);
+            }
+
+            return Result;
+        }
+
+        public VisualElement FirstFromPoint(PointF point) =>
+            FirstFromPoint(point.X, point.Y);
 
 
-		public VisualElement FirstFromPoint(float x, float y)
-		{
-			var components = QuadTree.GetObjects(new RectangleF(x, y, 1, 1));
-			if (!components.Any()) return null;
+        public VisualElement FirstFromPoint(float x, float y)
+        {
+            var components = QuadTree.GetObjects(new RectangleF(x, y, 1, 1));
+            if (!components.Any()) return null;
 
-			int maxLayer = components.Max(t => t.Element.Layer);
-			return components.Find(t => t.Element.Layer == maxLayer).Element;
-		}
+            int maxLayer = components.Max(t => t.Element.Layer);
+            return components.Find(t => t.Element.Layer == maxLayer).Element;
+        }
 
-		public VisualElement FirstFromQuad(RectangleF quad)
-		{
-			var components = QuadTree.GetObjects(quad);
-			if (!components.Any()) return null;
+        public VisualElement FirstFromQuad(RectangleF quad)
+        {
+            var components = QuadTree.GetObjects(quad);
+            if (!components.Any()) return null;
 
-			int maxLayer = components.Max(t => t.Element.Layer);
-			return components.Find(t => t.Element.Layer == maxLayer).Element;
-		}
+            int maxLayer = components.Max(t => t.Element.Layer);
+            return components.Find(t => t.Element.Layer == maxLayer).Element;
+        }
 
-		public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
-		{
-			var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
+        public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
+        {
+            var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
 
-			foreach (var Tracker in Intersected)
-				if (Tracker.Element == elm2) return true;
+            foreach (var Tracker in Intersected)
+                if (Tracker.Element == elm2) return true;
 
-			return false;
-		}
+            return false;
+        }
 
-		private ElementTracker AddTracker(ref VisualElement element)
-		{
-			var NewTracker = new ElementTracker(ref element);
-			QuadTree.Add(NewTracker);
+        private ElementTracker AddTracker(ref VisualElement element)
+        {
+            var NewTracker = new ElementTracker(ref element);
+            QuadTree.Add(NewTracker);
 
-			return NewTracker;
-		}
+            return NewTracker;
+        }
 
-		private void RemoveTracker(VisualElement Element)
-		{
-			var (_, tracker) = Map[Element.Name];
-			QuadTree.Remove(tracker);
-		}
+        private void RemoveTracker(VisualElement Element)
+        {
+            var (_, tracker) = Map[Element.Name];
+            QuadTree.Remove(tracker);
+        }
 
-		public void AddElement(ref VisualElement e, View view)
-		{
-			if (Map.ContainsKey(e.Name))
-			{
-				Log.Error($"A component with name {e.Name} already exists.");
-				return;
-			}
+        public void AddElement(ref VisualElement e, View view)
+        {
+            if (Map.ContainsKey(e.Name))
+            {
+                Log.Error($"A component with name {e.Name} already exists.");
+                return;
+            }
 
-			e.ParentApplication = view.Application;
-			e.ParentView = view;
-			var tracker = AddTracker(ref e);
+            e.ParentApplication = view.Application;
+            e.ParentView = view;
+            var tracker = AddTracker(ref e);
 
-			// Add element and tracker to the map
-			Map.Add(e.Name, (e, tracker));
+            // Add element and tracker to the map
+            Map.Add(e.Name, (e, tracker));
 
-			e.OnDisposing += Element_OnDispose;
-		}
+            e.OnDisposing += Element_OnDispose;
+        }
 
-		public void RemoveElement(VisualElement e)
-		{
-			Map.Remove(e.Name);
+        public void RemoveElement(VisualElement e)
+        {
+            Map.Remove(e.Name);
 
-			// Remove children if any
-			e.Children.ForEach(child => child.Dispose());
-		}
+            // Remove children if any
+            e.Children.ForEach(child => child.Dispose());
+        }
 
-		private void Element_OnDispose(VisualElement e)
-		{
-			RemoveElement(e);
-		}
+        private void Element_OnDispose(VisualElement e)
+        {
+            RemoveElement(e);
+        }
 
-		public void Dispose()
-		{
-			foreach (var (element, tracker) in Map.Values)
-			{
-				element.Dispose();
-			}
+        public void Dispose()
+        {
+            foreach (var (element, tracker) in Map.Values)
+            {
+                element.Dispose();
+            }
 
-			QuadTree.Clear();
-			Map.Clear();
-		}
-	}
+            QuadTree.Clear();
+            Map.Clear();
+        }
+    }
 }

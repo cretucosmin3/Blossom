@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using static System.Console;
 
-namespace Kara
+namespace Rux
 {
     public static class Log
     {
