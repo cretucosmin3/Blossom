@@ -1,2 +1,3 @@
-# Kara
- Cross platform web browser
+# Rux
+
+Cross platform web browser

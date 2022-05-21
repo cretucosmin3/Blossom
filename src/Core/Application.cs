@@ -1,8 +1,8 @@
 using System;
-using Kara.Core.Input;
+using Rux.Core.Input;
 using System.Collections.Generic;
 
-namespace Kara.Core
+namespace Rux.Core
 {
     public abstract class Application : IDisposable
     {

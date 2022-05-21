@@ -2,7 +2,7 @@ using System;
 using Silk.NET.Windowing;
 using SkiaSharp;
 
-namespace Kara.Core
+namespace Rux.Core
 {
     internal static class Renderer
     {

@@ -1,14 +1,9 @@
-﻿using System.Security;
-using System.Globalization;
-using System;
+﻿using System;
 using System.IO;
-using Kara.Core.Visual;
-using Kara.Core;
-using Kara.Core.Input;
 
-namespace Kara
+namespace Rux
 {
-    internal class KaraEntry
+    internal class RuxEntry
     {
         private static readonly string[] _args = Environment.GetCommandLineArgs();
         private static readonly string _appName = Path.GetFileNameWithoutExtension(_args[0]);

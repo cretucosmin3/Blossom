@@ -1,5 +1,5 @@
-namespace Kara.Core.Visual;
-using Kara.Core.Visual;
+namespace Rux.Core.Visual;
+using Rux.Core.Visual;
 
 public class BorderStyle
 {

@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System;
 using Silk.NET.Input;
 using Silk.NET.Windowing;
-using Kara.Core.Delegates.Inputs;
-using Kara.Utils;
+using Rux.Core.Delegates.Inputs;
+using Rux.Utils;
 using System.Numerics;
 
-namespace Kara.Core.Input
+namespace Rux.Core.Input
 {
     public class EventMap : IDisposable
     {

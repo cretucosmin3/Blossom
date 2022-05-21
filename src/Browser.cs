@@ -3,15 +3,15 @@ using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
-using Kara.Core;
-using Kara.Core.Input;
-using Kara.Core.Delegates.Common;
-using Kara.Testing;
+using Rux.Core;
+using Rux.Core.Input;
+using Rux.Core.Delegates.Common;
+using Rux.Testing;
 using Silk.NET.Windowing.Glfw;
 using SkiaSharp;
-using Kara.Utils;
+using Rux.Utils;
 
-namespace Kara
+namespace Rux
 {
     public static class Browser
     {
@@ -40,11 +40,11 @@ namespace Kara
 
         private static void SetWindow()
         {
-            RenderRect = new RectangleF(0, 0, 400, 400);
+            RenderRect = new RectangleF(0, 0, 1100, 700);
 
             var options = WindowOptions.Default;
-            options.Size = new Vector2D<int>(400, 400);
-            options.Title = "Kara";
+            options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
+            options.Title = "Rux";
             options.VSync = false;
             options.IsEventDriven = true;
 
@@ -159,6 +159,7 @@ namespace Kara
 
         private static void Load()
         {
+            window.Center();
             Renderer.SetCanvas(window);
             OnLoaded.Invoke();
             IsLoaded = true;
@@ -196,7 +197,7 @@ namespace Kara
                 fpsPaint.Color = SKColors.Black;
                 fpsPaint.StrokeWidth = 4;
                 Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
-                
+
                 fpsPaint.IsStroke = false;
                 fpsPaint.Color = SKColors.IndianRed;
                 Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);

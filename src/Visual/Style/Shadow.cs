@@ -1,4 +1,4 @@
-namespace Kara.Core.Visual;
+namespace Rux.Core.Visual;
 using System.Numerics;
 
 public class Shadow

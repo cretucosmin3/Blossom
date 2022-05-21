@@ -1,8 +1,9 @@
-namespace Kara.Core.Visual;
+using System.Threading.Tasks.Dataflow;
+namespace Rux.Core.Visual;
 using System;
 using System.Numerics;
 using System.Collections.Generic;
-using Kara.Core.Delegates.Common;
+using Rux.Core.Delegates.Common;
 using SkiaSharp;
 
 public class VisualElement : IDisposable
@@ -109,9 +110,10 @@ public class VisualElement : IDisposable
     internal void Render()
     {
         this.Transform.Evaluate();
-        
+
         SKRoundRect prect = null;
-        if(Parent is not null) {
+        if (Parent != null && Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF))
+        {
             prect = new SKRoundRect(
                 new SKRect(
                     Parent.Transform.Computed.X,
@@ -121,15 +123,16 @@ public class VisualElement : IDisposable
                 ),
                 Style.Border.Roundness, Style.Border.Roundness
             );
-        
-            using(new SKAutoCanvasRestore(Renderer.Canvas))
+
+            using (new SKAutoCanvasRestore(Renderer.Canvas))
             {
                 Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
                 DrawBase();
                 DrawText();
             }
         }
-        else {
+        else
+        {
             DrawBase();
             DrawText();
         }

@@ -1,11 +1,11 @@
-﻿using Kara.Core.Visual;
+﻿using Rux.Core.Visual;
 using QuadTrees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace Kara.Core
+namespace Rux.Core
 {
     public class ElementsMap : IDisposable
     {

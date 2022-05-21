@@ -1,27 +1,25 @@
+using System.Security.Cryptography;
 using System.Numerics;
 using System.Net.Mime;
 using System;
 using System.Diagnostics;
-using Kara.Core;
-using Kara.Core.Input;
-using Kara.Core.Visual;
+using Rux.Core;
+using Rux.Core.Input;
+using Rux.Core.Visual;
 using System.Drawing;
 using System.Threading;
 using SkiaSharp;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Kara.Testing
+namespace Rux.Testing
 {
     public class PrettyUi : View
     {
-        VisualElement Parent;
-        VisualElement LeftIndicator;
-        VisualElement RightIndicator;
-        VisualElement TopIndicator;
-        VisualElement BottomIndicator;
 
-        VisualElement TestElement;
+        VisualElement LoginText;
+        VisualElement InputText;
+        VisualElement Button;
 
         public PrettyUi() : base("PrettyUi View") { }
 
@@ -29,294 +27,114 @@ namespace Kara.Testing
         {
             Browser.ShowFps();
 
-            this.Loop += Update;
-
-            this.Events.OnMouseUp += (int button, Vector2 pos) =>
+            this.Events.OnMouseScroll += (Vector2 pos) =>
             {
-                if (button > 0) return;
-                Parent.Transform.X = pos.X;
-                Parent.Transform.Y = pos.Y;
-            };
-
-            this.Events.OnMouseScroll += (Vector2 pos) => {
-                TestElement.Style.Text.Size += pos.Y * 1.5f;
+                InputText.Style.Text.Size += pos.Y * 0.3f;
             };
 
             this.Events.OnKeyType += (char c) =>
             {
-                bool hasFlag = false;
-                switch (c)
+                if (c == '\b')
                 {
-                    case '1':
-                        var values = Enum.GetValues(typeof(TextAlign)).Cast<TextAlign>().ToArray();
-                        var current = Array.IndexOf(values, TestElement.Style.Text.Alignment);
-
-                        current++;
-
-                        if (current == values.Length)
-                            current = 0;
-
-                        TestElement.Style.Text.Alignment = values[current];
-                        TestElement.Text = values[current].ToString();
-                        break;
-                    case 'a':
-                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Left);
-                        LeftIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
-
-                        if (hasFlag)
-                            TestElement.Transform.Anchor &= ~Anchor.Left;
-                        else
-                            TestElement.Transform.Anchor |= Anchor.Left;
-
-                        break;
-                    case 'd':
-                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Right);
-                        RightIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
-
-                        if (hasFlag)
-                            TestElement.Transform.Anchor &= ~Anchor.Right;
-                        else
-                            TestElement.Transform.Anchor |= Anchor.Right;
-
-                        break;
-                    case 'w':
-                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Top);
-                        TopIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
-
-                        if (hasFlag)
-                            TestElement.Transform.Anchor &= ~Anchor.Top;
-                        else
-                            TestElement.Transform.Anchor |= Anchor.Top;
-
-                        break;
-                    case 's':
-                        hasFlag = TestElement.Transform.Anchor.HasFlag(Anchor.Bottom);
-                        BottomIndicator.Style.BackColor = !hasFlag ? SKColors.IndianRed : SKColors.LightGray;
-
-                        if (hasFlag)
-                            TestElement.Transform.Anchor &= ~Anchor.Bottom;
-                        else
-                            TestElement.Transform.Anchor |= Anchor.Bottom;
-
-                        break;
-                    default:
-                        break;
-                }
-            };
-
-            // this.Events.OnMouseClick += (int button, Vector2 position) =>
-            // {
-            //     Console.WriteLine($"{button} {position.ToString("0,0")}");
-            // };
-
-            this.Events.OnKeyUp += key =>
-            {
-                Console.WriteLine(key);
-
-                if (key == 116)
-                {
-                    Parent.Transform.Height += 20;
-                }
-
-                if (key == 111)
-                {
-                    Parent.Transform.Height -= 20;
-                }
-
-                if (key == 113)
-                {
-                    Parent.Transform.Width -= 20;
-                }
-
-                if (key == 114)
-                {
-                    Parent.Transform.Width += 20;
-                }
-            };
-
-            int iThinckness = 8;
-
-            Parent = new VisualElement()
-            {
-                Name = "Parent",
-                Text = "Testing",
-                Transform = new(55, 55, 150, 150)
-                {
-                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right | Anchor.Bottom
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.AliceBlue,
-                }
-            };
-
-            LeftIndicator = new VisualElement()
-            {
-                Name = "LeftIndicator",
-                Transform = new(0, 0, iThinckness, Parent.Transform.Height)
-                {
-                    Anchor = Anchor.Left | Anchor.Top | Anchor.Bottom,
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.IndianRed,
-                }
-            };
-
-            RightIndicator = new VisualElement()
-            {
-                Name = "RightIndicator",
-                Transform = new(Parent.Transform.Width - iThinckness, 0, iThinckness, Parent.Transform.Height)
-                {
-                    Anchor = Anchor.Right | Anchor.Top | Anchor.Bottom
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.LightGray,
-                }
-            };
-
-            TopIndicator = new VisualElement()
-            {
-                Name = "TopIndicator",
-                Transform = new(0, 0, Parent.Transform.Width, iThinckness)
-                {
-                    Anchor = Anchor.Left | Anchor.Right | Anchor.Top
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.IndianRed,
-                }
-            };
-
-            BottomIndicator = new VisualElement()
-            {
-                Name = "BottomIndicator",
-                Transform = new(0, Parent.Transform.Height - iThinckness, Parent.Transform.Width, iThinckness)
-                {
-                    Anchor = Anchor.Left | Anchor.Right | Anchor.Bottom
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.LightGray,
-                }
-            };
-
-            TestElement = new VisualElement()
-            {
-                Name = "TestElement",
-                Text = "Merci Beaucoup",
-                Transform = new(Parent.Transform.Width / 2f - 80 / 2f, Parent.Transform.Height / 2f - 80 / 2f, 80, 80)
-                {
-                    Anchor = Anchor.Top | Anchor.Left,
-                    FixedWidth = true,
-                    FixedHeight = true,
-                    ValidateOnAnchor = true,
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.IndianRed,
-                    Border = new()
+                    if (InputText.Text.Length > 0)
                     {
-                        Width = 3f,
-                        Color = SKColors.Black,
-                    },
+                        InputText.Text = InputText.Text.Substring(0, InputText.Text.Length - 1);
+                    }
+                }
+                else
+                {
+                    InputText.Text += c;
+                }
+            };
+
+            LoginText = new VisualElement()
+            {
+                Name = "LoginText",
+                Text = "Welcome back!",
+                Transform = new(550 - 200, 130, 400, 80)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
                     Text = new()
                     {
+                        Size = 35f,
                         Alignment = TextAlign.Center,
                         Color = SKColors.White,
                     }
                 },
             };
 
-            Parent.AddChild(TestElement);
-            Parent.AddChild(LeftIndicator);
-            Parent.AddChild(RightIndicator);
-            Parent.AddChild(TopIndicator);
-            Parent.AddChild(BottomIndicator);
+            InputText = new VisualElement()
+            {
+                Name = "InputText",
+                Text = "Type your full name...",
+                Transform = new(550 - 250, 230, 500, 40)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
+                    Border = new()
+                    {
+                        Width = 1f,
+                        Color = SKColors.White,
+                        Roundness = 5f,
+                    },
+                    Text = new()
+                    {
+                        Size = 16f,
+                        Alignment = TextAlign.Left,
+                        Padding = 12f,
+                        Color = SKColors.White,
+                    }
+                },
+            };
 
-            AddElement(TestElement);
-            AddElement(Parent);
-            AddElement(LeftIndicator);
-            AddElement(RightIndicator);
-            AddElement(TopIndicator);
-            AddElement(BottomIndicator);
+            Button = new VisualElement()
+            {
+                Name = "Button",
+                Text = "Submit",
+                Transform = new(550 - 100, 300, 200, 40)
+                {
+                    Anchor = Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = new()
+                {
+                    BackColor = new SKColor(96, 16, 16),
+                    Border = new()
+                    {
+                        Roundness = 6f,
+                        Width = 0.6f,
+                        Color = SKColors.Red,
+                    },
+                    Text = new()
+                    {
+                        Size = 20f,
+                        Alignment = TextAlign.Center,
+                        Color = SKColors.White,
+                    }
+                },
+            };
 
-            stopwatch.Start();
+            AddElement(LoginText);
+            AddElement(InputText);
+            AddElement(Button);
         }
-
-        private float progress = 0;
-        private bool increase = true;
-        private float duration = 200;
-        private Stopwatch stopwatch = new Stopwatch();
-        private int testStage = 0;
 
         private void Update()
         {
-            // if (increase)
-            // {
-            //     progress = stopwatch.ElapsedMilliseconds / duration;
-            //     if (stopwatch.ElapsedMilliseconds >= duration)
-            //     {
-            //         progress = 1;
-            //         increase = false;
-            //         stopwatch.Restart();
-            //     }
-            // }
-            // else
-            // {
-            //     progress = 1 - (stopwatch.ElapsedMilliseconds / duration);
-            //     if (stopwatch.ElapsedMilliseconds >= duration)
-            //     {
-            //         progress = 0;
-            //         increase = true;
 
-            //         testStage++;
-            //         ApplyTest(testStage);
-            //         stopwatch.Restart();
-            //     }
-            // }
-
-            // Parent.Transform.Width = smoothLerp(150, 450, progress);
-            // Parent.Transform.Height = smoothLerp(150, 450, progress);
-        }
-
-        private void ApplyTest(int stage)
-        {
-            switch (stage)
-            {
-                case 1:
-                    TestElement.Transform.Anchor = Anchor.Right | Anchor.Bottom;
-                    break;
-                case 2:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
-                    break;
-                case 3:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right;
-                    break;
-                case 4:
-                    TestElement.Transform.Anchor = Anchor.Top | Anchor.Bottom;
-                    break;
-                case 5:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
-                    break;
-                case 6:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
-                    break;
-                case 7:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Bottom;
-                    break;
-                case 8:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Bottom;
-                    break;
-                case 9:
-                    TestElement.Transform.Anchor = Anchor.Top | Anchor.Right;
-                    break;
-                case 10:
-                    TestElement.Transform.Anchor = Anchor.Left | Anchor.Top;
-                    testStage = 0;
-                    break;
-            }
         }
 
         float smoothLerp(float from, float to, float progress)
