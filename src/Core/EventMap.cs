@@ -26,6 +26,8 @@ namespace Rux.Core.Input
         private bool IsCommand = false;
         private List<Key> KeySequence = new List<Key>();
         private Dictionary<string, Hotkey> Hotkeys = new Dictionary<string, Hotkey>();
+        private bool[] wasMouseDown = new bool[2] { false, false };
+        private long[] lastClicks = new long[2] { 0, 0 };
 
         // Keyboard
         public event ForKey OnKeyDown;
@@ -145,13 +147,28 @@ namespace Rux.Core.Input
         internal void HandleMouseMove(Vector2 pos) =>
             OnMouseMove?.Invoke(pos);
 
-        internal void HandleMouseDown(int ButtonName, Vector2 pos) =>
-            OnMouseDown?.Invoke(ButtonName, pos);
+        internal void HandleMouseDown(int btn, Vector2 pos)
+        {
+            OnMouseDown?.Invoke(btn, pos);
+
+            long now = DateTime.Now.Ticks;
+            int past = (int)(now - lastClicks[btn]);
+
+            if (past < 300)
+            {
+                OnMouseDoubleClick?.Invoke(btn, pos);
+            }
+            else {
+                OnMouseClick?.Invoke(btn, pos);
+            }
+
+            lastClicks[btn] = now;
+        }
 
         internal void HandleMouseUp(int ButtonName, Vector2 pos) =>
             OnMouseUp?.Invoke(ButtonName, pos);
 
-        internal void HandleMouseClick(int ButtonName, Vector2 pos) =>
+        private void HandleMouseClick(int ButtonName, Vector2 pos) =>
             OnMouseClick?.Invoke(ButtonName, pos);
 
         internal void HandleMouseDoubleClick(int ButtonName, Vector2 pos) =>

@@ -27,26 +27,17 @@ namespace Rux.Testing
         {
             Browser.ShowFps();
 
-            this.Events.OnMouseScroll += (Vector2 pos) =>
+            this.Events.OnMouseClick += (btn, pos) =>
             {
-                InputText.Style.Text.Size += pos.Y * 0.3f;
+                Console.WriteLine($"Clicked {btn} at {pos}");
             };
 
-            this.Events.OnKeyType += (char c) =>
+            this.Events.OnMouseDoubleClick += (btn, pos) =>
             {
-                if (c == '\b')
-                {
-                    if (InputText.Text.Length > 0)
-                    {
-                        InputText.Text = InputText.Text.Substring(0, InputText.Text.Length - 1);
-                    }
-                }
-                else
-                {
-                    InputText.Text += c;
-                }
+                Console.WriteLine($"Double Clicked {btn} at {pos}");
             };
 
+        
             LoginText = new VisualElement()
             {
                 Name = "LoginText",

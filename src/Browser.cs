@@ -122,12 +122,12 @@ namespace Rux
                     BrowserApp.ActiveView?.Events.HandleMouseScroll(pos);
                 };
 
-                mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
-                {
-                    int mouseButton = (int)btn;
-                    BrowserApp.Events.HandleMouseClick(mouseButton, pos);
-                    BrowserApp.ActiveView?.Events.HandleMouseClick(mouseButton, pos);
-                };
+                // mouse.Click += (IMouse m, MouseButton btn, Vector2 pos) =>
+                // {
+                //     int mouseButton = (int)btn;
+                //     BrowserApp.Events.HandleMouseClick(mouseButton, pos);
+                //     BrowserApp.ActiveView?.Events.HandleMouseClick(mouseButton, pos);
+                // };
 
                 mouse.DoubleClick += (IMouse m, MouseButton btn, Vector2 pos) =>
                 {
