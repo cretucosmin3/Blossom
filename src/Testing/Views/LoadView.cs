@@ -26,14 +26,13 @@ namespace Rux.Testing
         {
             Browser.ShowFps();
 
-            int increase = 10;
+            int increase = 8;
             int xy = increase;
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 30; i++)
             {
                 LoadElements.Add(new VisualElement()
                 {
                     Name = "load" + i,
-                    Text = "Welcome back!",
                     Transform = new(i == 0 ? 300 : increase / 2, i == 0 ? 80 : increase / 2, 500 - xy, 500 - xy)
                     {
                         // Anchor = Anchor.Top,
@@ -43,26 +42,27 @@ namespace Rux.Testing
                     },
                     Style = new()
                     {
+                        BackColor = new SKColor(255, 255, 255, (byte)i),
                         Border = new()
                         {
-                            Color = new SKColor(255, 255, 255, 15),
+                            Color = new SKColor(255, 255, 255, 25),
                             Width = 1f,
                         },
                     },
                 });
 
-                // LoadElements[i].Events.OnMouseEnter += (VisualElement el) =>
-                // {
-                //     el.Style.Border.Color = SKColors.Red;
-                // };
+                LoadElements[i].Events.OnMouseEnter += (VisualElement el) =>
+                {
+                    el.Style.BackColor = new SKColor(255, 0, 0, 50);
+                };
 
-                // LoadElements[i].Events.OnMouseLeave += (VisualElement el) =>
-                // {
-                //     el.Style.Border.Color = new SKColor(255, 255, 255, 5);
-                // };
+                LoadElements[i].Events.OnMouseLeave += (VisualElement el) =>
+                            {
+                                el.Style.BackColor = new SKColor(255, 255, 255, 8);
+                            };
 
                 xy += increase;
-                if(i == 0) continue;
+                if (i == 0) continue;
 
                 LoadElements[i - 1].AddChild(LoadElements[i]);
 

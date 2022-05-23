@@ -8,6 +8,7 @@ using Rux.Core.Input;
 using Rux.Core.Delegates.Common;
 using Rux.Testing;
 using Silk.NET.Windowing.Glfw;
+using Silk.NET.Windowing.Sdl;
 using SkiaSharp;
 using Rux.Utils;
 
@@ -22,6 +23,7 @@ namespace Rux
 
         public static event ForVoid OnLoaded;
         public static bool IsLoaded { get; private set; } = false;
+        public static bool IsRunning { get; private set; } = false;
 
         private static bool FpsVisible = false;
         public static void ShowFps() => FpsVisible = true;
@@ -49,6 +51,7 @@ namespace Rux
             options.IsEventDriven = true;
 
             GlfwWindowing.Use();
+            // SdlWindowing.Use();
 
             window = Window.Create(options);
 
@@ -145,10 +148,10 @@ namespace Rux
 
         private static void Load()
         {
+            IsLoaded = true;
             window.Center();
             Renderer.SetCanvas(window);
             OnLoaded.Invoke();
-            IsLoaded = true;
 
             StartWindow();
         }
