@@ -1,3 +1,4 @@
+namespace Rux.Core.Visual;
 using System;
 using Rux;
 using Rux.Core.Visual;

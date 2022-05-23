@@ -1,15 +1,13 @@
-using System.Threading.Tasks.Dataflow;
 namespace Rux.Core.Visual;
 using System;
-using System.Numerics;
 using System.Collections.Generic;
-using Rux.Core.Delegates.Common;
 using SkiaSharp;
 
 public class VisualElement : IDisposable
 {
     public string Name { get; set; }
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
+    public ElementEvents Events { get; } = new();
 
     internal Application ParentApplication { get; set; }
     internal View ParentView { get; set; }
