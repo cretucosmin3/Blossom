@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Threading;
+using System;
 using System.IO;
 
 namespace Rux
@@ -46,7 +47,21 @@ namespace Rux
                 Log.Debug("Closing");
             };
 
-            Browser.Initialize();
+            new Thread(() =>
+            {
+                Browser.Initialize();
+            }).Start();
+
+            while (Browser.IsRunning == false)
+            {
+                Thread.Sleep(100);
+            }
+
+            while (Browser.IsRunning)
+            {
+                Thread.Sleep(100);
+            }
+
             Environment.Exit(0);
         }
 

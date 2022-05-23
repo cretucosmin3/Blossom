@@ -31,11 +31,10 @@ namespace Rux.Testing
             {
                 Name = "LoginText",
                 Text = "Welcome back!",
-                Transform = new(550 - 200, 210, 400, 80)
+                Transform = new(550 - 200, 140, 400, 80)
                 {
-                    Anchor = Anchor.Top,
                     FixedWidth = false,
-                    FixedHeight = true,
+                    FixedHeight = false,
                     ValidateOnAnchor = false,
                 },
                 Style = new()
@@ -55,7 +54,6 @@ namespace Rux.Testing
                 Text = "Submit",
                 Transform = new(550 - 100, 300, 200, 40)
                 {
-                    Anchor = Anchor.Top,
                     FixedWidth = true,
                     FixedHeight = true,
                     ValidateOnAnchor = false,
