@@ -68,13 +68,12 @@ namespace Rux.Core
 
                 if (hoveredElement != element)
                 {
-                    hoveredElement?.Events.HandleMouseLeave();
-                    hoveredElement = element;
-                    hoveredElement?.Events.HandleMouseEnter();
+                    hoveredElement?.Events.HandleMouseLeave(hoveredElement);
+                    element?.Events.HandleMouseEnter(element);
                 }
                 else if (element == hoveredElement)
                 {
-                    element?.Events.HandleMouseHover(pos);
+                    element?.Events.HandleMouseHover(element, pos);
                 }
 
                 hoveredElement = element;
