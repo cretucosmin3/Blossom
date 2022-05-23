@@ -11,6 +11,7 @@ namespace Rux.Core
         public ElementsMap Elements = new();
         public event ForVoid Loop;
         private int DefaultFont;
+        private VisualElement hoveredElement;
 
         private string _title = "";
         public string Title
@@ -42,9 +43,41 @@ namespace Rux.Core
         internal View(string name)
         {
             Name = name;
+
             Browser.OnLoaded += () =>
             {
                 Main();
+            };
+
+            Events.OnMouseDown += (btn, pos) =>
+            {
+                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
+                element?.Events.HandleMouseDown(btn, pos);
+            };
+
+            Events.OnMouseUp += (btn, pos) =>
+            {
+                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
+                element?.Events.HandleMouseUp(btn, pos);
+            };
+
+            Events.OnMouseMove += (pos) =>
+            {
+                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
+                element?.Events.HandleMouseMove(pos);
+
+                if (hoveredElement != element)
+                {
+                    hoveredElement?.Events.HandleMouseLeave();
+                    hoveredElement = element;
+                    hoveredElement?.Events.HandleMouseEnter();
+                }
+                else if (element == hoveredElement)
+                {
+                    element?.Events.HandleMouseHover(pos);
+                }
+
+                hoveredElement = element;
             };
         }
 

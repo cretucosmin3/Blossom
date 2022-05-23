@@ -47,6 +47,7 @@ namespace Rux
             };
 
             Browser.Initialize();
+            Environment.Exit(0);
         }
 
         // static void UnpremultiplyAlpha(Span<byte> image, int w, int h, int stride)

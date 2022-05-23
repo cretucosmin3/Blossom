@@ -17,32 +17,21 @@ namespace Rux.Testing
     public class PrettyUi : View
     {
 
-        VisualElement LoginText;
-        VisualElement InputText;
+        VisualElement Text;
         VisualElement Button;
 
         public PrettyUi() : base("PrettyUi View") { }
 
+        private int counter = 0;
         public override void Main()
         {
             Browser.ShowFps();
 
-            this.Events.OnMouseClick += (btn, pos) =>
-            {
-                Console.WriteLine($"Clicked {btn} at {pos}");
-            };
-
-            this.Events.OnMouseDoubleClick += (btn, pos) =>
-            {
-                Console.WriteLine($"Double Clicked {btn} at {pos}");
-            };
-
-        
-            LoginText = new VisualElement()
+            Text = new VisualElement()
             {
                 Name = "LoginText",
                 Text = "Welcome back!",
-                Transform = new(550 - 200, 130, 400, 80)
+                Transform = new(550 - 200, 210, 400, 80)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = false,
@@ -55,35 +44,6 @@ namespace Rux.Testing
                     {
                         Size = 35f,
                         Alignment = TextAlign.Center,
-                        Color = SKColors.White,
-                    }
-                },
-            };
-
-            InputText = new VisualElement()
-            {
-                Name = "InputText",
-                Text = "Type your full name...",
-                Transform = new(550 - 250, 230, 500, 40)
-                {
-                    Anchor = Anchor.Top,
-                    FixedWidth = true,
-                    FixedHeight = true,
-                    ValidateOnAnchor = false,
-                },
-                Style = new()
-                {
-                    Border = new()
-                    {
-                        Width = 1f,
-                        Color = SKColors.White,
-                        Roundness = 5f,
-                    },
-                    Text = new()
-                    {
-                        Size = 16f,
-                        Alignment = TextAlign.Left,
-                        Padding = 12f,
                         Color = SKColors.White,
                     }
                 },
@@ -118,14 +78,44 @@ namespace Rux.Testing
                 },
             };
 
-            AddElement(LoginText);
-            AddElement(InputText);
+            Button.Events.OnMouseClick += (btn, pos) =>
+            {
+                Console.WriteLine("Button Clicked");
+                Text.Text = $"+{counter += 1}";
+            };
+
+            Button.Events.OnMouseDown += (btn, pos) =>
+            {
+                Button.Style.Border.Width = 1f;
+                Button.Style.BackColor = new SKColor(96 + 10, 16 + 10, 16 + 10);
+                Text.Style.Text.Size += 6f;
+            };
+
+            Button.Events.OnMouseUp += (btn, pos) =>
+            {
+                Button.Style.Border.Width = 0.6f;
+                Button.Style.BackColor = new SKColor(96, 16, 16);
+                Text.Style.Text.Size -= 6f;
+            };
+
+            AddElement(Text);
             AddElement(Button);
+
+            Loop += Update;
         }
+
+        private float lastSin = 0;
 
         private void Update()
         {
+            // Console.WriteLine(MathF.Sin(lastSin += 0.001f));
 
+            // Button.Style.Border.Width = 3 + (2 * MathF.Sin(lastSin += 0.01f));
+
+            // if (lastSin > 3.14 * 2)
+            // {
+            //     lastSin = 0;
+            // }
         }
 
         float smoothLerp(float from, float to, float progress)
