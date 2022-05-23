@@ -114,10 +114,10 @@ public class VisualElement : IDisposable
         {
             prect = new SKRoundRect(
                 new SKRect(
-                    Parent.Transform.Computed.X,
-                    Parent.Transform.Computed.Y,
-                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width,
-                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height
+                    Parent.Transform.Computed.X + 1,
+                    Parent.Transform.Computed.Y + 1,
+                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width - 2,
+                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height - 2
                 ),
                 Style.Border.Roundness, Style.Border.Roundness
             );

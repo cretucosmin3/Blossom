@@ -9,15 +9,19 @@ namespace Rux.Testing
     public class TestingApplication : Application
     {
         private PrettyUi PrettyView;
+        private LoadView LoadView;
 
         public TestingApplication()
         {
             this.Events.Access = EventAccess.Keyboard;
 
             PrettyView = new PrettyUi();
+            LoadView = new LoadView();
 
             AddView(PrettyView);
-            SetActiveView(PrettyView);
+            AddView(LoadView);
+
+            SetActiveView(LoadView);
         }
     }
 }
