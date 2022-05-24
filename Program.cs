@@ -47,20 +47,7 @@ namespace Rux
                 Log.Debug("Closing");
             };
 
-            new Thread(() =>
-            {
-                Browser.Initialize();
-            }).Start();
-
-            while (Browser.IsRunning == false)
-            {
-                Thread.Sleep(100);
-            }
-
-            while (Browser.IsRunning)
-            {
-                Thread.Sleep(100);
-            }
+            Browser.Initialize();
 
             Environment.Exit(0);
         }
