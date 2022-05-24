@@ -31,8 +31,9 @@ namespace Rux.Testing
             {
                 Name = "LoginText",
                 Text = "Welcome back!",
-                Transform = new(550 - 200, 140, 400, 80)
+                Transform = new(550 - 200, 240, 400, 80)
                 {
+                    Anchor = Anchor.Top,
                     FixedWidth = false,
                     FixedHeight = false,
                     ValidateOnAnchor = false,
@@ -102,18 +103,17 @@ namespace Rux.Testing
             Loop += Update;
         }
 
-        private float lastSin = 0;
-
+        float time = 1000f; // ms
+        float jumpDistance = 100f;
+        Stopwatch sw = Stopwatch.StartNew();
         private void Update()
         {
-            // Console.WriteLine(MathF.Sin(lastSin += 0.001f));
+            var p = MathF.PI * (sw.ElapsedMilliseconds / time);
+            var v = MathF.Sin(p);
+            Button.Transform.Y = 420f - jumpDistance * MathF.Sin(v);
 
-            // Button.Style.Border.Width = 3 + (2 * MathF.Sin(lastSin += 0.01f));
-
-            // if (lastSin > 3.14 * 2)
-            // {
-            //     lastSin = 0;
-            // }
+            if(sw.ElapsedMilliseconds > time)
+                sw.Restart();
         }
 
         float smoothLerp(float from, float to, float progress)

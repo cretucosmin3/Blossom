@@ -11,6 +11,7 @@ using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
 using SkiaSharp;
 using Rux.Utils;
+using System;
 
 namespace Rux
 {
@@ -64,15 +65,9 @@ namespace Rux
 
         public static void StartWindow()
         {
-            int x = 0;
             while (!window.IsClosing)
             {
-                if (x > 5)
-                {
-                    BrowserApp.ActiveView.TriggerLoop();
-                    x = 0;
-                }
-                x++;
+                BrowserApp.ActiveView.TriggerLoop();
                 window.DoRender();
                 window.DoEvents();
                 window.ContinueEvents();
