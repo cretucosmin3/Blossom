@@ -248,7 +248,7 @@ public class VisualElement : IDisposable
     {
         this.Transform.Evaluate();
         CalculateText();
-        TransformChanged.Invoke(x);
+        TransformChanged?.Invoke(x);
     }
 
     private void ParentTransformChanged(Transform _)
