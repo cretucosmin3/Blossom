@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
@@ -9,12 +8,14 @@ using Rux.Core.Input;
 using Rux.Core.Delegates.Common;
 using Rux.Testing;
 using Silk.NET.Windowing.Glfw;
-using Silk.NET.Windowing.Sdl;
 using SkiaSharp;
-using Rux.Utils;
 using System;
 using Silk.NET.Core;
 using System.IO;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
+using SixLabors.ImageSharp.PixelFormats;
+using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 
 namespace Rux
@@ -24,7 +25,7 @@ namespace Rux
         internal static IWindow window;
 
         internal static TestingApplication BrowserApp = new TestingApplication();
-        internal static RectangleF RenderRect = new(0, 0, 0, 0);
+        internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
 
         public static event ForVoid OnLoaded;
         public static bool IsLoaded { get; private set; } = false;
@@ -47,7 +48,7 @@ namespace Rux
 
         private static void SetWindow()
         {
-            RenderRect = new RectangleF(0, 0, 1100, 700);
+            RenderRect = new System.Drawing.RectangleF(0, 0, 1100, 700);
 
             var options = WindowOptions.Default;
             options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
@@ -147,10 +148,27 @@ namespace Rux
 
         private static void LoadLogo()
         {
-            var logo = new RawImage(128, 128, new Memory<byte>(File.ReadAllBytes("example.ico")));
+            unsafe
+            {
+                using var image = Image.Load<Rgba32>("rux-logo.png");
+                var memoryGroup = image.GetPixelMemoryGroup();
+                Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
+                var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
+                foreach (var memory in memoryGroup)
+                {
+                    memory.Span.CopyTo(block);
+                    block = block.Slice(memory.Length);
+                }
 
-            // ReadOnlySpan<RawImage> logoBytes = new[] { logo };
-            window.SetDefaultIcon();
+                var icon = new RawImage(image.Width, image.Height, array);
+                window.SetWindowIcon(ref icon);
+                Console.WriteLine("Finished loading");
+            };
+
+            // var logo = new RawImage(128, 128,
+            //     new Memory<byte>(File.ReadAllBytes("example.ico"))
+            // );
+
             // window.SetWindowIcon(ref logo);
         }
 
