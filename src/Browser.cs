@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
@@ -12,6 +13,9 @@ using Silk.NET.Windowing.Sdl;
 using SkiaSharp;
 using Rux.Utils;
 using System;
+using Silk.NET.Core;
+using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Rux
 {
@@ -141,6 +145,15 @@ namespace Rux
             BrowserApp.Dispose();
         }
 
+        private static void LoadLogo()
+        {
+            var logo = new RawImage(128, 128, new Memory<byte>(File.ReadAllBytes("example.ico")));
+
+            // ReadOnlySpan<RawImage> logoBytes = new[] { logo };
+            window.SetDefaultIcon();
+            // window.SetWindowIcon(ref logo);
+        }
+
         private static void Load()
         {
             IsLoaded = true;
@@ -148,6 +161,7 @@ namespace Rux
             Renderer.SetCanvas(window);
             OnLoaded.Invoke();
 
+            LoadLogo();
             StartWindow();
         }
 

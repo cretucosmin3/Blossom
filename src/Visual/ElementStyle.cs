@@ -5,7 +5,7 @@ public class ElementStyle
 {
     internal List<VisualElement> AssignedElements = new List<VisualElement>();
 
-    public TextStyle Text { get; set; } = new();
+    public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; } = new();
 
     public ElementStyle() { }
@@ -13,8 +13,8 @@ public class ElementStyle
     internal void AssignElement(VisualElement element)
     {
         AssignedElements.Add(element);
-        Text.StyleContext = this;
-        Border.StyleContext = this;
+        if (Text is not null) Text.StyleContext = this;
+        if (Border is not null) Border.StyleContext = this;
     }
 
     internal void UnassignElement(ref VisualElement element)
