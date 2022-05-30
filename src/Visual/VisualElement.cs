@@ -156,11 +156,13 @@ public class VisualElement : IDisposable
 
         roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness,Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
+                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
             });
 
+
+        paint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Inner, 35);
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
@@ -180,16 +182,16 @@ public class VisualElement : IDisposable
     private SKRect TextBounds;
     private void CalculateTextBounds()
     {
-        if (Browser.IsLoaded)
-            TextPaint.MeasureText(Text, ref TextBounds);
+        if (Browser.IsLoaded && Style is not null)
+            Style.Text.Paint.MeasureText(Text, ref TextBounds);
     }
 
-    SKPaint TextPaint = new SKPaint()
-    {
-        IsAntialias = true,
-        TextAlign = SKTextAlign.Left,
-        Typeface = SKTypeface.FromFamilyName("DejaVu Sans Mono", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-    };
+    // SKPaint TextPaint = new SKPaint()
+    // {
+    //     IsAntialias = true,
+    //     TextAlign = SKTextAlign.Left,
+    //     Typeface = SKTypeface.FromFamilyName("DejaVu Sans Mono", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+    // };
 
     SKPoint TextPoint;
 
@@ -198,11 +200,8 @@ public class VisualElement : IDisposable
 
     internal void CalculateText()
     {
-        if (Style.Text == null)
+        if (Style.Text == null || Style.Text.Paint == null)
             return;
-
-        TextPaint.TextSize = Style.Text.Size;
-        TextPaint.Color = Style.Text.Color;
 
         var cx = Transform.Computed.X;
         var cy = Transform.Computed.Y;
@@ -266,7 +265,7 @@ public class VisualElement : IDisposable
         // if (Style.Text.HasChanged)
         CalculateText();
 
-        Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
+        Renderer.Canvas.DrawText(Text, TextPoint, Style.Text.Paint);
 
         // TextPaint.Color = SKColors.DimGray;
         // TextPaint.IsStroke = true;
