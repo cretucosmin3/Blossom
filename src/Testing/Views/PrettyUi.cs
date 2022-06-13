@@ -29,7 +29,7 @@ namespace Rux.Testing
             Text = new VisualElement()
             {
                 Name = "LoginText",
-                Text = "Click to jump",
+                Text = "Hello world!",
                 Transform = new(550 - 200, 180, 400, 80)
                 {
                     Anchor = Anchor.Top,
@@ -51,10 +51,10 @@ namespace Rux.Testing
             Button = new VisualElement()
             {
                 Name = "Button",
-                Text = "Hello",
+                Text = "Click me",
                 Transform = new(550 - 100, 300, 200, 40)
                 {
-                    Anchor = Anchor.Bottom,
+                    Anchor = Anchor.Top,
                     FixedWidth = true,
                     FixedHeight = true,
                     ValidateOnAnchor = false,
@@ -64,13 +64,13 @@ namespace Rux.Testing
                     BackColor = SKColors.DimGray,
                     Border = new()
                     {
-                        Roundness = 6f,
-                        Width = 5f,
+                        Roundness = 5f,
+                        Width = 1f,
                         Color = SKColors.White,
                     },
                     Text = new()
                     {
-                        Size = 20f,
+                        Size = 22f,
                         Alignment = TextAlign.Center,
                         Color = SKColors.White,
                     }
@@ -79,15 +79,11 @@ namespace Rux.Testing
 
             Button.Events.OnMouseDown += (btn, pos) =>
             {
-                Button.Style.Border.Width = 2f;
-                Button.Style.Border.Color = SKColors.White;
-                Button.Style.BackColor = SKColors.Blue;
+                Button.Style.BackColor = SKColors.DarkGray;
             };
 
             Button.Events.OnMouseUp += (btn, pos) =>
             {
-                Button.Style.Border.Width = 5f;
-                Button.Style.Border.Color = SKColors.White;
                 Button.Style.BackColor = SKColors.DimGray;
             };
 
