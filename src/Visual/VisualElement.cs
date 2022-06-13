@@ -162,7 +162,7 @@ public class VisualElement : IDisposable
             });
 
 
-        paint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Inner, 35);
+        // paint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Inner, 35);
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;

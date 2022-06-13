@@ -26,7 +26,7 @@ public class TextStyle
             TextAlign = SKTextAlign.Left,
             TextSize = _Size,
             SubpixelText = true,
-            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
+            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Italic),
         };
     }
 
@@ -37,6 +37,8 @@ public class TextStyle
         );
 
         Paint.Typeface = typeFace;
+        Paint.TextSize = _Size;
+
         StyleContext?.ScheduleRender();
     }
 
