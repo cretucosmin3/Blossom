@@ -62,6 +62,15 @@ public class TextStyle
         }
     }
 
+    public int Weight
+    {
+        get => _Weight;
+        set {
+            _Weight = value;
+            RedoFont();
+        }
+    }
+
     public float Padding
     {
         get => _Padding;

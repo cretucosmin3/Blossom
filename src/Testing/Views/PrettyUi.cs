@@ -52,7 +52,7 @@ namespace Rux.Testing
             {
                 Name = "Button",
                 Text = "Click me",
-                Transform = new(550 - 100, 300, 200, 40)
+                Transform = new(550 - 120, 300, 240, 45)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -61,30 +61,37 @@ namespace Rux.Testing
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.DimGray,
+                    BackColor = SKColors.WhiteSmoke,
                     Border = new()
                     {
-                        Roundness = 5f,
-                        Width = 1f,
-                        Color = SKColors.White,
+                        Roundness = 10,
+                        Width = 1,
+                        Color = SKColors.Black,
                     },
                     Text = new()
                     {
-                        Size = 22f,
+                        Size = 25f,
+                        Weight = 400,
                         Alignment = TextAlign.Center,
-                        Color = SKColors.White,
+                        Color = SKColors.Black,
                     }
                 },
             };
 
             Button.Events.OnMouseDown += (btn, pos) =>
             {
-                Button.Style.BackColor = SKColors.DarkGray;
+                Button.Style.BackColor = new SKColor(50, 50, 50, 255);
+                Button.Style.Text.Color = SKColors.White;
+                Button.Style.Border.Color = SKColors.White;
+                Button.Style.Border.Width = 2;
             };
 
             Button.Events.OnMouseUp += (btn, pos) =>
             {
-                Button.Style.BackColor = SKColors.DimGray;
+                Button.Style.BackColor = SKColors.WhiteSmoke;
+                Button.Style.Text.Color = SKColors.Black;
+                Button.Style.Border.Color = SKColors.Black;
+                Button.Style.Border.Width = 1;
             };
 
             AddElement(Text);
