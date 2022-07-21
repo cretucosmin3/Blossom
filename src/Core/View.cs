@@ -100,6 +100,15 @@ namespace Rux.Core
             }
         }
 
+        internal void RenderChanges(Action doChanges)
+        {
+            // clear state
+            doChanges();
+            // pull changes
+            // update state
+            // render from previous state or new
+        }
+
         public void Dispose()
         {
 
