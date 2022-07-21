@@ -4,19 +4,20 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace Rux.Utils
 {
     public static class Imaging
     {
-        private static WebClient client;
+        private static HttpClient client;
 
-        public static System.Drawing.Bitmap LoadImageFromUrl(string url)
+        public static async Task<System.Drawing.Bitmap> LoadImageFromUrl(string url)
         {
             System.Drawing.Bitmap bmp = null;
-            using (WebClient webClient = new WebClient())
+            using (HttpClient webClient = new HttpClient())
             {
-                byte[] data = webClient.DownloadData(url);
+                byte[] data = await webClient.GetByteArrayAsync(url);
 
                 using MemoryStream mem = new MemoryStream(data);
                 bmp = (System.Drawing.Bitmap)System.Drawing.Image.FromStream(mem);
@@ -35,16 +36,16 @@ namespace Rux.Utils
             return bytes;
         }
 
-        public static byte[] LoadImageBytes(string url)
+        public static async Task<byte[]> LoadImageBytes(string url)
         {
             byte[] bytes = new byte[0];
 
             if (client == null)
-                client = new WebClient();
+                client = new HttpClient();
 
             try
             {
-                bytes = client.DownloadData(url);
+                bytes = await client.GetByteArrayAsync(url);
             }
             catch (Exception x)
             {

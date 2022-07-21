@@ -193,7 +193,7 @@ namespace Rux
             StrokeWidth = 4,
             IsAntialias = false,
             IsStroke = false,
-            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKTypefaceStyle.Bold)
+            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
         };
 
         private static void Render(double time)
