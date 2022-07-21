@@ -94,6 +94,11 @@ namespace Rux.Testing
                 Button.Style.Border.Width = 1;
             };
 
+            RenderChanges(() => {
+                Text.Text = "Hello world!";
+                Button.Text = "Click me";
+            });
+
             AddElement(Text);
             AddElement(Button);
         }
