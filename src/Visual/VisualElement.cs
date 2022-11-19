@@ -109,6 +109,14 @@ public class VisualElement : IDisposable
     {
         this.Transform.Evaluate();
 
+        bool isWithin = true;
+
+        if (Parent != null)
+            isWithin = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
+
+        if (!isWithin)
+            return;
+
         SKRoundRect prect = null;
         if (Parent != null && Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF))
         {
@@ -161,8 +169,6 @@ public class VisualElement : IDisposable
                 new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
             });
 
-
-        // paint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Inner, 35);
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
@@ -185,13 +191,6 @@ public class VisualElement : IDisposable
         if (Browser.IsLoaded && Style is not null)
             Style.Text.Paint.MeasureText(Text, ref TextBounds);
     }
-
-    // SKPaint TextPaint = new SKPaint()
-    // {
-    //     IsAntialias = true,
-    //     TextAlign = SKTextAlign.Left,
-    //     Typeface = SKTypeface.FromFamilyName("DejaVu Sans Mono", SKFontStyleWeight.Normal, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-    // };
 
     SKPoint TextPoint;
 
@@ -266,13 +265,6 @@ public class VisualElement : IDisposable
         CalculateText();
 
         Renderer.Canvas.DrawText(Text, TextPoint, Style.Text.Paint);
-
-        // TextPaint.Color = SKColors.DimGray;
-        // TextPaint.IsStroke = true;
-        // TextPaint.StrokeWidth = 3;
-        // TextPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, advance);
-
-        // Renderer.Canvas.DrawText(Text, TextPoint, TextPaint);
     }
 
     internal void DrawTextShadow()
@@ -282,7 +274,7 @@ public class VisualElement : IDisposable
 
     internal void ScheduleRender()
     {
-
+        Browser.BrowserApp.ActiveView.renderRequired = true;
     }
 
     public void GetFocus()

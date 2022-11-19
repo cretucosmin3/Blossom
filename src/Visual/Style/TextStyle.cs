@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 namespace Rux.Core.Visual;
 
 using SkiaSharp;
@@ -26,7 +27,7 @@ public class TextStyle
             TextAlign = SKTextAlign.Left,
             TextSize = _Size,
             SubpixelText = true,
-            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Italic),
+            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
         };
     }
 
@@ -48,7 +49,7 @@ public class TextStyle
         set
         {
             _Spacing = value;
-            StyleContext?.ScheduleRender();
+            RedoFont();
         }
     }
 
@@ -65,7 +66,8 @@ public class TextStyle
     public int Weight
     {
         get => _Weight;
-        set {
+        set
+        {
             _Weight = value;
             RedoFont();
         }

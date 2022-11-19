@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
@@ -18,218 +20,212 @@ using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 
-namespace Rux
+namespace Rux;
+
+public static class Browser
 {
-    public static class Browser
+    internal static IWindow window;
+    public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
+
+    internal static TestingApplication BrowserApp = new TestingApplication();
+    internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
+
+    public static event ForVoid OnLoaded;
+
+    private static double _frameLimit = 33.33d;
+    public static double frameLimit
     {
-        internal static IWindow window;
-
-        internal static TestingApplication BrowserApp = new TestingApplication();
-        internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
-
-        public static event ForVoid OnLoaded;
-        public static bool IsLoaded { get; private set; } = false;
-        public static bool IsRunning { get; private set; } = false;
-
-        private static bool FpsVisible = false;
-        public static void ShowFps() => FpsVisible = true;
-        public static void HideFps() => FpsVisible = false;
-
-        public static void Initialize()
+        get => _frameLimit; set
         {
-            OnLoaded = () =>
-            {
-                ManageInputEvents();
-                BrowserApp.ActiveView.Main();
-            };
-
-            SetWindow();
+            _frameLimit = 1000d / value;
         }
+    }
 
-        private static void SetWindow()
+    public static bool IsLoaded { get; private set; } = false;
+    public static bool IsRunning { get; private set; } = false;
+
+    private static bool FpsVisible = false;
+    public static void ShowFps() => FpsVisible = true;
+    public static void HideFps() => FpsVisible = false;
+
+    public static void Initialize()
+    {
+        OnLoaded = () =>
         {
-            RenderRect = new System.Drawing.RectangleF(0, 0, 1100, 700);
-
-            var options = WindowOptions.Default;
-            options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
-            options.Title = "Rux";
-            options.VSync = false;
-            options.IsEventDriven = true;
-
-            GlfwWindowing.Use();
-            // SdlWindowing.Use();
-
-            window = Window.Create(options);
-
-            window.Load += Load;
-            window.Render += Render;
-            window.Closing += Closing;
-
-            window.Run();
-        }
-
-        public static void StartWindow()
-        {
-            while (!window.IsClosing)
-            {
-                BrowserApp.ActiveView.TriggerLoop();
-                window.DoRender();
-                window.DoEvents();
-                window.ContinueEvents();
-            }
-
-            window.Dispose();
-        }
-
-        private static void ManageInputEvents()
-        {
-            BrowserApp.Events.Access = EventAccess.Keyboard;
-            IInputContext input = window.CreateInput();
-
-            // Register keyboard events
-            foreach (IKeyboard keyboard in input.Keyboards)
-            {
-                keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
-                {
-                    if (i == 0) return;
-                    var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
-                    var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
-                };
-
-                keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
-                {
-                    BrowserApp.Events.HandleKeyUp(key, i);
-                    BrowserApp.ActiveView?.Events.HandleKeyUp(key, i);
-                };
-
-                keyboard.KeyChar += (IKeyboard _, char ch) =>
-                {
-                    BrowserApp.Events.HandleKeyChar(ch);
-                    BrowserApp.ActiveView?.Events.HandleKeyChar(ch);
-                };
-            }
-
-            // Register mouse events
-            foreach (IMouse mouse in input.Mice)
-            {
-                mouse.MouseMove += (IMouse _, Vector2 pos) =>
-                {
-                    BrowserApp.Events.HandleMouseMove(pos);
-                    BrowserApp.ActiveView?.Events.HandleMouseMove(pos);
-                };
-
-                mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
-                {
-                    var pos = new Vector2(wheel.X, wheel.Y);
-                    BrowserApp.Events.HandleMouseScroll(pos);
-                    BrowserApp.ActiveView?.Events.HandleMouseScroll(pos);
-                };
-
-                mouse.MouseDown += (IMouse m, MouseButton btn) =>
-                {
-                    int mouseButton = (int)btn;
-                    BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
-                    BrowserApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
-                };
-
-                mouse.MouseUp += (IMouse m, MouseButton btn) =>
-                {
-                    int mouseButton = (int)btn;
-                    BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
-                    BrowserApp.ActiveView?.Events.HandleMouseUp(mouseButton, m.Position);
-                };
-            }
-        }
-
-        private static void Closing()
-        {
-            BrowserApp.Dispose();
-        }
-
-        private static void LoadLogo()
-        {
-            unsafe
-            {
-                using var image = Image.Load<Rgba32>("rux-logo.png");
-                var memoryGroup = image.GetPixelMemoryGroup();
-                Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
-                var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
-                foreach (var memory in memoryGroup)
-                {
-                    memory.Span.CopyTo(block);
-                    block = block.Slice(memory.Length);
-                }
-
-                var icon = new RawImage(image.Width, image.Height, array);
-                window.SetWindowIcon(ref icon);
-                Console.WriteLine("Finished loading");
-            };
-
-            // var logo = new RawImage(128, 128,
-            //     new Memory<byte>(File.ReadAllBytes("example.ico"))
-            // );
-
-            // window.SetWindowIcon(ref logo);
-        }
-
-        private static void Load()
-        {
-            IsLoaded = true;
-            window.Center();
-            Renderer.SetCanvas(window);
-            OnLoaded.Invoke();
-
-            LoadLogo();
-            StartWindow();
-        }
-
-        private static float frames = 0;
-        private static double fps_avg = 0;
-        private static float fps = 0;
-        private static SKPaint fpsPaint = new SKPaint()
-        {
-            Color = SKColors.White,
-            TextSize = 20,
-            StrokeWidth = 4,
-            IsAntialias = false,
-            IsStroke = false,
-            Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+            ManageInputEvents();
+            BrowserApp.ActiveView.Main();
         };
 
-        private static void Render(double time)
+        SetWindow();
+    }
+
+    private static void SetWindow()
+    {
+        RenderRect = new System.Drawing.RectangleF(0, 0, 1100, 700);
+
+        var options = WindowOptions.Default;
+        options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
+        options.Title = "Anubis";
+        options.VSync = false;
+        // options.WindowBorder = WindowBorder.Hidden;
+        options.IsEventDriven = true;
+
+        GlfwWindowing.Use();
+        // SdlWindowing.Use();
+
+        window = Window.Create(options);
+
+        window.Load += Load;
+        window.Render += Render;
+        window.Closing += Closing;
+
+        window.Run();
+    }
+
+    private static Stopwatch frameCounter = new Stopwatch();
+    public static void StartWindow()
+    {
+        while (!window.IsClosing)
         {
-            Vector2D<float> winSize = window.Size.As<float>();
-            Vector2D<float> fbSize = window.FramebufferSize.As<float>();
 
-            // Renderer.ResetContext();
-            Renderer.Canvas.Clear(new(255, 255, 255, 45));
-            float pxRatio = fbSize.X / winSize.X;
+            BrowserApp.ActiveView?.TriggerLoop();
+            window.DoEvents();
+            window.ContinueEvents();
 
-            BrowserApp.Render();
+            if (BrowserApp.ActiveView != null && BrowserApp.ActiveView.renderRequired)
+                window.DoRender();
+        }
 
-            if (FpsVisible)
+        window.Dispose();
+    }
+
+    private static void ManageInputEvents()
+    {
+        BrowserApp.Events.Access = EventAccess.Keyboard;
+        IInputContext input = window.CreateInput();
+
+        // Register keyboard events
+        foreach (IKeyboard keyboard in input.Keyboards)
+        {
+            keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
             {
-                fpsPaint.IsStroke = true;
-                fpsPaint.Color = SKColors.Black;
-                fpsPaint.StrokeWidth = 4;
-                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
+                if (i == 0) return;
+                var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
+                var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
+            };
 
-                fpsPaint.IsStroke = false;
-                fpsPaint.Color = SKColors.IndianRed;
-                Renderer.Canvas.DrawText($"FPS {fps:0}", 10, 20, fpsPaint);
+            keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
+            {
+                BrowserApp.Events.HandleKeyUp(key, i);
+                BrowserApp.ActiveView?.Events.HandleKeyUp(key, i);
+            };
 
-                frames++;
-                fps_avg += time;
+            keyboard.KeyChar += (IKeyboard _, char ch) =>
+            {
+                BrowserApp.Events.HandleKeyChar(ch);
+                BrowserApp.ActiveView?.Events.HandleKeyChar(ch);
+            };
+        }
 
-                if (frames == 100)
-                {
-                    fps = 1f / (float)(fps_avg / 100d);
-                    fps_avg = 0;
-                    frames = 0;
-                }
+        // Register mouse events
+        foreach (IMouse mouse in input.Mice)
+        {
+            mouse.MouseMove += (IMouse _, Vector2 pos) =>
+            {
+                BrowserApp.Events.HandleMouseMove(pos);
+                BrowserApp.ActiveView?.Events.HandleMouseMove(pos);
+            };
+
+            mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
+            {
+                var pos = new Vector2(wheel.X, wheel.Y);
+                BrowserApp.Events.HandleMouseScroll(pos);
+                BrowserApp.ActiveView?.Events.HandleMouseScroll(pos);
+            };
+
+            mouse.MouseDown += (IMouse m, MouseButton btn) =>
+            {
+                int mouseButton = (int)btn;
+                BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
+                BrowserApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
+            };
+
+            mouse.MouseUp += (IMouse m, MouseButton btn) =>
+            {
+                int mouseButton = (int)btn;
+                BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
+                BrowserApp.ActiveView?.Events.HandleMouseUp(mouseButton, m.Position);
+            };
+        }
+    }
+
+    private static void Closing()
+    {
+        BrowserApp.Dispose();
+    }
+
+    private static void LoadLogo()
+    {
+        unsafe
+        {
+            using var image = Image.Load<Rgba32>("anubis-logo.png");
+            var memoryGroup = image.GetPixelMemoryGroup();
+            Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
+            var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
+            foreach (var memory in memoryGroup)
+            {
+                memory.Span.CopyTo(block);
+                block = block.Slice(memory.Length);
             }
 
-            Renderer.Canvas.Flush();
-        }
+            var icon = new RawImage(image.Width, image.Height, array);
+            window.SetWindowIcon(ref icon);
+            Console.WriteLine("Finished loading");
+        };
+
+        // var logo = new RawImage(128, 128,
+        //     new Memory<byte>(File.ReadAllBytes("example.ico"))
+        // );
+
+        // window.SetWindowIcon(ref logo);
+    }
+
+    private static void Load()
+    {
+        var x = window.Native.Win32.Value;
+
+        IsLoaded = true;
+        window.Center();
+        Renderer.SetCanvas(window);
+        OnLoaded.Invoke();
+
+        LoadLogo();
+        StartWindow();
+    }
+
+    private static float frames = 0;
+    private static double fps_avg = 0;
+    private static float fps = 0;
+    private static SKPaint fpsPaint = new SKPaint()
+    {
+        Color = SKColors.White,
+        TextSize = 20,
+        StrokeWidth = 4,
+        IsAntialias = false,
+        IsStroke = false,
+        Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+    };
+
+    private static void Render(double time)
+    {
+        // Vector2D<float> winSize = window.Size.As<float>();
+        // Vector2D<float> fbSize = window.FramebufferSize.As<float>();
+        // float pxRatio = fbSize.X / winSize.X;
+
+        Renderer.ResetContext();
+        // Renderer.Canvas.Clear(new(255, 255, 255, 45));
+        Renderer.Canvas.Clear(new(255, 255, 255, 255));
+        BrowserApp.Render();
+        Renderer.Canvas.Flush();
     }
 }

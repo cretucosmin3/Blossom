@@ -10,6 +10,19 @@ namespace Rux.Core
         public EventMap Events = new();
         public ElementsMap Elements = new();
         public event ForVoid Loop;
+
+        private bool _renderRequired = true;
+        public bool renderRequired
+        {
+            get
+            {
+                var temp = _renderRequired;
+                _renderRequired = false;
+                return temp;
+            }
+            set => _renderRequired = value;
+        }
+
         private int DefaultFont;
         private VisualElement hoveredElement;
 
@@ -46,7 +59,8 @@ namespace Rux.Core
 
             Browser.OnLoaded += () =>
             {
-                Main();
+                // Console.WriteLine("-- OnLoaded --");
+                // Main();
             };
 
             Events.OnMouseDown += (btn, pos) =>
@@ -85,11 +99,13 @@ namespace Rux.Core
         public void AddElement(VisualElement element)
         {
             Elements.AddElement(ref element, this);
+            Browser.BrowserApp.ActiveView.renderRequired = true;
         }
 
         public void RemoveElement(VisualElement element)
         {
             Elements.RemoveElement(element);
+            Browser.BrowserApp.ActiveView.renderRequired = true;
         }
 
         internal void Render()
@@ -107,6 +123,7 @@ namespace Rux.Core
             // pull changes
             // update state
             // render from previous state or new
+            renderRequired = true;
         }
 
         public void Dispose()
