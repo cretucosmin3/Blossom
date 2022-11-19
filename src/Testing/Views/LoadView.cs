@@ -16,7 +16,6 @@ namespace Rux.Testing
 {
     public class LoadView : View
     {
-
         List<VisualElement> LoadElements = new List<VisualElement>();
 
         public LoadView() : base("LoadView View") { }

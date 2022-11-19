@@ -19,7 +19,7 @@ namespace Rux.Testing
             LoadView = new LoadView();
 
             AddView(PrettyView);
-            AddView(LoadView);
+            // AddView(LoadView);
 
             SetActiveView(PrettyView);
         }

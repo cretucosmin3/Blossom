@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Numerics;
 using System.Net.Mime;
@@ -16,121 +17,72 @@ namespace Rux.Testing
 {
     public class PrettyUi : View
     {
-
-        VisualElement Text;
         VisualElement Button;
-
+        private int clickedTimes = 0;
         public PrettyUi() : base("PrettyUi View") { }
 
         public override void Main()
         {
-            Browser.ShowFps();
-
-            Text = new VisualElement()
+            Console.WriteLine("Pretty UI Main Happens");
+            Button = new VisualElement()
             {
-                Name = "LoginText",
-                Text = "Hello world!",
-                Transform = new(550 - 200, 180, 400, 80)
+                Name = "ClickMe",
+                Transform = new(100, 100, 220, 60)
                 {
-                    Anchor = Anchor.Top,
-                    FixedWidth = false,
+                    Anchor = Anchor.Top | Anchor.Left,
+                    FixedWidth = true,
                     FixedHeight = false,
                     ValidateOnAnchor = false,
                 },
                 Style = new()
                 {
-                    Text = new()
-                    {
-                        Size = 35f,
-                        Alignment = TextAlign.Center,
-                        Color = SKColors.White,
-                    }
-                },
-            };
-
-            Button = new VisualElement()
-            {
-                Name = "Button",
-                Text = "Click me",
-                Transform = new(550 - 120, 300, 240, 45)
-                {
-                    Anchor = Anchor.Top,
-                    FixedWidth = true,
-                    FixedHeight = true,
-                    ValidateOnAnchor = false,
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.WhiteSmoke,
-                    Border = new()
+                    BackColor = new SKColor(230, 230, 230, 255),
+                    Border = new BorderStyle()
                     {
                         Roundness = 10,
-                        Width = 1,
-                        Color = SKColors.Black,
+                        Width = 3,
+                        Color = new SKColor(200, 200, 200, 255)
                     },
-                    Text = new()
+                    Text = new TextStyle()
                     {
-                        Size = 25f,
-                        Weight = 400,
-                        Alignment = TextAlign.Center,
-                        Color = SKColors.Black,
+                        Size = 20,
+                        Spacing = 15,
+                        Color = new SKColor(40, 40, 40, 255),
+                        Weight = 900
                     }
                 },
+                Text = "Create new"
             };
 
-            Button.Events.OnMouseDown += (btn, pos) =>
+            Button.Events.OnMouseEnter += (VisualElement e) =>
             {
-                Button.Style.BackColor = new SKColor(50, 50, 50, 255);
-                Button.Style.Text.Color = SKColors.White;
-                Button.Style.Border.Color = SKColors.White;
-                Button.Style.Border.Width = 2;
+                Button.Style.Border.Color = new SKColor(150, 150, 150, 255);
+                Button.Style.Border.Width = 4;
             };
 
-            Button.Events.OnMouseUp += (btn, pos) =>
+            Button.Events.OnMouseLeave += (VisualElement e) =>
             {
-                Button.Style.BackColor = SKColors.WhiteSmoke;
-                Button.Style.Text.Color = SKColors.Black;
-                Button.Style.Border.Color = SKColors.Black;
-                Button.Style.Border.Width = 1;
+                Button.Style.Border.Color = new SKColor(200, 200, 200, 255);
+                Button.Style.Border.Width = 3;
             };
 
-            List<VisualStyle> styles = new(){
-                VisualStyle.OnEvent("LoginButton", VisualEvents.MouseHover, (VisualElement elm) => {
-                    elm.Style.BackColor = new SKColor(50, 50, 50, 255);
-                    elm.Style.Text.Color = SKColors.White;
-                    elm.Style.Border.Color = SKColors.White;
-                }),
-                VisualStyle.Base("LoginButton", (VisualElement elm) => {
-                    elm.Style.BackColor = SKColors.WhiteSmoke;
-                    elm.Style.Text.Color = SKColors.Black;
-                    elm.Style.Border.Color = SKColors.Black;
-                }),
-                VisualStyle.Base("LoginForm", new ElementStyle()
-                {
-                    BackColor = SKColors.WhiteSmoke,
-                    Border = new()
-                    {
-                        Roundness = 10,
-                        Width = 1,
-                        Color = SKColors.Black,
-                    },
-                    Text = new()
-                    {
-                        Size = 25f,
-                        Weight = 400,
-                        Alignment = TextAlign.Center,
-                        Color = SKColors.Black,
-                    }
-                }),
-            };
-
-            RenderChanges(() =>
+            Button.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
-                Text.Text = "Hello world!";
-                Button.Text = "Click me";
-            });
+                clickedTimes++;
+                Button.Style.Text.Size = 19;
+                Button.Style.Border.Color = new SKColor(100, 100, 100, 255);
+                Button.Style.Border.Width = 4;
+            };
 
-            AddElement(Text);
+            Button.Events.OnMouseUp += (int btn, Vector2 pos) =>
+            {
+                Button.Style.Text.Size = 20;
+                Button.Style.Border.Color = new SKColor(150, 150, 150, 255);
+                Button.Style.Border.Width = 4;
+
+                Button.Text = $"clicked {clickedTimes}" + ((clickedTimes == 0) ? " time" : " times");
+            };
+
             AddElement(Button);
         }
 
@@ -177,21 +129,24 @@ public class VisualStyle
 
     public static VisualStyle Base(string className, ElementStyle style)
     {
-        return new VisualStyle(className) {
+        return new VisualStyle(className)
+        {
             _Style = style,
         };
     }
 
     public static VisualStyle Base(string className, Action<VisualElement> styleEvent)
     {
-        return new VisualStyle(className) {
+        return new VisualStyle(className)
+        {
             _StyleEvent = styleEvent
         };
     }
 
     public static VisualStyle OnEvent(string className, VisualEvents eventName, Action<VisualElement> styleEvent)
     {
-        return new VisualStyle(className) {
+        return new VisualStyle(className)
+        {
             _Event = eventName,
             _StyleEvent = styleEvent
         };

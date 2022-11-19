@@ -1,11 +1,21 @@
 ﻿using System.Threading;
 using System;
 using System.IO;
-
+using System.Runtime.InteropServices;
 namespace Rux
 {
     internal class RuxEntry
     {
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetConsoleWindow();
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        const int SW_HIDE = 0;
+        const int SW_SHOW = 5;
+
         private static readonly string[] _args = Environment.GetCommandLineArgs();
         private static readonly string _appName = Path.GetFileNameWithoutExtension(_args[0]);
         private static readonly string _appPath = Path.GetDirectoryName(_args[0]);
@@ -34,6 +44,9 @@ namespace Rux
 
             // Console.ReadKey();
             // return;
+
+            // Hide console
+            ShowWindow(GetConsoleWindow(), 1);
 
             Log.Info(_appName);
             Log.Info(_appPath);
