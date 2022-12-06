@@ -7,6 +7,7 @@ public class ElementStyle
 
     public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; } = new();
+    public ShadowStyle Shadow { get; set; } = new();
 
     public ElementStyle() { }
 
@@ -15,6 +16,7 @@ public class ElementStyle
         AssignedElements.Add(element);
         if (Text is not null) Text.StyleContext = this;
         if (Border is not null) Border.StyleContext = this;
+        if (Shadow is not null) Shadow.StyleContext = this;
     }
 
     internal void UnassignElement(ref VisualElement element)
@@ -29,7 +31,6 @@ public class ElementStyle
     }
 
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
-
     public SkiaSharp.SKColor BackColor
     {
         get => _BackColor;

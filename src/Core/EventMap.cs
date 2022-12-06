@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.VisualBasic.CompilerServices;
 using System.Text;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using Silk.NET.Windowing;
 using Rux.Core.Delegates.Inputs;
 using Rux.Utils;
 using System.Numerics;
+using Rux.Core.Visual;
 
 namespace Rux.Core.Input
 {
@@ -38,7 +40,7 @@ namespace Rux.Core.Input
         public event ForHotkey OnHotkey;
 
         // Mouse
-        public event ForPosition OnMouseMove;
+        public event Action<Vector2, Vector2> OnMouseMove;
         public event ForPosition OnMouseScroll;
         public event ForMouseButton OnMouseDown;
         public event ForMouseButton OnMouseUp;
@@ -146,8 +148,18 @@ namespace Rux.Core.Input
         #endregion
 
         #region Mouse
-        internal void HandleMouseMove(Vector2 pos) =>
-            OnMouseMove?.Invoke(pos);
+        internal void HandleMouseMove(Vector2 pos, VisualElement el = default)
+        {
+            Vector2 relative = new Vector2(pos.X, pos.Y);
+
+            if (el != null)
+            {
+                relative.X = relative.X - el.Transform.Computed.X;
+                relative.Y = relative.Y - el.Transform.Computed.Y;
+            }
+
+            OnMouseMove?.Invoke(pos, relative);
+        }
 
         internal void HandleMouseDown(int btn, Vector2 pos)
         {
