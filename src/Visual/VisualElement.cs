@@ -150,6 +150,7 @@ public class VisualElement : IDisposable
     }
 
     SKPaint paint = new SKPaint();
+    SKPaint shadowPaint = new SKPaint();
 
     internal void DrawBase()
     {
@@ -163,15 +164,31 @@ public class VisualElement : IDisposable
         SKRoundRect roundRect = new SKRoundRect();
 
         roundRect.SetRectRadii(rect, new SKPoint[] {
-                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
-                new SKPoint(Style.Border.Roundness, Style.Border.Roundness),
+                new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
+                new SKPoint(Style.Border.RoundnessTopRight, Style.Border.RoundnessTopRight),
+                new SKPoint(Style.Border.RoundnessBottomRight, Style.Border.RoundnessBottomRight),
+                new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
+
+        // SHADOW
+        if (Style.Shadow is not null && Style.Shadow.HasValidValues())
+        {
+            var RectangleStyleFillShadow = SKImageFilter.CreateDropShadow(
+                Style.Shadow.OffsetX, Style.Shadow.OffsetY, Style.Shadow.SpreadX, Style.Shadow.SpreadY,
+                Style.Shadow.Color,
+                null, null);
+
+            shadowPaint.Style = SKPaintStyle.Fill;
+            shadowPaint.Color = Style.BackColor;
+            shadowPaint.IsAntialias = true;
+            shadowPaint.ImageFilter = RectangleStyleFillShadow;
+            Renderer.Canvas.DrawRoundRect(roundRect, shadowPaint);
+        }
 
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
+        // shadowPaint.ImageFilter = SKImageFilter.CreateBlur(10, 10);
 
         Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
@@ -180,9 +197,8 @@ public class VisualElement : IDisposable
             paint.Style = SKPaintStyle.Stroke;
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
+            Renderer.Canvas.DrawRoundRect(roundRect, paint);
         }
-
-        Renderer.Canvas.DrawRoundRect(roundRect, paint);
     }
 
     private SKRect TextBounds;

@@ -1,23 +1,56 @@
 namespace Rux.Core.Visual;
 using System.Numerics;
 
-public class Shadow
+public class ShadowStyle : StyleProperty
 {
-
-    private float _X = 0;
-    private float _Y = 0;
-    private float _Spread = 0f;
+    private float _OffsetX = 0;
+    private float _OffsetY = 0;
+    private float _SpreadX = 0;
+    private float _SpreadY = 0;
     private SkiaSharp.SKColor _Color = new(0, 0, 0, 0);
 
-    public Vector2 Offset { get => new Vector2(_X, _Y); }
-
-    public float Spread
+    internal bool HasValidValues()
     {
-        get => _Spread;
+        return _OffsetX + _OffsetY + _SpreadX + _SpreadY > 0;
+    }
+
+    public float OffsetX
+    {
+        get => _OffsetX;
         set
         {
-            _Spread = value;
-            //! #render
+            _OffsetX = value;
+            TriggerRender();
+        }
+    }
+
+    public float OffsetY
+    {
+        get => _OffsetY;
+        set
+        {
+            _OffsetY = value;
+            TriggerRender();
+        }
+    }
+
+    public float SpreadX
+    {
+        get => _SpreadX;
+        set
+        {
+            _SpreadX = value;
+            TriggerRender();
+        }
+    }
+
+    public float SpreadY
+    {
+        get => _SpreadY;
+        set
+        {
+            _SpreadY = value;
+            TriggerRender();
         }
     }
 
@@ -27,13 +60,7 @@ public class Shadow
         set
         {
             _Color = value;
-            //! #render
+            TriggerRender();
         }
-    }
-
-    public Shadow(float X, float Y)
-    {
-        _X = X;
-        _Y = Y;
     }
 }

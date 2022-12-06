@@ -75,10 +75,10 @@ namespace Rux.Core
                 element?.Events.HandleMouseUp(btn, pos);
             };
 
-            Events.OnMouseMove += (pos) =>
+            Events.OnMouseMove += (pos, relative) =>
             {
                 var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseMove(pos);
+                element?.Events.HandleMouseMove(pos, element);
 
                 if (hoveredElement != element)
                 {

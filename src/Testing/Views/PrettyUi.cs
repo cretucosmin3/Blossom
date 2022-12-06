@@ -1,3 +1,4 @@
+using System.Text;
 using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Numerics;
@@ -17,73 +18,107 @@ namespace Rux.Testing
 {
     public class PrettyUi : View
     {
-        VisualElement Button;
+        VisualElement SearchBar;
+        StringBuilder SearchText = new StringBuilder("");
         private int clickedTimes = 0;
         public PrettyUi() : base("PrettyUi View") { }
 
         public override void Main()
         {
+            this.Events.OnKeyType += (ch) =>
+            {
+                Console.WriteLine($"Key down {ch}");
+                SearchText.Append(ch);
+                SearchBar.Text = SearchText.ToString();
+                SearchBar.Style.ScheduleRender();
+            };
+
+            this.Events.OnKeyDown += (key) =>
+            {
+                if (SearchText.Length > 0)
+                {
+                    if (key == 14) SearchText.Remove(SearchText.Length - 1, 1);
+                    Console.WriteLine($"Key pressed {key}");
+
+                    SearchBar.Text = SearchText.ToString();
+                    SearchBar.Style.ScheduleRender();
+                }
+            };
+
+            var HalfWidth = 1100 / 2;
+
             Console.WriteLine("Pretty UI Main Happens");
-            Button = new VisualElement()
+            SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(100, 100, 220, 60)
+                Transform = new(HalfWidth - 225, 20, 450, 40)
                 {
-                    Anchor = Anchor.Top | Anchor.Left,
+                    Anchor = Anchor.Top,
                     FixedWidth = true,
-                    FixedHeight = false,
-                    ValidateOnAnchor = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = true,
                 },
                 Style = new()
                 {
-                    BackColor = new SKColor(230, 230, 230, 255),
+                    BackColor = SKColors.White,
                     Border = new BorderStyle()
                     {
-                        Roundness = 10,
-                        Width = 3,
-                        Color = new SKColor(200, 200, 200, 255)
+                        Roundness = 5
                     },
                     Text = new TextStyle()
                     {
-                        Size = 20,
-                        Spacing = 15,
-                        Color = new SKColor(40, 40, 40, 255),
-                        Weight = 900
+                        Size = 18,
+                        Spacing = 20,
+                        Padding = 20,
+                        Color = new SKColor(100, 100, 100, 255),
+                        Weight = 200,
+                        Alignment = TextAlign.Left
+                    },
+                    Shadow = new()
+                    {
+                        Color = new SKColor(220, 220, 220),
+                        OffsetY = 8,
+                        SpreadX = 18,
+                        SpreadY = 10
                     }
                 },
-                Text = "Create new"
+                Text = "Search ..."
             };
 
-            Button.Events.OnMouseEnter += (VisualElement e) =>
-            {
-                Button.Style.Border.Color = new SKColor(150, 150, 150, 255);
-                Button.Style.Border.Width = 4;
-            };
-
-            Button.Events.OnMouseLeave += (VisualElement e) =>
-            {
-                Button.Style.Border.Color = new SKColor(200, 200, 200, 255);
-                Button.Style.Border.Width = 3;
-            };
-
-            Button.Events.OnMouseDown += (int btn, Vector2 pos) =>
+            SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
                 clickedTimes++;
-                Button.Style.Text.Size = 19;
-                Button.Style.Border.Color = new SKColor(100, 100, 100, 255);
-                Button.Style.Border.Width = 4;
+                SearchBar.Style.Text.Size = 19f;
+
+                SearchBar.Style.Shadow.OffsetX = 0;
+                SearchBar.Style.Shadow.OffsetY = 3;
+
+                SearchBar.Transform.Width -= 4;
+                SearchBar.Transform.X += 2;
+
+                SearchBar.Transform.Height -= 4;
+                SearchBar.Transform.Y += 2;
+
+                SearchBar.Text = "Mouse Down";
             };
 
-            Button.Events.OnMouseUp += (int btn, Vector2 pos) =>
+            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) =>
             {
-                Button.Style.Text.Size = 20;
-                Button.Style.Border.Color = new SKColor(150, 150, 150, 255);
-                Button.Style.Border.Width = 4;
+                SearchBar.Style.Text.Size = 20;
+                SearchBar.Style.BackColor = SKColors.White;
 
-                Button.Text = $"clicked {clickedTimes}" + ((clickedTimes == 0) ? " time" : " times");
+                SearchBar.Text = $"clicked {clickedTimes}" + ((clickedTimes == 0) ? " time" : " times");
+                SearchBar.Style.Shadow.OffsetX = 0;
+                SearchBar.Style.Shadow.OffsetY = 5;
+
+                SearchBar.Transform.Width += 4;
+                SearchBar.Transform.X -= 2;
+
+                SearchBar.Transform.Height += 4;
+                SearchBar.Transform.Y -= 2;
             };
 
-            AddElement(Button);
+            AddElement(SearchBar);
         }
 
         float smoothLerp(float from, float to, float progress)

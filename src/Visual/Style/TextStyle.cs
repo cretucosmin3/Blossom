@@ -3,9 +3,8 @@ namespace Rux.Core.Visual;
 
 using SkiaSharp;
 
-public class TextStyle
+public class TextStyle : StyleProperty
 {
-    internal ElementStyle StyleContext;
     public readonly SKPaint Paint;
 
     private int _Spacing = 2;
@@ -16,8 +15,6 @@ public class TextStyle
     private TextAlign _Alignment = TextAlign.Center;
     private SKColor _Color;
     private string _FontName = "DejaVu Sans Mono";
-
-    public Shadow Shadow;
 
     public TextStyle()
     {
@@ -40,7 +37,7 @@ public class TextStyle
         Paint.Typeface = typeFace;
         Paint.TextSize = _Size;
 
-        StyleContext?.ScheduleRender();
+        TriggerRender();
     }
 
     public int Spacing
@@ -79,7 +76,7 @@ public class TextStyle
         set
         {
             _Padding = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 
@@ -89,7 +86,7 @@ public class TextStyle
         set
         {
             _Alignment = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 
@@ -100,7 +97,7 @@ public class TextStyle
         {
             _Color = value;
             Paint.Color = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 

@@ -1,10 +1,8 @@
 namespace Rux.Core.Visual;
 using Rux.Core.Visual;
 
-public class BorderStyle
+public class BorderStyle : StyleProperty
 {
-    internal ElementStyle StyleContext;
-
     public BorderStyle() { }
 
     private SkiaSharp.SKColor _Color;
@@ -22,7 +20,7 @@ public class BorderStyle
         set
         {
             _Width = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 
@@ -32,7 +30,7 @@ public class BorderStyle
         set
         {
             _Color = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 
@@ -47,17 +45,47 @@ public class BorderStyle
             _RBottomLeft = value;
             _RBottomRight = value;
 
-            StyleContext?.ScheduleRender();
+            TriggerRender();
         }
     }
 
-    public float RTopLeft
+    public float RoundnessTopLeft
     {
         get => _RTopLeft;
         set
         {
             _RTopLeft = value;
-            StyleContext?.ScheduleRender();
+            TriggerRender();
+        }
+    }
+
+    public float RoundnessTopRight
+    {
+        get => _RTopRight;
+        set
+        {
+            _RTopRight = value;
+            TriggerRender();
+        }
+    }
+
+    public float RoundnessBottomLeft
+    {
+        get => _RBottomLeft;
+        set
+        {
+            _RBottomLeft = value;
+            TriggerRender();
+        }
+    }
+
+    public float RoundnessBottomRight
+    {
+        get => _RBottomRight;
+        set
+        {
+            _RBottomRight = value;
+            TriggerRender();
         }
     }
 }

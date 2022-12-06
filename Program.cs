@@ -40,13 +40,13 @@ namespace Rux
             // var restHours = hours - Math.Truncate(hours);
             // var minutes = restHours * 60;
 
-            // Console.WriteLine($"{(int)years} y, {(int)months} mo, {(int)days} d, {(int)hours} h, {(int)minutes} m");
+            // Console.WriteLine($"{(int)years} years, {(int)months} months, {(int)days} days, {(int)hours} hours, {(int)minutes} minutes");
 
             // Console.ReadKey();
             // return;
 
             // Hide console
-            ShowWindow(GetConsoleWindow(), 1);
+            // ShowWindow(GetConsoleWindow(), 0);
 
             Log.Info(_appName);
             Log.Info(_appPath);

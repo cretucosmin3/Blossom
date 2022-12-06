@@ -180,14 +180,8 @@ public static class Browser
 
             var icon = new RawImage(image.Width, image.Height, array);
             window.SetWindowIcon(ref icon);
-            Console.WriteLine("Finished loading");
+            Console.WriteLine("Logo loaded");
         };
-
-        // var logo = new RawImage(128, 128,
-        //     new Memory<byte>(File.ReadAllBytes("example.ico"))
-        // );
-
-        // window.SetWindowIcon(ref logo);
     }
 
     private static void Load()
