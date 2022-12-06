@@ -99,9 +99,12 @@ public class VisualElement : IDisposable
         get => _Text;
         set
         {
-            _Text = value;
-            CalculateTextBounds();
-            //! #render
+            if (_Text != value)
+            {
+                _Text = value;
+                CalculateTextBounds();
+                ScheduleRender();
+            }
         }
     }
 
@@ -205,7 +208,7 @@ public class VisualElement : IDisposable
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style is not null)
-            Style.Text.Paint.MeasureText(Text, ref TextBounds);
+            Style.Text.Paint.MeasureText(Text + '|', ref TextBounds);
     }
 
     SKPoint TextPoint;
@@ -254,6 +257,8 @@ public class VisualElement : IDisposable
                 => cy + ch - Style.Text.Padding,
             _ => cy + (ch / 2f) - TextBounds.MidY // Center
         };
+
+        textY += 2;
 
         TextPoint = new SKPoint(textX, textY);
     }
