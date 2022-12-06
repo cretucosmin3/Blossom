@@ -41,7 +41,6 @@ namespace Rux.Testing
                     Console.WriteLine($"Key pressed {key}");
 
                     SearchBar.Text = SearchText.ToString();
-                    SearchBar.Style.ScheduleRender();
                 }
             };
 
@@ -51,7 +50,7 @@ namespace Rux.Testing
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 225, 20, 450, 40)
+                Transform = new(HalfWidth - 225, 10, 450, 40)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -63,23 +62,25 @@ namespace Rux.Testing
                     BackColor = SKColors.White,
                     Border = new BorderStyle()
                     {
-                        Roundness = 5
+                        Roundness = 5,
+                        Width = 1,
+                        Color = SKColors.DimGray
                     },
                     Text = new TextStyle()
                     {
                         Size = 18,
                         Spacing = 20,
                         Padding = 20,
-                        Color = new SKColor(100, 100, 100, 255),
-                        Weight = 200,
+                        Color = new SKColor(80, 80, 80, 255),
+                        Weight = 500,
                         Alignment = TextAlign.Left
                     },
                     Shadow = new()
                     {
                         Color = new SKColor(220, 220, 220),
                         OffsetY = 8,
-                        SpreadX = 18,
-                        SpreadY = 10
+                        SpreadX = 16,
+                        SpreadY = 8
                     }
                 },
                 Text = "Search ..."
