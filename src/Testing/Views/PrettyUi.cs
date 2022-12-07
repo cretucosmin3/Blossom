@@ -1,18 +1,8 @@
 using System.Text;
-using System.ComponentModel;
-using System.Security.Cryptography;
 using System.Numerics;
-using System.Net.Mime;
 using System;
-using System.Diagnostics;
 using Rux.Core;
-using Rux.Core.Input;
 using Rux.Core.Visual;
-using System.Drawing;
-using System.Threading;
-using SkiaSharp;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace Rux.Testing
 {
@@ -21,13 +11,10 @@ namespace Rux.Testing
         VisualElement SearchBar;
         StringBuilder SearchText = new StringBuilder("");
         private int clickedTimes = 0;
-        public PrettyUi() : base("PrettyUi View") { }
-
-        public override void Main()
+        public PrettyUi() : base("PrettyUi View")
         {
             this.Events.OnKeyType += (ch) =>
             {
-                Console.WriteLine($"Key down {ch}");
                 SearchText.Append(ch);
                 SearchBar.Text = SearchText.ToString();
                 SearchBar.Style.ScheduleRender();
@@ -38,19 +25,20 @@ namespace Rux.Testing
                 if (SearchText.Length > 0)
                 {
                     if (key == 14) SearchText.Remove(SearchText.Length - 1, 1);
-                    Console.WriteLine($"Key pressed {key}");
 
                     SearchBar.Text = SearchText.ToString();
                 }
             };
+        }
 
+        public override void Main()
+        {
             var HalfWidth = 1100 / 2;
 
-            Console.WriteLine("Pretty UI Main Happens");
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 225, 10, 450, 40)
+                Transform = new(HalfWidth - 225, 35, 450, 35)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -59,132 +47,59 @@ namespace Rux.Testing
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.White,
-                    Border = new BorderStyle()
+                    BackColor = new(255, 255, 255, 255),
+                    Border = new()
                     {
-                        Roundness = 5,
-                        Width = 1,
-                        Color = SKColors.DimGray
+                        Roundness = 4,
+                        Width = 0.5f,
+                        Color = new(0, 0, 0, 25)
                     },
-                    Text = new TextStyle()
+                    Text = new()
                     {
                         Size = 18,
                         Spacing = 20,
                         Padding = 20,
-                        Color = new SKColor(80, 80, 80, 255),
-                        Weight = 500,
-                        Alignment = TextAlign.Left
+                        Weight = 450,
+                        Alignment = TextAlign.Left,
+                        Color = new(0, 0, 0, 180),
                     },
                     Shadow = new()
                     {
-                        Color = new SKColor(220, 220, 220),
-                        OffsetY = 8,
-                        SpreadX = 16,
-                        SpreadY = 8
+                        Color = new(0, 0, 0, 35),
+                        SpreadX = 4,
+                        SpreadY = 4,
+                        OffsetY = 3
                     }
                 },
                 Text = "Search ..."
             };
 
+            Action Hovered = () =>
+            {
+                SearchBar.Style.Border.Width = 1f;
+                SearchBar.Style.Border.Color = new(0, 0, 0, 225);
+                SearchBar.Style.Text.Color = new(0, 0, 0, 255);
+            };
+
+            Action ToNormal = () =>
+            {
+                SearchBar.Style.Border.Width = 0.5f;
+                SearchBar.Style.Border.Color = new(0, 0, 0, 25);
+                SearchBar.Style.Text.Color = new(0, 0, 0, 180);
+            };
+
+            SearchBar.Events.OnMouseLeave += (VisualElement e) => ToNormal();
+            SearchBar.Events.OnMouseEnter += (VisualElement e) => Hovered();
+            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) => Hovered();
             SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
-                clickedTimes++;
-                SearchBar.Style.Text.Size = 19f;
-
-                SearchBar.Style.Shadow.OffsetX = 0;
-                SearchBar.Style.Shadow.OffsetY = 3;
-
-                SearchBar.Transform.Width -= 4;
-                SearchBar.Transform.X += 2;
-
-                SearchBar.Transform.Height -= 4;
-                SearchBar.Transform.Y += 2;
-
-                SearchBar.Text = "Mouse Down";
+                SearchBar.Style.Border.Width = 2f;
+                SearchBar.Style.Border.Color = new(0, 0, 0, 255);
+                SearchBar.Style.Text.Color = new(0, 0, 0, 255);
             };
 
-            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) =>
-            {
-                SearchBar.Style.Text.Size = 20;
-                SearchBar.Style.BackColor = SKColors.White;
-
-                SearchBar.Text = $"clicked {clickedTimes}" + ((clickedTimes == 0) ? " time" : " times");
-                SearchBar.Style.Shadow.OffsetX = 0;
-                SearchBar.Style.Shadow.OffsetY = 5;
-
-                SearchBar.Transform.Width += 4;
-                SearchBar.Transform.X -= 2;
-
-                SearchBar.Transform.Height += 4;
-                SearchBar.Transform.Y -= 2;
-            };
 
             AddElement(SearchBar);
         }
-
-        float smoothLerp(float from, float to, float progress)
-        {
-            return from + (to - from) * (progress * progress * (3 - 2 * progress));
-        }
-
-        float lerp(float a, float b, float f)
-        {
-            return a + f * (b - a);
-        }
-    }
-}
-
-
-public enum VisualEvents
-{
-    MouseDown,
-    MouseUp,
-    MouseMove,
-    MouseEnter,
-    MouseLeave,
-    MouseHover,
-}
-
-public class VisualStyle
-{
-    private string _Class;
-    private VisualEvents _Event;
-    private Action<VisualElement> _StyleEvent;
-    private ElementStyle _Style;
-
-    public VisualStyle(string className)
-    {
-        _Class = className;
-    }
-
-    public VisualStyle(string className, VisualEvents eventName)
-    {
-        _Class = className;
-        _Event = eventName;
-    }
-
-    public static VisualStyle Base(string className, ElementStyle style)
-    {
-        return new VisualStyle(className)
-        {
-            _Style = style,
-        };
-    }
-
-    public static VisualStyle Base(string className, Action<VisualElement> styleEvent)
-    {
-        return new VisualStyle(className)
-        {
-            _StyleEvent = styleEvent
-        };
-    }
-
-    public static VisualStyle OnEvent(string className, VisualEvents eventName, Action<VisualElement> styleEvent)
-    {
-        return new VisualStyle(className)
-        {
-            _Event = eventName,
-            _StyleEvent = styleEvent
-        };
     }
 }

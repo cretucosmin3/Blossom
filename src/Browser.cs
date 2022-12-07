@@ -67,11 +67,12 @@ public static class Browser
         options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
         options.Title = "Anubis";
         options.VSync = false;
-        // options.WindowBorder = WindowBorder.Hidden;
+        options.TransparentFramebuffer = true;
+        options.WindowBorder = WindowBorder.Resizable;
         options.IsEventDriven = true;
 
+
         GlfwWindowing.Use();
-        // SdlWindowing.Use();
 
         window = Window.Create(options);
 
@@ -109,6 +110,7 @@ public static class Browser
         {
             keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
             {
+                Console.WriteLine(key);
                 if (i == 0) return;
                 var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
                 var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
@@ -186,7 +188,7 @@ public static class Browser
 
     private static void Load()
     {
-        var x = window.Native.Win32.Value;
+        var winHandle = window.Native.Win32.Value.HInstance;
 
         IsLoaded = true;
         window.Center();
@@ -197,27 +199,9 @@ public static class Browser
         StartWindow();
     }
 
-    private static float frames = 0;
-    private static double fps_avg = 0;
-    private static float fps = 0;
-    private static SKPaint fpsPaint = new SKPaint()
-    {
-        Color = SKColors.White,
-        TextSize = 20,
-        StrokeWidth = 4,
-        IsAntialias = false,
-        IsStroke = false,
-        Typeface = SKTypeface.FromFamilyName("Bitstream Charter", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
-    };
-
     private static void Render(double time)
     {
-        // Vector2D<float> winSize = window.Size.As<float>();
-        // Vector2D<float> fbSize = window.FramebufferSize.As<float>();
-        // float pxRatio = fbSize.X / winSize.X;
-
         Renderer.ResetContext();
-        // Renderer.Canvas.Clear(new(255, 255, 255, 45));
         Renderer.Canvas.Clear(new(255, 255, 255, 255));
         BrowserApp.Render();
         Renderer.Canvas.Flush();
