@@ -96,77 +96,38 @@ public static class User32
         gfx.ExcludeClip(new Rectangle(0, 0, 100, 100));  //Exclude Client Area (GetWindowDC grabs the WHOLE window's graphics handle)
     }
 
-    //WM_NCCALCSIZE
-    // private void WmNCCalcSize(ref Message m)
-    // {
-    //     //Get Window Rect
-    //     RECT formRect = new RECT();
-    //     GetWindowRect(m.HWnd, out formRect);
+    [DllImport("USER32.DLL")]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
-    //     //Check WPARAM
-    //     if (m.WParam != IntPtr.Zero)
-    //     {
-    //         //When TRUE, LPARAM Points to a NCCALCSIZE_PARAMS structure
-    //         var nccsp = (NCCALCSIZE_PARAMS)System.Runtime.InteropServices.Marshal.PtrToStructure(m.LParam, typeof(NCCALCSIZE_PARAMS));
+    [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
+    static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
 
-    //         //We're adjusting the size of the client area here. Right now, the client area is the whole form.
-    //         //Adding to the Top, Bottom, Left, and Right will size the client area.
-    //         nccsp.rgrc0.top += 30;      //30-pixel top border
-    //         nccsp.rgrc0.bottom -= 4;    //4-pixel bottom (resize) border
-    //         nccsp.rgrc0.left += 4;      //4-pixel left (resize) border
-    //         nccsp.rgrc0.right -= 4;     //4-pixel right (resize) border
+    [DllImport("user32.dll")]
+    static extern IntPtr GetMenu(IntPtr hWnd);
 
-    //         //Set the structure back into memory
-    //         System.Runtime.InteropServices.Marshal.StructureToPtr(nccsp, m.LParam, true);
-    //     }
-    //     else
-    //     {
-    //         //When FALSE, LPARAM Points to a RECT structure
-    //         var clnRect = (RECT)System.Runtime.InteropServices.Marshal.PtrToStructure(m.LParam, typeof(RECT));
+    [DllImport("user32.dll")]
+    static extern int GetMenuItemCount(IntPtr hMenu);
 
-    //         //Like before, we're adjusting the rectangle...
-    //         //Adding to the Top, Bottom, Left, and Right will size the client area.
-    //         clnRect.top += 30;      //30-pixel top border
-    //         clnRect.bottom -= 4;    //4-pixel bottom (resize) border
-    //         clnRect.left += 4;      //4-pixel left (resize) border
-    //         clnRect.right -= 4;     //4-pixel right (resize) border
+    [DllImport("user32.dll")]
+    static extern bool DrawMenuBar(IntPtr hWnd);
 
-    //         //Set the structure back into memory
-    //         System.Runtime.InteropServices.Marshal.StructureToPtr(clnRect, m.LParam, true);
-    //     }
+    [DllImport("user32.dll")]
+    static extern bool RemoveMenu(IntPtr hMenu, uint uPosition, uint uFlags);
 
-    //     //Return Zero
-    //     m.Result = IntPtr.Zero;
-    // }
+    public static uint MF_BYPOSITION = 0x400;
+    public static uint MF_REMOVE = 0x1000;
 
-    //WM_NCPAINT
-    // private void WmNCPaint(ref Message m)
-    // {
-    //     //Store HDC
-    //     IntPtr HDC = IntPtr.Zero;
-    //     Graphics gfx = null;
+    public static void WindowsReStyle(IntPtr winHandle)
+    {
+        //get menu
+        IntPtr HMENU = GetMenu(winHandle);
+        //get item count
+        int count = GetMenuItemCount(HMENU);
+        //loop & remove
+        for (int i = 0; i < count; i++)
+            RemoveMenu(HMENU, 0, (MF_BYPOSITION | MF_REMOVE));
 
-    //     //Check the WPARAM
-    //     if (m.WParam == (IntPtr)1)
-    //     {
-    //         //For reasons unknown to me, the update region doesn't contain valid data and calling GetDCEx will do nothing.
-    //         //So I call GetWindowDC and exclude the area using System.Drawing.Graphics instead.
-
-    //         //Graphics Object from HDC
-    //         HDC = GetWindowDC(m.HWnd);
-    //         gfx = Graphics.FromHdc(HDC);
-
-    //         //Exclude Client Area
-    //         gfx.ExcludeClip(new Rectangle(4, 30, 500 - 8, 34));  //Exclude Client Area (GetWindowDC grabs the WHOLE window's graphics handle)
-    //     }
-    //     else
-    //     {
-    //         //Graphics Object from HDC
-    //         HDC = GetDCEx(m.HWnd, m.WParam, DCX_WINDOW | DCX_INTERSECTRGN);
-    //         gfx = Graphics.FromHdc(HDC);
-    //     }
-
-    //     //Return Zero
-    //     m.Result = IntPtr.Zero;
-    // }
+        //force a redraw
+        DrawMenuBar(winHandle);
+    }
 }

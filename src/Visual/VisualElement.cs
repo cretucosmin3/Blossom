@@ -1,3 +1,4 @@
+using System.Text;
 namespace Rux.Core.Visual;
 using System;
 using System.Collections.Generic;
@@ -93,15 +94,17 @@ public class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
-    private string _Text = "";
+    private StringBuilder _Text = new StringBuilder("");
     public string Text
     {
-        get => _Text;
+        get => _Text.ToString();
         set
         {
-            if (_Text != value)
+            if (_Text.ToString() != value)
             {
-                _Text = value;
+                _Text.Clear();
+                _Text.Append(value);
+
                 CalculateTextBounds();
                 ScheduleRender();
             }
@@ -173,7 +176,6 @@ public class VisualElement : IDisposable
                 new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
 
-        // SHADOW
         if (Style.Shadow is not null && Style.Shadow.HasValidValues())
         {
             var RectangleStyleFillShadow = SKImageFilter.CreateDropShadow(
@@ -191,8 +193,8 @@ public class VisualElement : IDisposable
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
-        // shadowPaint.ImageFilter = SKImageFilter.CreateBlur(10, 10);
 
+        // paint.ImageFilter = SKImageFilter.CreateBlur(10, 10);
         Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
         if (Style.Border.Width > 0)

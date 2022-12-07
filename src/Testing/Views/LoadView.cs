@@ -18,9 +18,11 @@ namespace Rux.Testing
     {
         List<VisualElement> LoadElements = new List<VisualElement>();
 
-        public LoadView() : base("LoadView View") { }
+        public LoadView() : base("LoadView View")
+        {
 
-        private int counter = 0;
+        }
+
         public override void Main()
         {
             Browser.ShowFps();

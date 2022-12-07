@@ -11,7 +11,7 @@ public class ShadowStyle : StyleProperty
 
     internal bool HasValidValues()
     {
-        return _OffsetX + _OffsetY + _SpreadX + _SpreadY > 0;
+        return _SpreadX + _SpreadY > 0 && _Color.Alpha > 0;
     }
 
     public float OffsetX
