@@ -1,18 +1,46 @@
 namespace Rux.Core.Visual;
-using System.Numerics;
 
-public class ShadowStyle : StyleProperty
+using System;
+using System.Numerics;
+using SkiaSharp;
+
+public class ShadowStyle : StyleProperty, IDisposable
 {
     private float _OffsetX = 0;
     private float _OffsetY = 0;
     private float _SpreadX = 0;
     private float _SpreadY = 0;
     private SkiaSharp.SKColor _Color = new(0, 0, 0, 0);
+    private SKImageFilter _Filter;
 
-    internal bool HasValidValues()
+    public ShadowStyle()
+    {
+        RedoFilter();
+    }
+
+    public bool HasValidValues()
     {
         return _SpreadX + _SpreadY > 0 && _Color.Alpha > 0;
     }
+
+    private void RedoFilter()
+    {
+        this._Filter?.Dispose();
+
+        if (HasValidValues())
+        {
+            this._Filter = SKImageFilter.CreateDropShadow(
+                    OffsetX, OffsetY, SpreadX, SpreadY, Color,
+                    null, null);
+        }
+    }
+
+    public void Dispose()
+    {
+        _Filter.Dispose();
+    }
+
+    public SKImageFilter Filter { get => _Filter; }
 
     public float OffsetX
     {
@@ -20,6 +48,8 @@ public class ShadowStyle : StyleProperty
         set
         {
             _OffsetX = value;
+            RedoFilter();
+            TriggerChange();
             TriggerRender();
         }
     }
@@ -30,6 +60,8 @@ public class ShadowStyle : StyleProperty
         set
         {
             _OffsetY = value;
+            RedoFilter();
+            TriggerChange();
             TriggerRender();
         }
     }
@@ -40,6 +72,8 @@ public class ShadowStyle : StyleProperty
         set
         {
             _SpreadX = value;
+            RedoFilter();
+            TriggerChange();
             TriggerRender();
         }
     }
@@ -50,6 +84,8 @@ public class ShadowStyle : StyleProperty
         set
         {
             _SpreadY = value;
+            RedoFilter();
+            TriggerChange();
             TriggerRender();
         }
     }
@@ -60,6 +96,8 @@ public class ShadowStyle : StyleProperty
         set
         {
             _Color = value;
+            RedoFilter();
+            TriggerChange();
             TriggerRender();
         }
     }
