@@ -16,6 +16,8 @@ public class TextStyle : StyleProperty
     private SKColor _Color;
     private string _FontName = "DejaVu Sans Mono";
 
+    public ShadowStyle _Shadow = null;
+
     public TextStyle()
     {
         Paint = new SKPaint()
@@ -34,6 +36,12 @@ public class TextStyle : StyleProperty
             new SKFontStyle(_Weight, _Width, SKFontStyleSlant.Upright)
         );
 
+        if (_Shadow != null && _Shadow.Filter != null)
+        {
+            Paint.ImageFilter = _Shadow.Filter;
+        }
+
+        Paint.IsAntialias = true;
         Paint.Typeface = typeFace;
         Paint.TextSize = _Size;
 
@@ -108,8 +116,19 @@ public class TextStyle : StyleProperty
         {
             _FontName = value;
             RedoFont();
+        }
+    }
 
-            var font = SKTypeface.FromFamilyName(value, _Weight, _Width, SKFontStyleSlant.Upright);
+    public ShadowStyle Shadow
+    {
+        get => _Shadow;
+        set
+        {
+            _Shadow?.Dispose();
+            _Shadow = value;
+
+            RedoFont();
+            _Shadow.OnChanged += RedoFont;
         }
     }
 }

@@ -32,6 +32,7 @@ public class VisualElement : IDisposable
 
     internal event ForDispose OnDisposing;
     internal event Action<Transform> TransformChanged;
+    internal SKPoint TextPosition;
 
     private Transform _Transform = new Transform();
     public Transform Transform
@@ -206,17 +207,29 @@ public class VisualElement : IDisposable
         }
     }
 
+    internal void DrawText()
+    {
+        // Early return if there's no text or color
+        if (string.IsNullOrEmpty(Text) || Style.Text is null)
+            return;
+
+        CalculateText();
+
+        // DrawTextShadow();
+        Renderer.Canvas.DrawText(Text, TextPosition, Style.Text.Paint);
+    }
+
+    internal void DrawTextShadow()
+    {
+        Renderer.Canvas.DrawText(Text, TextPosition, Style.Text.Paint);
+    }
+
     private SKRect TextBounds;
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style is not null)
             Style.Text.Paint.MeasureText(Text + '|', ref TextBounds);
     }
-
-    SKPoint TextPoint;
-
-    private float textX = 0;
-    private float textY = 0;
 
     internal void CalculateText()
     {
@@ -230,7 +243,7 @@ public class VisualElement : IDisposable
 
         CalculateTextBounds();
 
-        textX = Style.Text.Alignment switch
+        TextPosition.X = Style.Text.Alignment switch
         {
             var x when
                 x == TextAlign.Left ||
@@ -245,7 +258,7 @@ public class VisualElement : IDisposable
             _ => cx + (cw / 2f) - TextBounds.MidX // Center
         };
 
-        textY = Style.Text.Alignment switch
+        TextPosition.Y = Style.Text.Alignment switch
         {
             var x when
                 x == TextAlign.Top ||
@@ -260,9 +273,7 @@ public class VisualElement : IDisposable
             _ => cy + (ch / 2f) - TextBounds.MidY // Center
         };
 
-        textY += 2;
-
-        TextPoint = new SKPoint(textX, textY);
+        TextPosition.Y += 2;
     }
 
     private void ChangedTransform(Transform x)
@@ -276,23 +287,6 @@ public class VisualElement : IDisposable
     {
         this.Transform.Evaluate();
         CalculateText();
-    }
-
-    internal void DrawText()
-    {
-        // Early return if there's no text or color
-        if (string.IsNullOrEmpty(Text) || Style.Text is null)
-            return;
-
-        // if (Style.Text.HasChanged)
-        CalculateText();
-
-        Renderer.Canvas.DrawText(Text, TextPoint, Style.Text.Paint);
-    }
-
-    internal void DrawTextShadow()
-    {
-
     }
 
     internal void ScheduleRender()

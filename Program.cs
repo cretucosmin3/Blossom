@@ -46,7 +46,7 @@ namespace Rux
             // return;
 
             // Hide console
-            ShowWindow(GetConsoleWindow(), 0);
+            // ShowWindow(GetConsoleWindow(), 0);
 
             Log.Info(_appName);
             Log.Info(_appPath);

@@ -38,7 +38,7 @@ namespace Rux.Testing
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 225, 35, 450, 35)
+                Transform = new(HalfWidth - 225, 35, 450, 55)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -56,12 +56,19 @@ namespace Rux.Testing
                     },
                     Text = new()
                     {
-                        Size = 18,
+                        Size = 26,
                         Spacing = 20,
                         Padding = 20,
                         Weight = 450,
                         Alignment = TextAlign.Left,
-                        Color = new(0, 0, 0, 180),
+                        Color = new(50, 50, 200, 220),
+                        Shadow = new()
+                        {
+                            Color = new(50, 50, 200, 35),
+                            SpreadX = 1,
+                            SpreadY = 5,
+                            OffsetY = 18
+                        }
                     },
                     Shadow = new()
                     {
@@ -93,9 +100,9 @@ namespace Rux.Testing
             SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) => Hovered();
             SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
-                SearchBar.Style.Border.Width = 2f;
-                SearchBar.Style.Border.Color = new(0, 0, 0, 255);
-                SearchBar.Style.Text.Color = new(0, 0, 0, 255);
+                SearchBar.Style.Border.Width = 3.5f;
+                SearchBar.Style.Border.Color = new(50, 50, 200, 220);
+                SearchBar.Style.Text.Color = new(50, 50, 200, 220);
             };
 
 
