@@ -43,7 +43,8 @@ namespace Blossom.Testing
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 200, 30, 400, 38)
+                // Transform = new(HalfWidth - 200, 0, 400, 38)
+                Transform = new(1, 1, 400, 38)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -55,7 +56,7 @@ namespace Blossom.Testing
                     BackColor = new(255, 255, 255, 255),
                     Border = new()
                     {
-                        Roundness = 4,
+                        Roundness = 0,
                         Width = 0.5f,
                         Color = new(0, 0, 0, 25)
                     },

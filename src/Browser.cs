@@ -67,7 +67,6 @@ public static class Browser
         options.WindowBorder = WindowBorder.Resizable;
         options.IsEventDriven = true;
 
-
         GlfwWindowing.Use();
 
         window = Window.Create(options);
@@ -184,7 +183,9 @@ public static class Browser
 
     private static void Load()
     {
-        var winHandle = window.Native.Win32.Value.HInstance;
+        var winHandle = window.Native.Win32.Value.Hwnd;
+
+        User32.RemoveTopbar(winHandle);
 
         IsLoaded = true;
         window.Center();
