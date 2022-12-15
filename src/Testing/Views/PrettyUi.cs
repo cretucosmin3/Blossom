@@ -43,7 +43,7 @@ namespace Blossom.Testing
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 225, 35, 450, 55)
+                Transform = new(HalfWidth - 200, 30, 400, 38)
                 {
                     Anchor = Anchor.Top,
                     FixedWidth = true,
@@ -61,19 +61,12 @@ namespace Blossom.Testing
                     },
                     Text = new()
                     {
-                        Size = 26,
+                        Size = 22,
                         Spacing = 20,
                         Padding = 20,
                         Weight = 450,
                         Alignment = TextAlign.Left,
-                        Color = new(50, 50, 200, 220),
-                        Shadow = new()
-                        {
-                            Color = new(50, 50, 200, 35),
-                            SpreadX = 1,
-                            SpreadY = 5,
-                            OffsetY = 18
-                        }
+                        Color = new(200, 50, 50, 220),
                     },
                     Shadow = new()
                     {
@@ -97,7 +90,7 @@ namespace Blossom.Testing
             {
                 SearchBar.Style.Border.Width = 0.5f;
                 SearchBar.Style.Border.Color = new(0, 0, 0, 25);
-                SearchBar.Style.Text.Color = new(0, 0, 0, 180);
+                SearchBar.Style.Text.Color = new(200, 50, 50, 220);
             };
 
             SearchBar.Events.OnMouseLeave += (VisualElement e) => ToNormal();
@@ -105,9 +98,9 @@ namespace Blossom.Testing
             SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) => Hovered();
             SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
-                SearchBar.Style.Border.Width = 3.5f;
-                SearchBar.Style.Border.Color = new(50, 50, 200, 220);
-                SearchBar.Style.Text.Color = new(50, 50, 200, 220);
+                SearchBar.Style.Border.Width = 2.5f;
+                SearchBar.Style.Border.Color = new(200, 50, 50, 220);
+                SearchBar.Style.Text.Color = new(200, 50, 50, 220);
             };
 
 
