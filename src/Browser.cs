@@ -65,7 +65,7 @@ public static class Browser
 
         var options = WindowOptions.Default;
         options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
-        options.Title = "Anubis";
+        options.Title = "Blossom";
         options.VSync = false;
         options.TransparentFramebuffer = true;
         options.WindowBorder = WindowBorder.Resizable;
