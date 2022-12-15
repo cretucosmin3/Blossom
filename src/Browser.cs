@@ -1,6 +1,5 @@
-using System.Globalization;
+using System.Threading;
 using System.Diagnostics;
-using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -10,11 +9,8 @@ using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
 using Blossom.Testing;
 using Silk.NET.Windowing.Glfw;
-using SkiaSharp;
 using System;
 using Silk.NET.Core;
-using System.IO;
-using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
@@ -88,7 +84,7 @@ public static class Browser
     {
         while (!window.IsClosing)
         {
-
+            Thread.Sleep(1);
             BrowserApp.ActiveView?.TriggerLoop();
             window.DoEvents();
             window.ContinueEvents();
@@ -170,7 +166,7 @@ public static class Browser
     {
         unsafe
         {
-            using var image = Image.Load<Rgba32>("anubis-logo.png");
+            using var image = Image.Load<Rgba32>("assets/icon.png");
             var memoryGroup = image.GetPixelMemoryGroup();
             Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
             var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
