@@ -1,7 +1,7 @@
 using System.Linq;
 using System;
 
-namespace Rux.Utils
+namespace Blossom.Utils
 {
     public static class Arr
     {

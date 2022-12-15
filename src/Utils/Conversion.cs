@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace Rux.Utils
+namespace Blossom.Utils
 {
     internal static class Conversion
     {

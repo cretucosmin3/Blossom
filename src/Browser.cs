@@ -5,10 +5,10 @@ using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
-using Rux.Core;
-using Rux.Core.Input;
-using Rux.Core.Delegates.Common;
-using Rux.Testing;
+using Blossom.Core;
+using Blossom.Core.Input;
+using Blossom.Core.Delegates.Common;
+using Blossom.Testing;
 using Silk.NET.Windowing.Glfw;
 using SkiaSharp;
 using System;
@@ -20,7 +20,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 
-namespace Rux;
+namespace Blossom;
 
 public static class Browser
 {

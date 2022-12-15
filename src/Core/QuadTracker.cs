@@ -1,8 +1,8 @@
 using QuadTrees.QTreeRectF;
 using System.Drawing;
-using Rux.Core.Visual;
+using Blossom.Core.Visual;
 
-namespace Rux.Core
+namespace Blossom.Core
 {
     internal class ElementTracker : IRectFQuadStorable
     {

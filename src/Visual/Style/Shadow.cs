@@ -1,8 +1,7 @@
-namespace Rux.Core.Visual;
-
 using System;
 using System.Numerics;
 using SkiaSharp;
+namespace Blossom.Core.Visual;
 
 public class ShadowStyle : StyleProperty, IDisposable
 {

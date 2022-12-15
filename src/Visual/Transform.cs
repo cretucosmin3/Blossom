@@ -1,7 +1,7 @@
-namespace Rux.Core.Visual;
 using System;
-using Rux;
-using Rux.Core.Visual;
+using Blossom;
+using Blossom.Core.Visual;
+namespace Blossom.Core.Visual;
 
 public class Transform
 {
@@ -142,6 +142,50 @@ public class Transform
         RelativeRight = FixedRight / ParentWidth;
     }
 
+    // private void ComputeHorizontalTransform()
+    // {
+    //     float ParentWidth = Browser.window.Size.X;
+
+    //     if (Parent is not null)
+    //         ParentWidth = Parent.ComputedTransform.Width;
+
+    //     if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
+    //     {
+    //         ComputedTransform.X = FixedLeft;
+    //         ComputedTransform.Width = Width;
+    //     }
+    //     else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
+    //     {
+    //         ComputedTransform.X = ParentWidth - FixedRight - Width;
+    //         ComputedTransform.Width = Width;
+    //     }
+    //     else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
+    //     {
+    //         ComputedTransform.X = FixedLeft;
+    //         ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
+    //     }
+    //     else
+    //     {
+    //         ComputedTransform.X = RelativeLeft * ParentWidth;
+    //         ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
+
+    //         if (FixedWidth)
+    //         {
+    //             var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
+    //             ComputedTransform.X = centerX - (Width / 2f);
+    //             ComputedTransform.Width = Width;
+    //         }
+    //     }
+
+    //     if (ComputedTransform.Width < 0)
+    //     {
+    //         ComputedTransform.Width = 0;
+    //     }
+
+    //     // Add parent X
+    //     ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
+    // }
+
     private void ComputeHorizontalTransform()
     {
         float ParentWidth = Browser.window.Size.X;
@@ -149,32 +193,31 @@ public class Transform
         if (Parent is not null)
             ParentWidth = Parent.ComputedTransform.Width;
 
-        if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
+        switch (_Anchor)
         {
-            ComputedTransform.X = FixedLeft;
-            ComputedTransform.Width = Width;
-        }
-        else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
-        {
-            ComputedTransform.X = ParentWidth - FixedRight - Width;
-            ComputedTransform.Width = Width;
-        }
-        else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
-        {
-            ComputedTransform.X = FixedLeft;
-            ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
-        }
-        else
-        {
-            ComputedTransform.X = RelativeLeft * ParentWidth;
-            ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
-
-            if (FixedWidth)
-            {
-                var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
-                ComputedTransform.X = centerX - (Width / 2f);
+            case Anchor.Left:
+                ComputedTransform.X = FixedLeft;
                 ComputedTransform.Width = Width;
-            }
+                break;
+            case Anchor.Right:
+                ComputedTransform.X = ParentWidth - FixedRight - Width;
+                ComputedTransform.Width = Width;
+                break;
+            case Anchor.Left | Anchor.Right:
+                ComputedTransform.X = FixedLeft;
+                ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
+                break;
+            default:
+                ComputedTransform.X = RelativeLeft * ParentWidth;
+                ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
+
+                if (FixedWidth)
+                {
+                    var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
+                    ComputedTransform.X = centerX - (Width / 2f);
+                    ComputedTransform.Width = Width;
+                }
+                break;
         }
 
         if (ComputedTransform.Width < 0)

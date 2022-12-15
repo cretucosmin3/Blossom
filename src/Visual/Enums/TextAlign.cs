@@ -1,4 +1,4 @@
-namespace Rux.Core.Visual
+namespace Blossom.Core.Visual
 {
     public enum TextAlign
     {

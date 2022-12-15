@@ -6,7 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Rux.Utils
+namespace Blossom.Utils
 {
     public static class Imaging
     {

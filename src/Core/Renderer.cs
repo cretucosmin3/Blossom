@@ -2,7 +2,7 @@ using System;
 using Silk.NET.Windowing;
 using SkiaSharp;
 
-namespace Rux.Core
+namespace Blossom.Core
 {
     internal static class Renderer
     {

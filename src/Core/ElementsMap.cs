@@ -1,11 +1,11 @@
-﻿using Rux.Core.Visual;
+﻿using Blossom.Core.Visual;
 using QuadTrees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace Rux.Core
+namespace Blossom.Core
 {
     public class ElementsMap : IDisposable
     {

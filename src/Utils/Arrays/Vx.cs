@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 
-namespace Rux.Utils.Arrays
+namespace Blossom.Utils.Arrays
 {
     public class Vx
     {

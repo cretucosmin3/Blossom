@@ -3,16 +3,16 @@ using System.Numerics;
 using System.Net.Mime;
 using System;
 using System.Diagnostics;
-using Rux.Core;
-using Rux.Core.Input;
-using Rux.Core.Visual;
+using Blossom.Core;
+using Blossom.Core.Input;
+using Blossom.Core.Visual;
 using System.Drawing;
 using System.Threading;
 using SkiaSharp;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Rux.Testing
+namespace Blossom.Testing
 {
     public class LoadView : View
     {

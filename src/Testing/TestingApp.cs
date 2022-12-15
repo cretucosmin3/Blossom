@@ -1,10 +1,10 @@
 using System;
-using Rux.Core;
-using Rux.Core.Input;
-using Rux.Core.Visual;
+using Blossom.Core;
+using Blossom.Core.Input;
+using Blossom.Core.Visual;
 using System.Drawing;
 
-namespace Rux.Testing
+namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {

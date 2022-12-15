@@ -1,6 +1,6 @@
 using System;
 
-namespace Rux.Core.Visual
+namespace Blossom.Core.Visual
 {
     [Flags]
     public enum Anchor : int

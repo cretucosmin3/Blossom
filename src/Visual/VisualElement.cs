@@ -1,8 +1,8 @@
 using System.Text;
-namespace Rux.Core.Visual;
 using System;
 using System.Collections.Generic;
 using SkiaSharp;
+namespace Blossom.Core.Visual;
 
 public class VisualElement : IDisposable
 {
