@@ -1,12 +1,10 @@
-﻿using System.Threading;
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-namespace Rux
+namespace Blossom
 {
-    internal class RuxEntry
+    internal class BlossomEntry
     {
-
         [DllImport("kernel32.dll")]
         static extern IntPtr GetConsoleWindow();
 

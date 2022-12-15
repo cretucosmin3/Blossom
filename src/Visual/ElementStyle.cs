@@ -1,4 +1,4 @@
-namespace Rux.Core.Visual;
+namespace Blossom.Core.Visual;
 using System.Collections.Generic;
 
 public class ElementStyle

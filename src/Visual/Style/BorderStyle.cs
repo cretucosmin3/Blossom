@@ -1,5 +1,5 @@
-namespace Rux.Core.Visual;
-using Rux.Core.Visual;
+using Blossom.Core.Visual;
+namespace Blossom.Core.Visual;
 
 public class BorderStyle : StyleProperty
 {

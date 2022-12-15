@@ -1,8 +1,8 @@
 using System;
-using Rux.Utils.Arrays;
+using Blossom.Utils.Arrays;
 using SkiaSharp;
 
-namespace Rux.Utils
+namespace Blossom.Utils
 {
     public static class Fonts
     {

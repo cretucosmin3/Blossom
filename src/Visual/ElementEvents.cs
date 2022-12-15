@@ -1,8 +1,8 @@
 using System.Numerics;
-namespace Rux.Core.Visual;
+namespace Blossom.Core.Visual;
 
 using System;
-using Rux.Core.Input;
+using Blossom.Core.Input;
 
 public class ElementEvents : EventMap
 {

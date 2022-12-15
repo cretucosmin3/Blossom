@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using static System.Console;
 
-namespace Rux
+namespace Blossom
 {
     public static class Log
     {

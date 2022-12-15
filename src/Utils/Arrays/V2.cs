@@ -1,4 +1,4 @@
-namespace Rux.Utils.Arrays
+namespace Blossom.Utils.Arrays
 {
     public class V2
     {

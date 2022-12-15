@@ -1,8 +1,8 @@
 using System;
-using Rux.Core.Input;
+using Blossom.Core.Input;
 using System.Collections.Generic;
 
-namespace Rux.Core
+namespace Blossom.Core
 {
     public abstract class Application : IDisposable
     {

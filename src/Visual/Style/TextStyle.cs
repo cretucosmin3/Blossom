@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-namespace Rux.Core.Visual;
+namespace Blossom.Core.Visual;
 
 using SkiaSharp;
 

@@ -1,14 +1,14 @@
 using System.Numerics;
-using Rux.Core.Input;
+using Blossom.Core.Input;
 
-namespace Rux.Core.Delegates.Window
+namespace Blossom.Core.Delegates.Window
 {
     public delegate void ForLoad();
     public delegate void ForResize(int w, int h);
     public delegate void ForState(int state);
 }
 
-namespace Rux.Core.Delegates.Inputs
+namespace Blossom.Core.Delegates.Inputs
 {
     public delegate void ForKey(int key);
     public delegate void ForChar(char c);
@@ -17,7 +17,7 @@ namespace Rux.Core.Delegates.Inputs
     public delegate void ForMouseButton(int btn, Vector2 pos);
 }
 
-namespace Rux.Core.Delegates.Common
+namespace Blossom.Core.Delegates.Common
 {
     public delegate void ForVoid();
     public delegate void ForString(string val);
@@ -27,7 +27,7 @@ namespace Rux.Core.Delegates.Common
     public delegate void ForV4(float x, float y, float w, float h);
 }
 
-namespace Rux.Core.Visual
+namespace Blossom.Core.Visual
 {
     public delegate void ForDispose(VisualElement e);
 }

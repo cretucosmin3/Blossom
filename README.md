@@ -1,8 +1,6 @@
-# Rux
+# Blossom
 
-Rux stands for **Robust user experience**.
+Blossom is a framework / browser and app distribuitor for c# applications with rich web like graphics.
 
-Rux is a browser and app distribuitor for c# applications with rich web like graphics.
-
-Rux like in a traditional browser lets you distribute your applications without user having to install them.
-Rux also lets you install the application to run straight on your desktop.
+Blossom like in a traditional browser lets you distribute your applications without user having to install them.
+Blossom also lets you install the application to run straight on your desktop.

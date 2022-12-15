@@ -1,9 +1,9 @@
 using System;
-using Rux.Core.Visual;
-using Rux.Core.Input;
-using Rux.Core.Delegates.Common;
+using Blossom.Core.Visual;
+using Blossom.Core.Input;
+using Blossom.Core.Delegates.Common;
 
-namespace Rux.Core
+namespace Blossom.Core
 {
     public abstract class View : IDisposable
     {
@@ -112,7 +112,10 @@ namespace Rux.Core
         {
             foreach (var element in Elements.Items)
             {
-                element.Render();
+                lock (element)
+                {
+                    element.Render();
+                }
             }
         }
 

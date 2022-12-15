@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Drawing;
 
-namespace Rux;
+namespace Blossom;
 
 public static class User32
 {

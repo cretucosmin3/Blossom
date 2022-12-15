@@ -5,12 +5,12 @@ using System.Collections.Generic;
 using System;
 using Silk.NET.Input;
 using Silk.NET.Windowing;
-using Rux.Core.Delegates.Inputs;
-using Rux.Utils;
+using Blossom.Core.Delegates.Inputs;
+using Blossom.Utils;
 using System.Numerics;
-using Rux.Core.Visual;
+using Blossom.Core.Visual;
 
-namespace Rux.Core.Input
+namespace Blossom.Core.Input
 {
     public class EventMap : IDisposable
     {
