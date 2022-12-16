@@ -114,10 +114,10 @@ namespace Blossom.Testing
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                Transform = new(HalfWidth - 200, 120, 400, 38)
+                Transform = new(HalfWidth - 400, 120, 400, 38)
                 {
-                    Anchor = Anchor.Top,
-                    FixedWidth = false,
+                    Anchor = Anchor.Top | Anchor.Bottom,
+                    FixedWidth = true,
                     FixedHeight = true,
                     ValidateOnAnchor = false,
                 },
@@ -211,7 +211,7 @@ namespace Blossom.Testing
                 Log.Debug($"{SearchBar.Transform.X} :: {SearchBar.Transform.Computed.X}");
 
                 SearchBar.Transform.X += 10;
-                SearchBar.Transform.Width -= 10;
+                SearchBar.Transform.Width -= 20;
                 Hovered();
             };
             SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
@@ -221,7 +221,7 @@ namespace Blossom.Testing
                 SearchBar.Style.Text.Color = new(200, 50, 50, 220);
 
                 SearchBar.Transform.X -= 10;
-                SearchBar.Transform.Width += 10;
+                SearchBar.Transform.Width += 20;
             };
 
 

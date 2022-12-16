@@ -49,11 +49,11 @@ namespace Blossom
             // return;
 
             // Hide console
-            // var consoleHnd = GetConsoleWindow();
+            var consoleHnd = GetConsoleWindow();
             // NativeMethods.FreeConsole();
 
             // SendMessage(consoleHnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            // ShowWindow(winHnd, 0);
+            ShowWindow(consoleHnd, 0);
 
             Log.Info(_appName);
             Log.Info(_appPath);

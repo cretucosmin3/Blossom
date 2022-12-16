@@ -78,6 +78,7 @@ public class Transform
         set
         {
             Local.Width = value;
+            CalculateLeftAnchor();
             CalculateRighAnchor();
 
             OnChanged?.Invoke(this);
@@ -90,6 +91,7 @@ public class Transform
         set
         {
             Local.Height = value;
+            CalculateTopAnchor();
             CalculateBottomAnchor();
 
             OnChanged?.Invoke(this);
@@ -174,12 +176,12 @@ public class Transform
         if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
         {
             ComputedTransform.X = FixedLeft;
-            ComputedTransform.Width = Width;
+            ComputedTransform.Width = Local.Width;
         }
         else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
         {
-            ComputedTransform.X = ParentWidth - FixedRight - Width;
-            ComputedTransform.Width = Width;
+            ComputedTransform.X = ParentWidth - FixedRight - Local.Width;
+            ComputedTransform.Width = Local.Width;
         }
         else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
         {
@@ -194,8 +196,8 @@ public class Transform
             if (FixedWidth)
             {
                 var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
-                ComputedTransform.X = centerX - (Width / 2f);
-                ComputedTransform.Width = Width;
+                ComputedTransform.X = centerX - (Local.Width / 2f);
+                ComputedTransform.Width = Local.Width;
             }
         }
 
@@ -221,12 +223,12 @@ public class Transform
         if (topAnchored && !bottomAnchored)
         {
             ComputedTransform.Y = FixedTop;
-            ComputedTransform.Height = Height;
+            ComputedTransform.Height = Local.Height;
         }
         else if (bottomAnchored && !topAnchored)
         {
-            ComputedTransform.Y = ParentHeight - FixedBottom - Height;
-            ComputedTransform.Height = Height;
+            ComputedTransform.Y = ParentHeight - FixedBottom - Local.Height;
+            ComputedTransform.Height = Local.Height;
         }
         else if (topAnchored && bottomAnchored)
         {
@@ -241,8 +243,8 @@ public class Transform
             if (FixedHeight)
             {
                 var centerY = ComputedTransform.Y + (ComputedTransform.Height / 2f);
-                ComputedTransform.Y = centerY - (Height / 2f);
-                ComputedTransform.Height = Height;
+                ComputedTransform.Y = centerY - (Local.Height / 2f);
+                ComputedTransform.Height = Local.Height;
             }
         }
 
