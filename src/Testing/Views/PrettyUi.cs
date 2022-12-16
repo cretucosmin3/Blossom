@@ -1,18 +1,26 @@
-using System.Diagnostics;
 using System.Text;
 using System.Numerics;
 using System;
 using Blossom.Core;
 using Blossom.Core.Visual;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Threading;
 
 namespace Blossom.Testing
 {
     public class PrettyUi : View
     {
         VisualElement SearchBar;
+
+        VisualElement TL;
+        VisualElement TR;
+        VisualElement BL;
+        VisualElement BR;
+
+        VisualElement LC;
+        VisualElement TC;
+        VisualElement RC;
+        VisualElement BC;
+
+
         StringBuilder SearchText = new StringBuilder("");
         private int clickedTimes = 0;
 
@@ -39,45 +47,147 @@ namespace Blossom.Testing
         public override void Main()
         {
             var HalfWidth = 1100 / 2;
+            var winW = Browser.window.Size.X;
+            var winH = Browser.window.Size.Y;
+
+            ElementStyle StyleAnchors = new()
+            {
+                BackColor = new(35, 50, 200, 190),
+                Border = new()
+                {
+                    Roundness = 5,
+                    Width = 2f,
+                    Color = new(255, 255, 255, 255)
+                },
+                Shadow = new()
+                {
+                    Color = new(0, 0, 0, 160),
+                    SpreadX = 5,
+                    SpreadY = 5,
+                }
+            };
+
+            ElementStyle RedStyleAnchors = new()
+            {
+                BackColor = new(200, 50, 35, 120),
+                Border = new()
+                {
+                    Roundness = 5,
+                    Width = 2f,
+                    Color = new(255, 255, 255, 255)
+                },
+                Shadow = new()
+                {
+                    Color = new(0, 0, 0, 160),
+                    SpreadX = 5,
+                    SpreadY = 5,
+                }
+            };
+
+            ElementStyle SharedElementStyle = new()
+            {
+                BackColor = new(255, 255, 255, 255),
+                Border = new()
+                {
+                    Roundness = 5,
+                    Width = 0.5f,
+                    Color = new(0, 0, 0, 25)
+                },
+                Text = new()
+                {
+                    Size = 22,
+                    Spacing = 20,
+                    Padding = 20,
+                    Weight = 450,
+                    Alignment = TextAlign.Left,
+                    Color = new(200, 50, 50, 220),
+                },
+                Shadow = new()
+                {
+                    Color = new(0, 0, 0, 35),
+                    SpreadX = 4,
+                    SpreadY = 4,
+                    OffsetY = 3
+                }
+            };
 
             SearchBar = new VisualElement()
             {
                 Name = "ClickMe",
-                // Transform = new(HalfWidth - 200, 0, 400, 38)
-                Transform = new(1, 1, 400, 38)
+                Transform = new(HalfWidth - 200, 120, 400, 38)
                 {
                     Anchor = Anchor.Top,
-                    FixedWidth = true,
+                    FixedWidth = false,
                     FixedHeight = true,
-                    ValidateOnAnchor = true,
+                    ValidateOnAnchor = false,
                 },
-                Style = new()
-                {
-                    BackColor = new(255, 255, 255, 255),
-                    Border = new()
-                    {
-                        Roundness = 0,
-                        Width = 0.5f,
-                        Color = new(0, 0, 0, 25)
-                    },
-                    Text = new()
-                    {
-                        Size = 22,
-                        Spacing = 20,
-                        Padding = 20,
-                        Weight = 450,
-                        Alignment = TextAlign.Left,
-                        Color = new(200, 50, 50, 220),
-                    },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 35),
-                        SpreadX = 4,
-                        SpreadY = 4,
-                        OffsetY = 3
-                    }
-                },
+                Style = SharedElementStyle,
                 Text = "Search ..."
+            };
+
+            TL = new()
+            {
+                Name = "Top Left",
+                Transform = new(10, 10, 30, 30)
+                {
+                    Anchor = Anchor.Top | Anchor.Left,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = StyleAnchors,
+            };
+
+            TR = new()
+            {
+                Name = "Top Right",
+                Transform = new(winW - 40, 10, 30, 30)
+                {
+                    Anchor = Anchor.Top | Anchor.Right,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = StyleAnchors,
+            };
+
+            BL = new()
+            {
+                Name = "Bottom Left",
+                Transform = new(10, winH - 40, 30, 30)
+                {
+                    Anchor = Anchor.Bottom | Anchor.Left,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = StyleAnchors,
+            };
+
+            BR = new()
+            {
+                Name = "Bottom Right",
+                Transform = new(winW - 40, winH - 40, 30, 30)
+                {
+                    Anchor = Anchor.Bottom | Anchor.Right,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = StyleAnchors,
+            };
+
+            TC = new()
+            {
+                Name = "Top Center",
+                Transform = new(60, 10, winW - 120, 30)
+                {
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
+                    FixedWidth = false,
+                    FixedHeight = true,
+                    ValidateOnAnchor = false,
+                },
+                Style = RedStyleAnchors,
             };
 
             Action Hovered = () =>
@@ -96,16 +206,31 @@ namespace Blossom.Testing
 
             SearchBar.Events.OnMouseLeave += (VisualElement e) => ToNormal();
             SearchBar.Events.OnMouseEnter += (VisualElement e) => Hovered();
-            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) => Hovered();
+            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos) =>
+            {
+                Log.Debug($"{SearchBar.Transform.X} :: {SearchBar.Transform.Computed.X}");
+
+                SearchBar.Transform.X += 10;
+                SearchBar.Transform.Width -= 10;
+                Hovered();
+            };
             SearchBar.Events.OnMouseDown += (int btn, Vector2 pos) =>
             {
                 SearchBar.Style.Border.Width = 2.5f;
                 SearchBar.Style.Border.Color = new(200, 50, 50, 220);
                 SearchBar.Style.Text.Color = new(200, 50, 50, 220);
+
+                SearchBar.Transform.X -= 10;
+                SearchBar.Transform.Width += 10;
             };
 
 
             AddElement(SearchBar);
+            AddElement(TL);
+            AddElement(TR);
+            AddElement(BL);
+            AddElement(BR);
+            AddElement(TC);
         }
     }
 }

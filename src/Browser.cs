@@ -185,14 +185,13 @@ public static class Browser
     {
         var winHandle = window.Native.Win32.Value.Hwnd;
 
-        User32.RemoveTopbar(winHandle);
-
         IsLoaded = true;
         window.Center();
         Renderer.SetCanvas(window);
         OnLoaded.Invoke();
-
         LoadLogo();
+
+        User32.makeWindowBorderless(winHandle);
         StartWindow();
     }
 
