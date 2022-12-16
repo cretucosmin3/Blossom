@@ -16,9 +16,32 @@ public class Transform
         }
     }
 
+    private float ParentWidth
+    {
+        get => Parent != null ? Parent.Width : Browser.window.Size.X;
+    }
+
+    private float ParentHeight
+    {
+        get => Parent != null ? Parent.Height : Browser.window.Size.Y;
+    }
+
+    internal float FixedLeft = 0f;
+    internal float FixedRight = 0f;
+    internal float FixedTop = 0f;
+    internal float FixedBottom = 0f;
+
+    internal float RelativeLeft = 0f;
+    internal float RelativeRight = 0f;
+    internal float RelativeTop = 0f;
+    internal float RelativeBottom = 0f;
+
     private Rect ComputedTransform = new Rect(0, 0, 0, 0);
     public Rect Computed { get => ComputedTransform; }
     public Rect Local { get; private set; } = new Rect(0, 0, 0, 0);
+
+    public bool FixedHeight { get; set; } = false;
+    public bool FixedWidth { get; set; } = false;
 
     /// <summary>
     /// Called when the transform is updated. (x, y, w, h)
@@ -27,11 +50,11 @@ public class Transform
 
     public float X
     {
-        get => Local.X;
+        get => Computed.X;
         set
         {
             Local.X = value;
-            CalculateHorizontalAnchors();
+            CalculateLeftAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -39,11 +62,11 @@ public class Transform
 
     public float Y
     {
-        get => Local.Y;
+        get => Computed.Y;
         set
         {
             Local.Y = value;
-            CalculateVerticalAnchors();
+            CalculateTopAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -51,11 +74,11 @@ public class Transform
 
     public float Width
     {
-        get => Local.Width;
+        get => Computed.Width;
         set
         {
             Local.Width = value;
-            CalculateHorizontalAnchors();
+            CalculateRighAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -63,11 +86,11 @@ public class Transform
 
     public float Height
     {
-        get => Local.Height;
+        get => Computed.Height;
         set
         {
             Local.Height = value;
-            CalculateVerticalAnchors();
+            CalculateBottomAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -88,10 +111,7 @@ public class Transform
         }
     }
 
-    public Transform()
-    {
-
-    }
+    public Transform() { }
 
     public Transform(float x, float y, float width, float height)
     {
@@ -102,89 +122,47 @@ public class Transform
     public void DetachParent()
     {
         Parent = null;
-        Console.WriteLine(Local.X);
         SetAnchorValues();
     }
 
-    internal float FixedLeft = 0f;
-    internal float FixedRight = 0f;
-    internal float FixedTop = 0f;
-    internal float FixedBottom = 0f;
-
-    internal float RelativeLeft = 0f;
-    internal float RelativeRight = 0f;
-    internal float RelativeTop = 0f;
-    internal float RelativeBottom = 0f;
-
-    public bool FixedHeight { get; set; } = false;
-    public bool FixedWidth { get; set; } = false;
-
     internal void SetAnchorValues()
     {
-        CalculateHorizontalAnchors();
-        CalculateVerticalAnchors();
+        // Horizontal anchors.
+        CalculateLeftAnchor();
+        CalculateRighAnchor();
+
+        // Vertical anchors.
+        CalculateTopAnchor();
+        CalculateBottomAnchor();
 
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
     }
 
-    private void CalculateHorizontalAnchors()
+    private void CalculateLeftAnchor()
     {
-        float ParentWidth = Browser.window.Size.X;
-
-        if (Parent is not null)
-            ParentWidth = Parent.Width;
-
-        FixedLeft = X;
+        FixedLeft = Local.X;
         RelativeLeft = FixedLeft / ParentWidth;
+    }
 
-        FixedRight = ParentWidth - (X + Width);
+    private void CalculateRighAnchor()
+    {
+        FixedRight = ParentWidth - (Local.X + Local.Width);
         RelativeRight = FixedRight / ParentWidth;
     }
 
-    // private void ComputeHorizontalTransform()
-    // {
-    //     float ParentWidth = Browser.window.Size.X;
+    private void CalculateTopAnchor()
+    {
+        FixedTop = Local.Y;
+        RelativeTop = FixedTop / ParentHeight;
 
-    //     if (Parent is not null)
-    //         ParentWidth = Parent.ComputedTransform.Width;
+    }
 
-    //     if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
-    //     {
-    //         ComputedTransform.X = FixedLeft;
-    //         ComputedTransform.Width = Width;
-    //     }
-    //     else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
-    //     {
-    //         ComputedTransform.X = ParentWidth - FixedRight - Width;
-    //         ComputedTransform.Width = Width;
-    //     }
-    //     else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
-    //     {
-    //         ComputedTransform.X = FixedLeft;
-    //         ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
-    //     }
-    //     else
-    //     {
-    //         ComputedTransform.X = RelativeLeft * ParentWidth;
-    //         ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
-
-    //         if (FixedWidth)
-    //         {
-    //             var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
-    //             ComputedTransform.X = centerX - (Width / 2f);
-    //             ComputedTransform.Width = Width;
-    //         }
-    //     }
-
-    //     if (ComputedTransform.Width < 0)
-    //     {
-    //         ComputedTransform.Width = 0;
-    //     }
-
-    //     // Add parent X
-    //     ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
-    // }
+    private void CalculateBottomAnchor()
+    {
+        FixedBottom = ParentHeight - (Local.Y + Local.Height);
+        RelativeBottom = FixedBottom / ParentHeight;
+    }
 
     private void ComputeHorizontalTransform()
     {
@@ -193,31 +171,32 @@ public class Transform
         if (Parent is not null)
             ParentWidth = Parent.ComputedTransform.Width;
 
-        switch (_Anchor)
+        if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
         {
-            case Anchor.Left:
-                ComputedTransform.X = FixedLeft;
-                ComputedTransform.Width = Width;
-                break;
-            case Anchor.Right:
-                ComputedTransform.X = ParentWidth - FixedRight - Width;
-                ComputedTransform.Width = Width;
-                break;
-            case Anchor.Left | Anchor.Right:
-                ComputedTransform.X = FixedLeft;
-                ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
-                break;
-            default:
-                ComputedTransform.X = RelativeLeft * ParentWidth;
-                ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
+            ComputedTransform.X = FixedLeft;
+            ComputedTransform.Width = Width;
+        }
+        else if (_Anchor.HasFlag(Anchor.Right) && !_Anchor.HasFlag(Anchor.Left))
+        {
+            ComputedTransform.X = ParentWidth - FixedRight - Width;
+            ComputedTransform.Width = Width;
+        }
+        else if (_Anchor.HasFlag(Anchor.Left) && _Anchor.HasFlag(Anchor.Right))
+        {
+            ComputedTransform.X = FixedLeft;
+            ComputedTransform.Width = ParentWidth - FixedLeft - FixedRight;
+        }
+        else
+        {
+            ComputedTransform.X = RelativeLeft * ParentWidth;
+            ComputedTransform.Width = ParentWidth - (RelativeRight * ParentWidth) - ComputedTransform.X;
 
-                if (FixedWidth)
-                {
-                    var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
-                    ComputedTransform.X = centerX - (Width / 2f);
-                    ComputedTransform.Width = Width;
-                }
-                break;
+            if (FixedWidth)
+            {
+                var centerX = ComputedTransform.X + (ComputedTransform.Width / 2f);
+                ComputedTransform.X = centerX - (Width / 2f);
+                ComputedTransform.Width = Width;
+            }
         }
 
         if (ComputedTransform.Width < 0)
@@ -227,20 +206,6 @@ public class Transform
 
         // Add parent X
         ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
-    }
-
-    private void CalculateVerticalAnchors()
-    {
-        float ParentHeight = Browser.window.Size.Y;
-
-        if (Parent is not null)
-            ParentHeight = Parent.Height;
-
-        FixedTop = Y;
-        RelativeTop = FixedTop / ParentHeight;
-
-        FixedBottom = ParentHeight - (Y + Height);
-        RelativeBottom = FixedBottom / ParentHeight;
     }
 
     private void ComputeVerticalTransform()
@@ -299,7 +264,6 @@ public class Transform
 
 public class Rect
 {
-
     private System.Drawing.RectangleF _Rect;
 
     public float X

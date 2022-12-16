@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 namespace Blossom
@@ -11,6 +12,10 @@ namespace Blossom
         [DllImport("user32.dll")]
         static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
+
+        const UInt32 WM_CLOSE = 0x0010;
         const int SW_HIDE = 0;
         const int SW_SHOW = 5;
 
@@ -44,7 +49,11 @@ namespace Blossom
             // return;
 
             // Hide console
-            ShowWindow(GetConsoleWindow(), 0);
+            // var consoleHnd = GetConsoleWindow();
+            // NativeMethods.FreeConsole();
+
+            // SendMessage(consoleHnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            // ShowWindow(winHnd, 0);
 
             Log.Info(_appName);
             Log.Info(_appPath);
