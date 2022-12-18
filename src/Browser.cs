@@ -22,29 +22,17 @@ public static class Browser
 {
     internal static IWindow window;
     public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
+    private static IInputContext input;
 
     internal static TestingApplication BrowserApp = new TestingApplication();
     internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
 
     public static event ForVoid OnLoaded;
 
-    private static double _frameLimit = 33.33d;
-    public static double frameLimit
-    {
-        get => _frameLimit; set
-        {
-            _frameLimit = 1000d / value;
-        }
-    }
-
     public static bool IsLoaded { get; private set; } = false;
     public static bool IsRunning { get; private set; } = false;
 
-    private static bool FpsVisible = false;
-    public static void ShowFps() => FpsVisible = true;
-    public static void HideFps() => FpsVisible = false;
-
-    public static void Initialize()
+    internal static void Initialize()
     {
         OnLoaded = () =>
         {
@@ -78,8 +66,7 @@ public static class Browser
         window.Run();
     }
 
-    private static Stopwatch frameCounter = new Stopwatch();
-    public static void StartWindow()
+    internal static void StartWindow()
     {
         while (!window.IsClosing)
         {
@@ -95,17 +82,24 @@ public static class Browser
         window.Dispose();
     }
 
+    internal static void ChangeCursor(StandardCursor cursor)
+    {
+        foreach (IMouse mouse in input.Mice)
+        {
+            mouse.Cursor.StandardCursor = cursor; // StandardCursor.Crosshair
+        }
+    }
+
     private static void ManageInputEvents()
     {
         BrowserApp.Events.Access = EventAccess.Keyboard;
-        IInputContext input = window.CreateInput();
+        input = window.CreateInput();
 
         // Register keyboard events
         foreach (IKeyboard keyboard in input.Keyboards)
         {
             keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
             {
-                Console.WriteLine(key);
                 if (i == 0) return;
                 var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
                 var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);

@@ -40,4 +40,15 @@ public class ElementStyle
             ScheduleRender();
         }
     }
+
+    private bool _IsClipping = true;
+    public bool IsClipping
+    {
+        get => _IsClipping;
+        set
+        {
+            _IsClipping = value;
+            ScheduleRender();
+        }
+    }
 }

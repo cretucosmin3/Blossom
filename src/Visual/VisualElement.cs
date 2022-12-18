@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ public class VisualElement : IDisposable
         get => _Parent;
         set
         {
+            Console.WriteLine($"Parent '{value.Name}' added to '{this.Name}'");
             if (_Parent != null)
                 _Parent.TransformChanged -= ParentTransformChanged;
 
@@ -28,7 +30,7 @@ public class VisualElement : IDisposable
         }
     }
 
-    public List<VisualElement> Children { get; set; } = new List<VisualElement>();
+    internal List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
     internal event ForDispose OnDisposing;
     internal event Action<Transform> TransformChanged;
@@ -121,13 +123,11 @@ public class VisualElement : IDisposable
         if (Parent != null)
             isWithin = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
 
-        if (!isWithin)
-            return;
-
-        SKRoundRect prect = null;
-        if (Parent != null && Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF))
+        if (Parent != null && Parent.Style.IsClipping)
         {
-            prect = new SKRoundRect(
+            if (!isWithin) return;
+
+            var prect = new SKRoundRect(
                 new SKRect(
                     Parent.Transform.Computed.X + 1,
                     Parent.Transform.Computed.Y + 1,
@@ -137,17 +137,21 @@ public class VisualElement : IDisposable
                 Style.Border.Roundness, Style.Border.Roundness
             );
 
+            Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
+
             using (new SKAutoCanvasRestore(Renderer.Canvas))
             {
-                Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
                 DrawBase();
                 DrawText();
             }
         }
         else
         {
-            DrawBase();
-            DrawText();
+            using (new SKAutoCanvasRestore(Renderer.Canvas))
+            {
+                DrawBase();
+                DrawText();
+            }
         }
 
         foreach (var child in Children)
@@ -298,6 +302,16 @@ public class VisualElement : IDisposable
     {
         if (ParentView != null)
             ParentView.FocusedElement = this;
+    }
+
+    public Vector2 PointToClient(float x, float y)
+    {
+        Vector2 relative = new Vector2(
+            x - Transform.Computed.X,
+            y - Transform.Computed.Y
+        );
+
+        return relative;
     }
 
     public void Dispose()
