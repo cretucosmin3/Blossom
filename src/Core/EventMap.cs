@@ -34,18 +34,18 @@ namespace Blossom.Core.Input
         public int DoubleClickTime = 200;
 
         // Keyboard
-        public event ForKey OnKeyDown;
-        public event ForKey OnKeyUp;
-        public event ForChar OnKeyType;
+        public event Action<int> OnKeyDown;
+        public event Action<int> OnKeyUp;
+        public event Action<char> OnKeyType;
         public event ForHotkey OnHotkey;
 
         // Mouse
         public event Action<Vector2, Vector2> OnMouseMove;
-        public event ForPosition OnMouseScroll;
-        public event ForMouseButton OnMouseDown;
-        public event ForMouseButton OnMouseUp;
-        public event ForMouseButton OnMouseClick;
-        public event ForMouseButton OnMouseDoubleClick;
+        public event Action<Vector2> OnMouseScroll;
+        public event Action<int, Vector2, Vector2> OnMouseDown;
+        public event Action<int, Vector2, Vector2> OnMouseUp;
+        public event Action<int, Vector2, Vector2> OnMouseClick;
+        public event Action<int, Vector2, Vector2> OnMouseDoubleClick;
 
         /// <summary>
         /// Register series of keys to one event
@@ -150,29 +150,22 @@ namespace Blossom.Core.Input
         #region Mouse
         internal void HandleMouseMove(Vector2 pos, VisualElement el = default)
         {
-            Vector2 relative = new Vector2(pos.X, pos.Y);
-
-            if (el != null)
-            {
-                relative.X = relative.X - el.Transform.Computed.X;
-                relative.Y = relative.Y - el.Transform.Computed.Y;
-            }
-
+            var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
             OnMouseMove?.Invoke(pos, relative);
         }
 
-        internal void HandleMouseDown(int btn, Vector2 pos)
+        internal void HandleMouseDown(int btn, Vector2 pos, VisualElement el = default)
         {
-            OnMouseDown?.Invoke(btn, pos);
-            OnMouseClick?.Invoke(btn, pos);
+            var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
+            OnMouseDown?.Invoke(btn, pos, relative);
+            OnMouseClick?.Invoke(btn, pos, relative);
 
             DateTime now = DateTime.Now;
             bool isDoubleClick = DateTime.Now - lastClicks[btn] < TimeSpan.FromMilliseconds(DoubleClickTime);
 
-
             if (isDoubleClick && !wasDoubleClick[btn])
             {
-                OnMouseDoubleClick?.Invoke(btn, pos);
+                OnMouseDoubleClick?.Invoke(btn, pos, relative);
                 wasDoubleClick[btn] = true;
             }
             else
@@ -183,8 +176,11 @@ namespace Blossom.Core.Input
             lastClicks[btn] = now;
         }
 
-        internal void HandleMouseUp(int ButtonName, Vector2 pos) =>
-            OnMouseUp?.Invoke(ButtonName, pos);
+        internal void HandleMouseUp(int ButtonName, Vector2 pos, VisualElement el = default)
+        {
+            var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
+            OnMouseUp?.Invoke(ButtonName, pos, relative);
+        }
 
         internal void HandleMouseScroll(Vector2 pos) =>
             OnMouseScroll?.Invoke(pos);

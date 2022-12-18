@@ -25,8 +25,6 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            Browser.ShowFps();
-
             int increase = 8;
             int xy = increase;
             for (int i = 0; i < 30; i++)
@@ -43,24 +41,19 @@ namespace Blossom.Testing
                     },
                     Style = new()
                     {
-                        BackColor = new SKColor(255, 255, 255, (byte)i),
-                        Border = new()
-                        {
-                            Color = new SKColor(255, 255, 255, 25),
-                            Width = 1f,
-                        },
+                        BackColor = new SKColor(210, 210, 210, (byte)i),
                     },
                 });
 
                 LoadElements[i].Events.OnMouseEnter += (VisualElement el) =>
                 {
-                    el.Style.BackColor = new SKColor(255, 0, 0, 50);
+                    el.Style.BackColor = new SKColor(255, 0, 0, 255);
                 };
 
                 LoadElements[i].Events.OnMouseLeave += (VisualElement el) =>
-                            {
-                                el.Style.BackColor = new SKColor(255, 255, 255, 8);
-                            };
+                {
+                    el.Style.BackColor = new SKColor(210, 210, 210, 255);
+                };
 
                 xy += increase;
                 if (i == 0) continue;

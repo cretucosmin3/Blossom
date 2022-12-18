@@ -1,6 +1,4 @@
 using System;
-using Blossom;
-using Blossom.Core.Visual;
 namespace Blossom.Core.Visual;
 
 public class Transform
@@ -43,6 +41,15 @@ public class Transform
     public bool FixedHeight { get; set; } = false;
     public bool FixedWidth { get; set; } = false;
 
+    public bool FixedSize
+    {
+        set
+        {
+            FixedHeight = true;
+            FixedWidth = true;
+        }
+    }
+
     /// <summary>
     /// Called when the transform is updated. (x, y, w, h)
     /// </summary>
@@ -50,11 +57,12 @@ public class Transform
 
     public float X
     {
-        get => Computed.X;
+        get => ComputedTransform.X;
         set
         {
             Local.X = value;
             CalculateLeftAnchor();
+            CalculateRighAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -62,11 +70,12 @@ public class Transform
 
     public float Y
     {
-        get => Computed.Y;
+        get => ComputedTransform.Y;
         set
         {
             Local.Y = value;
             CalculateTopAnchor();
+            CalculateBottomAnchor();
 
             OnChanged?.Invoke(this);
         }
@@ -74,7 +83,7 @@ public class Transform
 
     public float Width
     {
-        get => Computed.Width;
+        get => ComputedTransform.Width;
         set
         {
             Local.Width = value;
@@ -87,7 +96,7 @@ public class Transform
 
     public float Height
     {
-        get => Computed.Height;
+        get => ComputedTransform.Height;
         set
         {
             Local.Height = value;
@@ -98,7 +107,7 @@ public class Transform
         }
     }
 
-    public bool ValidateOnAnchor { get; set; } = true;
+    public bool ValidateOnAnchor { get; set; } = false;
 
     private Anchor _Anchor;
     public Anchor Anchor
@@ -108,8 +117,15 @@ public class Transform
         {
             _Anchor = value;
 
+            Local.X = Computed.X;
+            Local.Y = Computed.Y;
+            Local.Width = Computed.Width;
+            Local.Height = Computed.Height;
+
             if (ValidateOnAnchor)
                 SetAnchorValues();
+
+            OnChanged?.Invoke(this);
         }
     }
 
@@ -208,6 +224,9 @@ public class Transform
 
         // Add parent X
         ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
+
+        Local.X = ComputedTransform.X;
+        Local.Width = ComputedTransform.Width;
     }
 
     private void ComputeVerticalTransform()
@@ -255,6 +274,9 @@ public class Transform
 
         // Add parent Y
         ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : 0;
+
+        Local.Y = ComputedTransform.Y;
+        Local.Height = ComputedTransform.Height;
     }
 
     internal void Evaluate()

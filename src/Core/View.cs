@@ -25,6 +25,7 @@ namespace Blossom.Core
 
         private int DefaultFont;
         private VisualElement hoveredElement;
+        private VisualElement mouseDownElement;
 
         private string _title = "";
         public string Title
@@ -63,16 +64,24 @@ namespace Blossom.Core
                 // Main();
             };
 
-            Events.OnMouseDown += (btn, pos) =>
+            Events.OnMouseDown += (btn, pos, relative) =>
             {
                 var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseDown(btn, pos);
+                element?.Events.HandleMouseDown(btn, pos, element);
+                mouseDownElement = element;
             };
 
-            Events.OnMouseUp += (btn, pos) =>
+            Events.OnMouseUp += (btn, pos, relative) =>
             {
+                if (mouseDownElement != null)
+                {
+                    mouseDownElement.Events.HandleMouseUp(btn, pos, mouseDownElement);
+                    mouseDownElement = null;
+                    return;
+                }
+
                 var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseUp(btn, pos);
+                element?.Events.HandleMouseUp(btn, pos, element);
             };
 
             Events.OnMouseMove += (pos, relative) =>

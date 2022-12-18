@@ -10,18 +10,21 @@ namespace Blossom.Testing
     {
         private PrettyUi BrowserView;
         private LoadView LoadView;
+        private AnchorsView AnchorsView;
 
         public TestingApplication()
         {
             this.Events.Access = EventAccess.Keyboard;
 
-            BrowserView = new PrettyUi();
-            LoadView = new LoadView();
+            // BrowserView = new PrettyUi();
+            // LoadView = new LoadView();
+            AnchorsView = new AnchorsView();
 
-            AddView(BrowserView);
+            // AddView(BrowserView);
+            AddView(AnchorsView);
             // AddView(LoadView);
 
-            SetActiveView(BrowserView);
+            SetActiveView(AnchorsView);
         }
     }
 }
