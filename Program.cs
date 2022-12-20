@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
+
 namespace Blossom
 {
     internal class BlossomEntry
@@ -27,8 +31,75 @@ namespace Blossom
         private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
         private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
+        public static int GetHash(int[] values)
+        {
+            // Create a hash code based on the values in the array
+            int hash = 17;
+            foreach (int value in values)
+            {
+                hash = hash * 23 + value.GetHashCode();
+            }
+            return hash;
+        }
+
+        public static float GetProcentageDifference(float a, float b)
+        {
+            return (a - b) / b;
+        }
+
+        public static int ExtractPatternKey(float[] values, float alpha)
+        {
+            float[] procentages = new float[values.Length];
+
+            procentages[0] = GetProcentageDifference(values[0], values[1]);
+            for (int i = 1; i < values.Length; i++)
+            {
+                procentages[i] = GetProcentageDifference(values[i], values[i - 1]);
+            }
+
+            int[] normalized = NormalizeArray(procentages, 0, alpha);
+
+            return GetHash(normalized);
+        }
+
+        public static int[] NormalizeArray(float[] values, float minValue, float maxValue)
+        {
+            float arrayMin = values.Min();
+            float arrayMax = values.Max();
+
+            float arrayRange = arrayMax - arrayMin;
+            float outputRange = maxValue - minValue;
+            int[] normalizedValues = new int[values.Length];
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                var value = ((values[i] - arrayMin) / arrayRange) * outputRange + minValue;
+                normalizedValues[i] = (int)Math.Round(value, MidpointRounding.ToZero); ;
+            }
+
+            return normalizedValues;
+        }
+
+        public static int BytesOf(object obj)
+        {
+            return Marshal.SizeOf(obj);
+        }
+
         static void Main(string[] args)
         {
+            float[] chartValues1 = { 104.5f, 107.2f, 114.93f };
+            float[] chartValues2 = { 105.3f, 107.5f, 115.4f };
+
+            int key1 = ExtractPatternKey(chartValues1, 3);
+            Console.WriteLine(key1);
+
+            int key2 = ExtractPatternKey(chartValues2, 3);
+            Console.WriteLine(key2);
+
+            int key3 = ExtractPatternKey(chartValues2, 50);
+            Console.WriteLine(key3);
+
+            Console.ReadKey();
             // DateTime startTime = new DateTime(2019, 7, 13);
             // DateTime endTime = DateTime.Now;
 
@@ -192,5 +263,47 @@ namespace Blossom
         // 	ImageWriter imageWriter = new();
         // 	imageWriter.WritePng(image.ToArray(), w, h, ColorComponents.RedGreenBlueAlpha, File.OpenWrite(name));
         // }
+    }
+
+    public static class ObjectSizeCalculator
+    {
+        public static int CalculateSize(object obj)
+        {
+            if (obj == null)
+                return 0;
+
+            if (obj is string)
+                return Encoding.UTF8.GetByteCount((string)obj);
+            else if (obj is ValueType)
+                return Marshal.SizeOf(obj);
+
+            return CalculateSizeInternal(obj);
+        }
+
+        private static int CalculateSizeInternal(object obj)
+        {
+            int size = 0;
+            var props = obj.GetType().GetProperties();
+            foreach (var prop in props)
+            {
+                object value = prop.GetValue(obj);
+                if (value == null)
+                    continue;
+
+                if (value is string)
+                {
+                    size += Encoding.UTF8.GetByteCount((string)value);
+                }
+                else if (value is ValueType)
+                {
+                    size += Marshal.SizeOf(value);
+                }
+                else
+                {
+                    size += CalculateSizeInternal(value);
+                }
+            }
+            return size;
+        }
     }
 }
