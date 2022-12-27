@@ -108,7 +108,6 @@ public class VisualElement : IDisposable
                 _Text.Clear();
                 _Text.Append(value);
 
-                CalculateTextBounds();
                 ScheduleRender();
             }
         }
@@ -183,15 +182,10 @@ public class VisualElement : IDisposable
 
         if (Style.Shadow is not null && Style.Shadow.HasValidValues())
         {
-            var RectangleStyleFillShadow = SKImageFilter.CreateDropShadow(
-                Style.Shadow.OffsetX, Style.Shadow.OffsetY, Style.Shadow.SpreadX, Style.Shadow.SpreadY,
-                Style.Shadow.Color,
-                null, null);
-
             shadowPaint.Style = SKPaintStyle.Fill;
             shadowPaint.Color = Style.BackColor;
             shadowPaint.IsAntialias = true;
-            shadowPaint.ImageFilter = RectangleStyleFillShadow;
+            shadowPaint.ImageFilter = Style.Shadow.Filter;
             Renderer.Canvas.DrawRoundRect(roundRect, shadowPaint);
         }
 
@@ -199,7 +193,6 @@ public class VisualElement : IDisposable
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
 
-        // paint.ImageFilter = SKImageFilter.CreateBlur(10, 10);
         Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
         if (Style.Border.Width > 0)
@@ -211,12 +204,13 @@ public class VisualElement : IDisposable
         }
     }
 
-    internal void DrawText()
+    private void DrawText()
     {
         // Early return if there's no text or color
         if (string.IsNullOrEmpty(Text) || Style.Text is null)
             return;
 
+        // CalculateTextBounds();
         CalculateText();
 
         // DrawTextShadow();
@@ -232,7 +226,7 @@ public class VisualElement : IDisposable
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style is not null)
-            Style.Text.Paint.MeasureText(Text + '|', ref TextBounds);
+            Style.Text.Paint.MeasureText(Text.Substring(0, Text.Length - 1) + '|', ref TextBounds);
     }
 
     internal void CalculateText()

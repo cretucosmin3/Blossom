@@ -8,7 +8,7 @@ namespace Blossom.Core
     public abstract class View : IDisposable
     {
         public EventMap Events = new();
-        public ElementsMap Elements = new();
+        public ElementTree Elements = new();
         public event ForVoid Loop;
 
         private bool _renderRequired = true;
@@ -45,7 +45,6 @@ namespace Blossom.Core
             set
             {
                 _name = value;
-                //! #render title only
             }
         }
 

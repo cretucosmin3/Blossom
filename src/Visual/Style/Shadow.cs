@@ -10,36 +10,25 @@ public class ShadowStyle : StyleProperty, IDisposable
     private float _SpreadX = 0;
     private float _SpreadY = 0;
     private SkiaSharp.SKColor _Color = new(0, 0, 0, 0);
-    private SKImageFilter _Filter;
 
     public ShadowStyle()
     {
         RedoFilter();
     }
 
-    public bool HasValidValues()
+    public ShadowStyle(float oX, float oY, float sX, float sY, SKColor color)
     {
-        return _SpreadX + _SpreadY > 0 && _Color.Alpha > 0;
+        _OffsetX = oX;
+        _OffsetY = oY;
+        _SpreadX = sX;
+        _SpreadY = sY;
+        _Color = color;
+        RedoFilter();
     }
 
-    private void RedoFilter()
-    {
-        this._Filter?.Dispose();
+    public SKPaint shadowPaint { get; private set; } = new SKPaint();
 
-        if (HasValidValues())
-        {
-            this._Filter = SKImageFilter.CreateDropShadow(
-                    OffsetX, OffsetY, SpreadX, SpreadY, Color,
-                    null, null);
-        }
-    }
-
-    public void Dispose()
-    {
-        _Filter.Dispose();
-    }
-
-    public SKImageFilter Filter { get => _Filter; }
+    public SKImageFilter Filter { get; private set; }
 
     public float OffsetX
     {
@@ -99,5 +88,27 @@ public class ShadowStyle : StyleProperty, IDisposable
             TriggerChange();
             TriggerRender();
         }
+    }
+
+    public bool HasValidValues()
+    {
+        return _SpreadX + _SpreadY > 0 && _Color.Alpha > 0;
+    }
+
+    private void RedoFilter()
+    {
+        this.Filter?.Dispose();
+
+        if (HasValidValues())
+        {
+            this.Filter = SKImageFilter.CreateDropShadow(
+                    OffsetX, OffsetY, SpreadX, SpreadY, Color,
+                    null, null);
+        }
+    }
+
+    public void Dispose()
+    {
+        Filter.Dispose();
     }
 }

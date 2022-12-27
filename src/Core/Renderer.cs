@@ -36,6 +36,7 @@ namespace Blossom.Core
 
             RenderTarget = new GRBackendRenderTarget(width, height, 0, 8, new GRGlFramebufferInfo(0, 0x8058)); // 0x8058 = GL_RGBA8`
             Surface = SKSurface.Create(grContext, RenderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+
             _Canvas = Surface.Canvas;
         }
 

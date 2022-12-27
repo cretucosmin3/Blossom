@@ -8,8 +8,8 @@ namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {
-        private PrettyUi BrowserView;
-        private LoadView LoadView;
+        // private PrettyUi BrowserView;
+        // private LoadView LoadView;
         private AnchorsView AnchorsView;
 
         public TestingApplication()

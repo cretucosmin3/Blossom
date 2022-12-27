@@ -52,6 +52,7 @@ namespace Blossom.Testing
 
         public override void Main()
         {
+            // Browser.ChangeCursor(Silk.NET.Input.StandardCursor.HResize);
             ElementStyle AnchorStyle = new()
             {
                 BackColor = new(200, 50, 35, 120),
@@ -76,7 +77,7 @@ namespace Blossom.Testing
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                     FixedWidth = false,
-                    FixedHeight = false,
+                    FixedHeight = true,
                     ValidateOnAnchor = true,
                 },
                 Style = new()
@@ -92,7 +93,7 @@ namespace Blossom.Testing
                     Text = new()
                     {
                         Alignment = TextAlign.Center,
-                        Color = new(200, 50, 50, 220),
+                        Color = new(200, 0, 0, 200),
                         Size = 22,
                         Spacing = 20,
                         Padding = 20,
@@ -270,6 +271,8 @@ namespace Blossom.Testing
             };
 
             Draggable.Text = "Moving...";
+
+            Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         }
 
         private void DraggableMouseUp(int b, Vector2 global, Vector2 relative)
@@ -293,6 +296,7 @@ namespace Blossom.Testing
             };
 
             Draggable.Text = "Hold to Move";
+            Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         }
 
         private void HandleMove(Vector2 pos, Vector2 relative)
