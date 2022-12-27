@@ -3,8 +3,6 @@ namespace Blossom.Core.Visual;
 
 public class BorderStyle : StyleProperty
 {
-    public BorderStyle() { }
-
     private SkiaSharp.SKColor _Color;
 
     private float _Width = 2;

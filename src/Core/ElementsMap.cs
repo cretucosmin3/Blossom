@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Blossom.Core
 {
-    public class ElementsMap : IDisposable
+    public class ElementTree : IDisposable
     {
         private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
         private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
@@ -17,7 +17,7 @@ namespace Blossom.Core
 
         public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
 
-        internal ElementsMap() { }
+        internal ElementTree() { }
 
         public List<VisualElement> ComponentsFromPoint(PointF point)
         {

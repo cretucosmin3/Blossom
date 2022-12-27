@@ -45,8 +45,8 @@ public class Transform
     {
         set
         {
-            FixedHeight = true;
-            FixedWidth = true;
+            FixedHeight = value;
+            FixedWidth = value;
         }
     }
 

@@ -86,7 +86,7 @@ public static class Browser
     {
         foreach (IMouse mouse in input.Mice)
         {
-            mouse.Cursor.StandardCursor = cursor; // StandardCursor.Crosshair
+            mouse.Cursor.StandardCursor = cursor;
         }
     }
 
