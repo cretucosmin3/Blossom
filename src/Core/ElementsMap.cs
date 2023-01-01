@@ -21,23 +21,8 @@ namespace Blossom.Core
 
         public List<VisualElement> ComponentsFromPoint(PointF point)
         {
+            QuadTree.Max(e => e.Rect.X);
             return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
-        }
-
-        public List<VisualElement> ComponentsFromPointV2(PointF point)
-        {
-            var RectToSearch = new RectangleF(point.X, point.Y, 2, 2);
-
-            var Elements = new List<VisualElement>();
-            foreach (var item in Map)
-            {
-                if (item.Value.Item2.Rect.IntersectsWith(RectToSearch))
-                {
-                    Elements.Add(item.Value.Item1);
-                }
-            }
-
-            return Elements;
         }
 
         public List<VisualElement> CollidedComponents(VisualElement element)

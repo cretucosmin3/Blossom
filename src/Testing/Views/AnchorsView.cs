@@ -26,6 +26,8 @@ namespace Blossom.Testing
         VisualElement AnchorLeft;
         VisualElement AnchorRight;
 
+        VisualElement TestElement;
+
         public AnchorsView() : base("AnchorsView View")
         {
             this.Events.OnMouseMove += HandleMove;
@@ -52,7 +54,6 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            // Browser.ChangeCursor(Silk.NET.Input.StandardCursor.HResize);
             ElementStyle AnchorStyle = new()
             {
                 BackColor = new(200, 50, 35, 120),
@@ -212,10 +213,31 @@ namespace Blossom.Testing
                 },
             };
 
-            AnchorTop.Events.OnMouseClick += (b, p, v) => HandleAnchorClick(AnchorTop, Anchor.Top);
-            AnchorBottom.Events.OnMouseClick += (b, p, v) => HandleAnchorClick(AnchorBottom, Anchor.Bottom);
-            AnchorLeft.Events.OnMouseClick += (b, p, v) => HandleAnchorClick(AnchorLeft, Anchor.Left);
-            AnchorRight.Events.OnMouseClick += (b, p, v) => HandleAnchorClick(AnchorRight, Anchor.Right);
+            TestElement = new VisualElement() // Test
+            {
+                Name = "Test Element",
+                Text = "Testing element",
+                Transform = new(50, 50, 80, 40)
+                {
+                    Anchor = Anchor.Left | Anchor.Top,
+                    FixedSize = true,
+                },
+                Style = new()
+                {
+                    BackColor = SKColors.HotPink,
+                    Border = new()
+                    {
+                        Roundness = 5,
+                        Width = 10f,
+                        Color = new(0, 0, 0, 50)
+                    },
+                },
+            };
+
+            AnchorTop.Events.OnMouseClick += (_, _) => HandleAnchorClick(AnchorTop, Anchor.Top);
+            AnchorBottom.Events.OnMouseClick += (_, _) => HandleAnchorClick(AnchorBottom, Anchor.Bottom);
+            AnchorLeft.Events.OnMouseClick += (_, _) => HandleAnchorClick(AnchorLeft, Anchor.Left);
+            AnchorRight.Events.OnMouseClick += (_, _) => HandleAnchorClick(AnchorRight, Anchor.Right);
 
             Draggable.Events.OnMouseDown += DraggableMouseDown;
             Draggable.Events.OnMouseUp += DraggableMouseUp;
@@ -230,6 +252,7 @@ namespace Blossom.Testing
             this.AddElement(AnchorTop);
             this.AddElement(AnchorLeft);
             this.AddElement(AnchorRight);
+            this.AddElement(TestElement); // Test
         }
 
         private void HandleAnchorClick(VisualElement anchorEl, Anchor anchor)
@@ -237,7 +260,7 @@ namespace Blossom.Testing
             if (Draggable.Transform.Anchor.HasFlag(anchor))
             {
                 anchorEl.Style.BackColor = SKColors.White;
-                Draggable.Transform.Anchor = Draggable.Transform.Anchor & ~anchor;
+                Draggable.Transform.Anchor &= ~anchor;
             }
             else
             {
@@ -246,17 +269,17 @@ namespace Blossom.Testing
             }
         }
 
-        private void DraggableMouseDown(int b, Vector2 global, Vector2 relative)
+        private void DraggableMouseDown(object obj, MouseEventArgs args)
         {
             Draggable.Transform.X -= 5;
             Draggable.Transform.Width += 10;
             Draggable.Transform.Y -= 5;
             Draggable.Transform.Height += 10;
 
-            relative.X += 5;
-            relative.Y += 5;
+            args.Relative.X += 5;
+            args.Relative.Y += 5;
 
-            dragPoint = relative;
+            dragPoint = args.Relative;
             isDragged = true;
 
             Draggable.Style.Border.Color = SKColors.IndianRed;
@@ -275,7 +298,7 @@ namespace Blossom.Testing
             Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         }
 
-        private void DraggableMouseUp(int b, Vector2 global, Vector2 relative)
+        private void DraggableMouseUp(object obj, MouseEventArgs args)
         {
             Draggable.Transform.X += 5;
             Draggable.Transform.Width -= 10;
@@ -299,14 +322,14 @@ namespace Blossom.Testing
             Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         }
 
-        private void HandleMove(Vector2 pos, Vector2 relative)
+        private void HandleMove(object obj, MouseEventArgs args)
         {
             if (!isDragged) return;
 
             this.RenderChanges(() =>
             {
-                Draggable.Transform.X = pos.X - dragPoint.X;
-                Draggable.Transform.Y = pos.Y - dragPoint.Y;
+                Draggable.Transform.X = args.Global.X - dragPoint.X;
+                Draggable.Transform.Y = args.Global.Y - dragPoint.Y;
             });
         }
     }
