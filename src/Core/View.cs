@@ -63,30 +63,32 @@ namespace Blossom.Core
                 // Main();
             };
 
-            Events.OnMouseDown += (btn, pos, relative) =>
+            Events.OnMouseDown += (obj, args) =>
             {
-                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseDown(btn, pos, element);
+                var element = Elements.FirstFromPoint(
+                    new System.Drawing.PointF(args.Global.X, args.Global.Y));
+
+                element?.Events.HandleMouseDown(args.Button, args.Global, element);
                 mouseDownElement = element;
             };
 
-            Events.OnMouseUp += (btn, pos, relative) =>
+            Events.OnMouseUp += (obj, args) =>
             {
                 if (mouseDownElement != null)
                 {
-                    mouseDownElement.Events.HandleMouseUp(btn, pos, mouseDownElement);
+                    mouseDownElement.Events.HandleMouseUp(args.Button, args.Global, mouseDownElement);
                     mouseDownElement = null;
                     return;
                 }
 
-                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseUp(btn, pos, element);
+                var element = Elements.FirstFromPoint(new System.Drawing.PointF(args.Global.X, args.Global.Y));
+                element?.Events.HandleMouseUp(args.Button, args.Global, element);
             };
 
-            Events.OnMouseMove += (pos, relative) =>
+            Events.OnMouseMove += (obj, args) =>
             {
-                var element = Elements.FirstFromPoint(new System.Drawing.PointF(pos.X, pos.Y));
-                element?.Events.HandleMouseMove(pos, element);
+                var element = Elements.FirstFromPoint(new System.Drawing.PointF(args.Global.X, args.Global.Y));
+                element?.Events.HandleMouseMove(args.Global, element);
 
                 if (hoveredElement != element)
                 {
@@ -95,7 +97,7 @@ namespace Blossom.Core
                 }
                 else if (element == hoveredElement)
                 {
-                    element?.Events.HandleMouseHover(element, pos);
+                    element?.Events.HandleMouseHover(element, args.Global);
                 }
 
                 hoveredElement = element;

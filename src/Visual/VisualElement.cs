@@ -200,6 +200,7 @@ public class VisualElement : IDisposable
             paint.Style = SKPaintStyle.Stroke;
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
+            roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
         }
     }

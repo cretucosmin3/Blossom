@@ -8,8 +8,8 @@ namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {
-        // private PrettyUi BrowserView;
-        // private LoadView LoadView;
+        private PrettyUi BrowserView;
+        private LoadView LoadView;
         private AnchorsView AnchorsView;
 
         public TestingApplication()
@@ -17,14 +17,14 @@ namespace Blossom.Testing
             this.Events.Access = EventAccess.Keyboard;
 
             // BrowserView = new PrettyUi();
-            // LoadView = new LoadView();
-            AnchorsView = new AnchorsView();
+            LoadView = new LoadView();
+            // AnchorsView = new AnchorsView();
 
             // AddView(BrowserView);
-            AddView(AnchorsView);
-            // AddView(LoadView);
+            // AddView(AnchorsView);
+            AddView(LoadView);
 
-            SetActiveView(AnchorsView);
+            SetActiveView(LoadView);
         }
     }
 }

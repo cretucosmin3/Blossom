@@ -87,19 +87,6 @@ namespace Blossom
 
         static void Main(string[] args)
         {
-            float[] chartValues1 = { 104.5f, 107.2f, 114.93f };
-            float[] chartValues2 = { 105.3f, 107.5f, 115.4f };
-
-            int key1 = ExtractPatternKey(chartValues1, 3);
-            Console.WriteLine(key1);
-
-            int key2 = ExtractPatternKey(chartValues2, 3);
-            Console.WriteLine(key2);
-
-            int key3 = ExtractPatternKey(chartValues2, 50);
-            Console.WriteLine(key3);
-
-            Console.ReadKey();
             // DateTime startTime = new DateTime(2019, 7, 13);
             // DateTime endTime = DateTime.Now;
 
@@ -120,11 +107,11 @@ namespace Blossom
             // return;
 
             // Hide console
-            var consoleHnd = GetConsoleWindow();
+            // var consoleHnd = GetConsoleWindow();
             // NativeMethods.FreeConsole();
 
             // SendMessage(consoleHnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            ShowWindow(consoleHnd, 0);
+            // ShowWindow(consoleHnd, 0);
 
             Log.Info(_appName);
             Log.Info(_appPath);

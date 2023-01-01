@@ -26,18 +26,25 @@ public static class Browser
 
     internal static TestingApplication BrowserApp = new TestingApplication();
     internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
+    internal static Action OnRenderRequired;
 
     public static event ForVoid OnLoaded;
 
     public static bool IsLoaded { get; private set; } = false;
     public static bool IsRunning { get; private set; } = false;
+    public static int TotalRenders { get; private set; }
+    public static bool SkipCountingNextRender { get; set; } = false;
 
     internal static void Initialize()
     {
         OnLoaded = () =>
         {
             ManageInputEvents();
-            BrowserApp.ActiveView.Main();
+
+            if (BrowserApp.ActiveView != null)
+                BrowserApp.ActiveView.Main();
+            else Console.WriteLine("-- No active view --");
+
         };
 
         SetWindow();
@@ -75,8 +82,20 @@ public static class Browser
             window.DoEvents();
             window.ContinueEvents();
 
-            if (BrowserApp.ActiveView != null && BrowserApp.ActiveView.renderRequired)
+            if (BrowserApp.ActiveView?.renderRequired == true)
+            {
                 window.DoRender();
+
+                if (!SkipCountingNextRender)
+                {
+                    TotalRenders++;
+                    OnRenderRequired.Invoke();
+                }
+                else
+                {
+                    SkipCountingNextRender = false;
+                }
+            }
         }
 
         window.Dispose();

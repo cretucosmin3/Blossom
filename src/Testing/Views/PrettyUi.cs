@@ -206,7 +206,7 @@ namespace Blossom.Testing
 
             SearchBar.Events.OnMouseLeave += (VisualElement e) => ToNormal();
             SearchBar.Events.OnMouseEnter += (VisualElement e) => Hovered();
-            SearchBar.Events.OnMouseUp += (int btn, Vector2 pos, Vector2 relative) =>
+            SearchBar.Events.OnMouseUp += (obj, args) =>
             {
                 Log.Debug($"{SearchBar.Transform.X} :: {SearchBar.Transform.Computed.X}");
 
@@ -214,7 +214,7 @@ namespace Blossom.Testing
                 SearchBar.Transform.Width -= 20;
                 Hovered();
             };
-            SearchBar.Events.OnMouseDown += (int btn, Vector2 pos, Vector2 relative) =>
+            SearchBar.Events.OnMouseDown += (obj, args) =>
             {
                 SearchBar.Style.Border.Width = 2.5f;
                 SearchBar.Style.Border.Color = new(200, 50, 50, 220);
