@@ -108,7 +108,10 @@ namespace Blossom.Core
 
         public void AddElement(VisualElement element)
         {
+            element.ParentView = this;
             Elements.AddElement(ref element, this);
+
+            element.AddedToView();
             Browser.BrowserApp.ActiveView.renderRequired = true;
         }
 

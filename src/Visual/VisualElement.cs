@@ -5,10 +5,13 @@ using System.Collections.Generic;
 using SkiaSharp;
 namespace Blossom.Core.Visual;
 
-public class VisualElement : IDisposable
+public abstract class VisualElement : IDisposable
 {
+    public abstract void AddedToView();
+
     public string Name { get; set; }
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
+    public bool IsClickthrough { get; set; } = false;
     public ElementEvents Events { get; } = new();
 
     internal Application ParentApplication { get; set; }
@@ -226,7 +229,7 @@ public class VisualElement : IDisposable
     private SKRect TextBounds;
     private void CalculateTextBounds()
     {
-        if (Browser.IsLoaded && Style is not null)
+        if (Browser.IsLoaded && Style != null && Text.Length > 0)
             Style.Text.Paint.MeasureText(Text.Substring(0, Text.Length - 1) + '|', ref TextBounds);
     }
 

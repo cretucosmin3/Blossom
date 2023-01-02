@@ -89,7 +89,7 @@ public static class Browser
                 if (!SkipCountingNextRender)
                 {
                     TotalRenders++;
-                    OnRenderRequired.Invoke();
+                    OnRenderRequired?.Invoke();
                 }
                 else
                 {

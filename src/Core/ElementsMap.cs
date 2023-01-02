@@ -47,8 +47,17 @@ namespace Blossom.Core
             var components = QuadTree.GetObjects(new RectangleF(x, y, 1, 1));
             if (!components.Any()) return null;
 
-            int maxLayer = components.Max(t => t.Element.Layer);
-            return components.Find(t => t.Element.Layer == maxLayer).Element;
+            for (int i = components.Count - 1; i >= 0; i--)
+            {
+                // if (!components[i].Element.IsClickthrough || components[i].Element.Style?.BackColor.Alpha > 0)
+                if (components[i].Element.Style?.BackColor.Alpha > 0 && !components[i].Element.IsClickthrough)
+                    return components[i].Element;
+            }
+
+            return null;
+            // return components.Last().Element;
+            // int maxLayer = components.Max(t => t.Element.Layer);
+            // return components.Find(t => t.Element.Layer == maxLayer).Element;
         }
 
         public VisualElement FirstFromQuad(RectangleF quad)
