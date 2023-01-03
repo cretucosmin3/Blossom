@@ -18,17 +18,13 @@ namespace Blossom.Testing;
 
 public class ViewportTest : View
 {
-    private VisualElement LeftMax;
-    private VisualElement LastLeft;
+    private VisualElement TestingElement;
+    private List<VisualElement> ListToTest = new();
 
-    private VisualElement RightMax;
-    private VisualElement RightLast;
-
-    private VisualElement TopMax;
-    private VisualElement TopLast;
-
-    private VisualElement BottomMax;
-    private VisualElement BottomLast;
+    private VisualElement Top;
+    private VisualElement Left;
+    private VisualElement Right;
+    private VisualElement Bottom;
 
     private AreaMarker BoxMarker;
 
@@ -36,21 +32,22 @@ public class ViewportTest : View
 
     public override void Main()
     {
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 10; i++)
         {
-            float x = Random.Shared.Next(100, 600);
+            float x = Random.Shared.Next(100, 800);
             float y = Random.Shared.Next(100, 600);
 
             var newEl = new Draggable()
             {
                 Name = $"Draggable {i}",
-                Transform = new(x, y, 120, 120)
+                Transform = new(x, y, Random.Shared.Next(120, 200), 120)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
-                }
+                },
+                Text = $"{i}"
             };
 
-            newEl.OnDropped += ElementDragged;
+            newEl.OnDragged += ElementDragged;
 
             AddElement(newEl);
         }

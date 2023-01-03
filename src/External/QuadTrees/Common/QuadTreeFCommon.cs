@@ -32,8 +32,8 @@ namespace QuadTrees.Common
         protected QuadTreeFCommon()
         {
             QuadTreePointRoot =
-                CreateNode(new RectangleF(float.MinValue/2, float.MinValue/2, float.MaxValue, float.MaxValue));
-        } 
+                CreateNode(new RectangleF(float.MinValue / 2, float.MinValue / 2, float.MaxValue, float.MaxValue));
+        }
 
         /// <summary>
         /// Creates a QuadTree for the specified area.
@@ -86,7 +86,7 @@ namespace QuadTrees.Common
         public IEnumerable<TObject> EnumObjects(TQuery rect)
         {
             return QuadTreePointRoot.EnumObjects(rect);
-        } 
+        }
 
 
         /// <summary>
@@ -128,8 +128,7 @@ namespace QuadTrees.Common
         /// <param name="item">The item that has moved</param>
         public bool Move(TObject item)
         {
-            QuadTreeObject<TObject, TNode> obj;
-            if (WrappedDictionary.TryGetValue(item, out obj))
+            if (WrappedDictionary.TryGetValue(item, out QuadTreeObject<TObject, TNode> obj))
             {
                 obj.Owner.Relocate(obj);
 
@@ -153,6 +152,7 @@ namespace QuadTrees.Common
         public void Add(TObject item)
         {
             var wrappedObject = new QuadTreeObject<TObject, TNode>(item);
+
             if (WrappedDictionary.ContainsKey(item))
             {
                 throw new ArgumentException("Object already exists in index");
@@ -271,15 +271,16 @@ namespace QuadTrees.Common
         /// </summary>
         /// <param name="whereExpr"></param>
         /// <returns></returns>
-        public bool RemoveAll(Func<TObject,bool> whereExpr)
+        public bool RemoveAll(Func<TObject, bool> whereExpr)
         {
             Debug.Assert(WrappedDictionary.Count == QuadTreePointRoot.Count);
             var owners = new HashSet<TNode>();
-            var set = new List<QuadTreeObject<TObject,TNode>>();
-            foreach(var kv in WrappedDictionary){
+            var set = new List<QuadTreeObject<TObject, TNode>>();
+            foreach (var kv in WrappedDictionary)
+            {
                 if (!whereExpr(kv.Key)) continue;
                 set.Add(kv.Value);
-            } 
+            }
 
             //Dictionary removals can happen in the background
             Action dictRemovalProc = () =>
@@ -292,7 +293,7 @@ namespace QuadTrees.Common
             };
             var bgTaskCancel = new CancellationTokenSource();
             var bgTask = Task.Run(dictRemovalProc, bgTaskCancel.Token);
-            
+
             //Process
             foreach (var s in set)
             {
@@ -330,7 +331,7 @@ namespace QuadTrees.Common
             {
                 bgTask.Wait();
             }
-            else if(bgTaskStatus != TaskStatus.RanToCompletion)
+            else if (bgTaskStatus != TaskStatus.RanToCompletion)
             {
                 bgTaskCancel.Cancel();
                 dictRemovalProc();
