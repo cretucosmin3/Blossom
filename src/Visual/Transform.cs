@@ -34,7 +34,7 @@ public class Transform
     internal float RelativeTop = 0f;
     internal float RelativeBottom = 0f;
 
-    private Rect ComputedTransform = new Rect(0, 0, 0, 0);
+    private readonly Rect ComputedTransform = new(0, 0, 0, 0);
     public Rect Computed { get => ComputedTransform; }
     public Rect Local { get; private set; } = new Rect(0, 0, 0, 0);
 
@@ -64,6 +64,8 @@ public class Transform
             CalculateLeftAnchor();
             CalculateRighAnchor();
 
+            CenterX = X + (Width / 2f);
+
             OnChanged?.Invoke(this);
         }
     }
@@ -76,6 +78,8 @@ public class Transform
             Local.Y = value;
             CalculateTopAnchor();
             CalculateBottomAnchor();
+
+            CenterY = Y + (Height / 2f);
 
             OnChanged?.Invoke(this);
         }
@@ -90,6 +94,8 @@ public class Transform
             CalculateLeftAnchor();
             CalculateRighAnchor();
 
+            CenterX = X + (Width / 2f);
+
             OnChanged?.Invoke(this);
         }
     }
@@ -103,9 +109,19 @@ public class Transform
             CalculateTopAnchor();
             CalculateBottomAnchor();
 
+            CenterY = Y + (Height / 2f);
+
             OnChanged?.Invoke(this);
         }
     }
+
+    public float CenterX { get; private set; }
+    public float CenterY { get; private set; }
+
+    public float Left { get => X; }
+    public float Right { get => X + Width; }
+    public float Top { get => Y; }
+    public float Bottom { get => Y + Height; }
 
     public bool ValidateOnAnchor { get; set; } = false;
 
@@ -173,7 +189,6 @@ public class Transform
     {
         FixedTop = Local.Y;
         RelativeTop = FixedTop / ParentHeight;
-
     }
 
     private void CalculateBottomAnchor()
@@ -289,6 +304,7 @@ public class Transform
 public class Rect
 {
     private System.Drawing.RectangleF _Rect;
+    public System.Drawing.RectangleF RectF => _Rect;
 
     public float X
     {
@@ -312,13 +328,6 @@ public class Rect
     {
         get => _Rect.Height;
         set => _Rect.Height = value;
-    }
-
-    public System.Drawing.RectangleF RectF { get => _Rect; }
-
-    public Rect()
-    {
-        new System.Drawing.RectangleF(0, 0, 0, 0);
     }
 
     public Rect(float x, float y, float width, float height)

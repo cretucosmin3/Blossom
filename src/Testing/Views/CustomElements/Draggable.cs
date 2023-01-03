@@ -33,6 +33,11 @@ public class Draggable : VisualElement
                 SpreadX = 4,
                 SpreadY = 4,
                 OffsetY = 6
+            },
+            Text = new()
+            {
+                Size = 35,
+                Color = SKColors.Black,
             }
         };
     }
@@ -70,7 +75,7 @@ public class Draggable : VisualElement
         dragPoint = args.Relative;
         isDragged = true;
 
-        Style.Border.Color = SKColors.LimeGreen;
+        Style.Border.Color = SKColors.Black;
         Style.Border.Width = 2;
 
         Style.Shadow.Color = new(0, 0, 0, 35);
