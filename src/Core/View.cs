@@ -12,7 +12,7 @@ namespace Blossom.Core
         public event ForVoid Loop;
 
         private bool _renderRequired = true;
-        public bool renderRequired
+        public bool RenderRequired
         {
             get
             {
@@ -112,13 +112,13 @@ namespace Blossom.Core
             Elements.AddElement(ref element, this);
 
             element.AddedToView();
-            Browser.BrowserApp.ActiveView.renderRequired = true;
+            Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
         public void RemoveElement(VisualElement element)
         {
             Elements.RemoveElement(element);
-            Browser.BrowserApp.ActiveView.renderRequired = true;
+            Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
         internal void Render()
@@ -139,7 +139,7 @@ namespace Blossom.Core
             // pull changes
             // update state
             // render from previous state or new
-            renderRequired = true;
+            RenderRequired = true;
         }
 
         public void Dispose()
