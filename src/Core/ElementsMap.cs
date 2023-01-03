@@ -10,6 +10,7 @@ namespace Blossom.Core
     public class ElementTree : IDisposable
     {
         private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
+
         private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
             float.MinValue / 2f, float.MinValue / 2f,
             float.MaxValue, float.MaxValue
@@ -21,7 +22,6 @@ namespace Blossom.Core
 
         public List<VisualElement> ComponentsFromPoint(PointF point)
         {
-            QuadTree.Max(e => e.Rect.X);
             return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
         }
 
@@ -49,13 +49,11 @@ namespace Blossom.Core
 
             for (int i = components.Count - 1; i >= 0; i--)
             {
-                // if (!components[i].Element.IsClickthrough || components[i].Element.Style?.BackColor.Alpha > 0)
                 if (components[i].Element.Style?.BackColor.Alpha > 0 && !components[i].Element.IsClickthrough)
                     return components[i].Element;
             }
 
             return null;
-            // return components.Last().Element;
             // int maxLayer = components.Max(t => t.Element.Layer);
             // return components.Find(t => t.Element.Layer == maxLayer).Element;
         }
@@ -93,22 +91,22 @@ namespace Blossom.Core
             QuadTree.Remove(tracker);
         }
 
-        public void AddElement(ref VisualElement e, View view)
+        public void AddElement(ref VisualElement element, View view)
         {
-            if (Map.ContainsKey(e.Name))
+            if (Map.ContainsKey(element.Name))
             {
-                Log.Error($"A component with name {e.Name} already exists.");
+                Log.Error($"A component with name {element.Name} already exists.");
                 return;
             }
 
-            e.ParentApplication = view.Application;
-            e.ParentView = view;
-            var tracker = AddTracker(ref e);
+            element.ParentApplication = view.Application;
+            element.ParentView = view;
+            var tracker = AddTracker(ref element);
 
             // Add element and tracker to the map
-            Map.Add(e.Name, (e, tracker));
+            Map.Add(element.Name, (element, tracker));
 
-            e.OnDisposing += Element_OnDispose;
+            element.OnDisposing += Element_OnDispose;
         }
 
         public void RemoveElement(VisualElement e)
@@ -126,7 +124,7 @@ namespace Blossom.Core
 
         public void Dispose()
         {
-            foreach (var (element, tracker) in Map.Values)
+            foreach (var (element, _) in Map.Values)
             {
                 element.Dispose();
             }
