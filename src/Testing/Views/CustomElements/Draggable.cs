@@ -36,7 +36,7 @@ public class Draggable : VisualElement
             },
             Text = new()
             {
-                Size = 35,
+                Size = 20,
                 Color = SKColors.Black,
             }
         };

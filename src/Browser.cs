@@ -82,7 +82,7 @@ public static class Browser
             window.DoEvents();
             window.ContinueEvents();
 
-            if (BrowserApp.ActiveView?.renderRequired == true)
+            if (BrowserApp.ActiveView?.RenderRequired == true)
             {
                 window.DoRender();
 

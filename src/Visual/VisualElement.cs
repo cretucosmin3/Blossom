@@ -89,7 +89,7 @@ public abstract class VisualElement : IDisposable
         get
         {
             if (Parent != null)
-                return Visible ? ParentView.Elements.ComponentsIntersect(this, Parent) : false;
+                return Visible && ParentView.Elements.ComponentsIntersect(this, Parent);
 
             return Visible;
         }
@@ -100,7 +100,7 @@ public abstract class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
-    private StringBuilder _Text = new StringBuilder("");
+    private readonly StringBuilder _Text = new("");
     public string Text
     {
         get => _Text.ToString();
@@ -125,7 +125,7 @@ public abstract class VisualElement : IDisposable
         if (Parent != null)
             isWithin = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
 
-        if (Parent != null && Parent.Style.IsClipping)
+        if (Parent?.Style.IsClipping == true)
         {
             if (!isWithin) return;
 
@@ -162,8 +162,8 @@ public abstract class VisualElement : IDisposable
         }
     }
 
-    SKPaint paint = new SKPaint();
-    SKPaint shadowPaint = new SKPaint();
+    readonly SKPaint paint = new();
+    readonly SKPaint shadowPaint = new();
 
     internal void DrawBase()
     {
@@ -174,7 +174,7 @@ public abstract class VisualElement : IDisposable
             Transform.Computed.Y + Transform.Computed.Height
         );
 
-        SKRoundRect roundRect = new SKRoundRect();
+        SKRoundRect roundRect = new();
 
         roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
@@ -183,7 +183,7 @@ public abstract class VisualElement : IDisposable
                 new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
 
-        if (Style.Shadow is not null && Style.Shadow.HasValidValues())
+        if (Style.Shadow?.HasValidValues() == true)
         {
             shadowPaint.Style = SKPaintStyle.Fill;
             shadowPaint.Color = Style.BackColor;
@@ -230,7 +230,7 @@ public abstract class VisualElement : IDisposable
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style != null && Text.Length > 0)
-            Style.Text.Paint.MeasureText(Text.Substring(0, Text.Length - 1) + '|', ref TextBounds);
+            Style.Text.Paint.MeasureText(Text[..^1] + '|', ref TextBounds);
     }
 
     internal void CalculateText()
@@ -293,7 +293,7 @@ public abstract class VisualElement : IDisposable
 
     internal void ScheduleRender()
     {
-        Browser.BrowserApp.ActiveView.renderRequired = true;
+        Browser.BrowserApp.ActiveView.RenderRequired = true;
     }
 
     public void GetFocus()
