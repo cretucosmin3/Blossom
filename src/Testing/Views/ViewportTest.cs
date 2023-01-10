@@ -21,22 +21,22 @@ public class ViewportTest : View
 
     public override void Main()
     {
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 2; i++)
         {
-            float x = Random.Shared.Next(100, 800);
-            float y = Random.Shared.Next(100, 600);
+            float x = Random.Shared.Next(100, 500);
+            float y = Random.Shared.Next(100, 500);
 
             var newEl = new Draggable()
             {
                 Name = $"e{i}",
-                Transform = new(x, y, Random.Shared.Next(120, 200), 120)
+                Transform = new(x, y, Random.Shared.Next(120, 220), 120)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
                 Text = $"{i}"
             };
 
-            newEl.OnDragged += ElementDragged;
+            newEl.OnDropped += ElementDragged;
 
             AddElement(newEl);
         }
@@ -57,12 +57,12 @@ public class ViewportTest : View
             if (i == 0)
             {
                 leftElement.Style.Border.Color = SKColors.Red;
-                leftElement.Style.Border.Width = 2;
+                leftElement.Style.Border.Width = 3;
             }
             else if (i == Elements.BoundAxis.Lefts.Count - 1)
             {
                 leftElement.Style.Border.Color = SKColors.Green;
-                leftElement.Style.Border.Width = 2;
+                leftElement.Style.Border.Width = 3;
             }
         }
 

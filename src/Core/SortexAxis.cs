@@ -88,12 +88,12 @@ public class SortedAxis
             element.Transform.Left > Lefts[Indexes.Left + 1].Transform.Left;
 
         // Right border moved right
-        bool movedRight = HasIndex(Rights, Indexes.Right + 1) &&
-            element.Transform.Right > Rights[Indexes.Right + 1].Transform.Right;
+        // bool movedRight = HasIndex(Rights, Indexes.Right + 1) &&
+        //     element.Transform.Right > Rights[Indexes.Right + 1].Transform.Right;
 
-        // Right border moved left
-        bool movedRightReversed = HasIndex(Rights, Indexes.Right - 1) &&
-            element.Transform.Right < Rights[Indexes.Right - 1].Transform.Right;
+        // // Right border moved left
+        // bool movedRightReversed = HasIndex(Rights, Indexes.Right - 1) &&
+        //     element.Transform.Right < Rights[Indexes.Right - 1].Transform.Right;
 
         // Top border moved up
         // bool movedUp = firstTime || (HasIndex(Tops, Indexes.Top - 1) &&
@@ -119,7 +119,7 @@ public class SortedAxis
                 newIndex--;
             }
 
-            newIndex++; // move back one position because we went too far
+            newIndex++;
             Lefts.RemoveAt(Indexes.Left);
             Lefts.Insert(newIndex, element);
             Indexes.Left = newIndex;
@@ -131,35 +131,37 @@ public class SortedAxis
             {
                 newIndex++;
             }
-            newIndex--; // move back one position because we went too far
+
+            newIndex--;
+
             Lefts.RemoveAt(Indexes.Left);
             Lefts.Insert(newIndex, element);
             Indexes.Left = newIndex;
         }
-        else if (movedRight)
-        {
-            int newIndex = Indexes.Right + 1;
-            while (newIndex < Rights.Count && element.Transform.Right > Rights[newIndex].Transform.Right)
-            {
-                newIndex++;
-            }
-            newIndex--; // move back one position because we went too far
-            Rights.RemoveAt(Indexes.Right);
-            Rights.Insert(newIndex, element);
-            Indexes.Right = newIndex;
-        }
-        else if (movedRightReversed)
-        {
-            int newIndex = Indexes.Right - 1;
-            while (newIndex >= 0 && element.Transform.Right < Rights[newIndex].Transform.Right)
-            {
-                newIndex--;
-            }
-            newIndex++; // move back one position because we went too far
-            Rights.RemoveAt(Indexes.Right);
-            Rights.Insert(newIndex, element);
-            Indexes.Right = newIndex;
-        }
+        // else if (movedRight)
+        // {
+        //     int newIndex = Indexes.Right + 1;
+        //     while (newIndex < Rights.Count && element.Transform.Right > Rights[newIndex].Transform.Right)
+        //     {
+        //         newIndex++;
+        //     }
+        //     newIndex--; // move back one position because we went too far
+        //     Rights.RemoveAt(Indexes.Right);
+        //     Rights.Insert(newIndex, element);
+        //     Indexes.Right = newIndex;
+        // }
+        // else if (movedRightReversed)
+        // {
+        //     int newIndex = Indexes.Right - 1;
+        //     while (newIndex >= 0 && element.Transform.Right < Rights[newIndex].Transform.Right)
+        //     {
+        //         newIndex--;
+        //     }
+        //     newIndex++; // move back one position because we went too far
+        //     Rights.RemoveAt(Indexes.Right);
+        //     Rights.Insert(newIndex, element);
+        //     Indexes.Right = newIndex;
+        // }
     }
 
     private static bool HasIndex(List<VisualElement> list, int index)
