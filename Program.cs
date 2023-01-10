@@ -87,6 +87,20 @@ namespace Blossom
 
         static void Main(string[] args)
         {
+            // List<string> TestList = new List<string>(){
+            //     "Bob", // 0
+            //     "Alice", // 1
+            //     "Michael", // 2
+            // };
+
+            // Console.WriteLine(string.Join(", ", TestList));
+
+            // TestList.Insert(3, "John");
+
+            // Console.WriteLine(string.Join(", ", TestList));
+            // Console.ReadKey();
+            // return;
+
             // DateTime startTime = new DateTime(2019, 7, 13);
             // DateTime endTime = DateTime.Now;
 

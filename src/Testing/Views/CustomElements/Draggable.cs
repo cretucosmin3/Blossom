@@ -75,10 +75,10 @@ public class Draggable : VisualElement
         dragPoint = args.Relative;
         isDragged = true;
 
-        Style.Border.Color = SKColors.Black;
-        Style.Border.Width = 2;
+        // Style.Border.Color = SKColors.Black;
+        // Style.Border.Width = 2;
 
-        Style.Shadow.Color = new(0, 0, 0, 35);
+        // Style.Shadow.Color = new(0, 0, 0, 35);
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Hand);
     }
@@ -92,10 +92,10 @@ public class Draggable : VisualElement
 
         isDragged = false;
 
-        Style.Shadow.Color = new(0, 0, 0, 0);
+        // Style.Shadow.Color = new(0, 0, 0, 0);
 
-        Style.Border.Color = new(0, 0, 0, 255);
-        Style.Border.Width = 1f;
+        // Style.Border.Color = new(0, 0, 0, 255);
+        // Style.Border.Width = 1f;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         OnDropped?.Invoke(this);

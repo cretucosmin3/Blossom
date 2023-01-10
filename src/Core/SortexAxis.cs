@@ -1,3 +1,4 @@
+using System.Net.Security;
 using System.Reflection.Metadata.Ecma335;
 using System.Net;
 using System.Collections;
@@ -10,7 +11,7 @@ namespace Blossom.Core;
 
 public class SortedAxis
 {
-    private struct SortedPositions
+    private class SortedPositions
     {
         public int Left;
         public int Right;
@@ -26,80 +27,158 @@ public class SortedAxis
         Bottom
     }
 
-    private readonly Dictionary<VisualElement, SortedPositions> SortIndexex = new();
+    private readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();
 
-    private readonly List<VisualElement> Lefts = new();
-    private readonly List<VisualElement> Rights = new();
-    private readonly List<VisualElement> Tops = new();
-    private readonly List<VisualElement> Bottoms = new();
+    public List<VisualElement> Lefts = new();
+    public List<VisualElement> Rights = new();
+    public List<VisualElement> Tops = new();
+    public List<VisualElement> Bottoms = new();
 
     public void AddElement(VisualElement element)
     {
-        SortIndexex.Add(element, new());
+        SortIndexes.Add(element, new()
+        {
+            Left = Lefts.Count,
+            Right = Rights.Count,
+            Top = Tops.Count,
+            Bottom = Bottoms.Count,
+        });
 
-        Lefts.Add(element);
-        Rights.Add(element);
-        Tops.Add(element);
-        Bottoms.Add(element);
+        Lefts.Insert(Lefts.Count, element);
+        Rights.Insert(Rights.Count, element);
+        Tops.Insert(Tops.Count, element);
+        Bottoms.Insert(Bottoms.Count, element);
+
+        Reposition(element);
+
+        element.TransformChanged += ElementMoved;
     }
 
     public void RemoveElement(VisualElement element)
     {
-        if (!SortIndexex.ContainsKey(element)) return;
+        if (!SortIndexes.ContainsKey(element)) return;
 
-        var Indexes = SortIndexex[element];
+        var Indexes = SortIndexes[element];
 
         Lefts.RemoveAt(Indexes.Left);
         Rights.RemoveAt(Indexes.Right);
         Tops.RemoveAt(Indexes.Top);
         Bottoms.RemoveAt(Indexes.Bottom);
 
-        SortIndexex.Remove(element);
+        SortIndexes.Remove(element);
+
+        element.TransformChanged -= ElementMoved;
     }
 
-    public void ApplySort()
+    private void ElementMoved(VisualElement element, Transform transform)
     {
-        if (SortIndexex.Count > 0) return;
-
-        Lefts.Sort((p, q) => p.Transform.X.CompareTo(q.Transform.X));
-        Rights.Sort((p, q) => p.Transform.Right.CompareTo(q.Transform.Right));
-        Tops.Sort((p, q) => p.Transform.Top.CompareTo(q.Transform.Top));
-        Bottoms.Sort((p, q) => p.Transform.Bottom.CompareTo(q.Transform.Bottom));
+        Reposition(element);
     }
 
-    public void Reposition(VisualElement element)
+    private void Reposition(VisualElement element)
     {
-        var Indexes = SortIndexex[element];
-    }
+        var Indexes = SortIndexes[element];
 
-    private Direction FindDirections(VisualElement element)
-    {
-        Direction directions = default;
-
-        var Indexes = SortIndexex[element];
-
+        // Left border moved left
         bool movedLeft = HasIndex(Lefts, Indexes.Left - 1) &&
-            element.Transform.X < Lefts[Indexes.Left - 1].Transform.X;
+            element.Transform.Left < Lefts[Indexes.Left - 1].Transform.Left;
 
+        // Left border moved right
+        bool movedLeftReversed = HasIndex(Lefts, Indexes.Left + 1) &&
+            element.Transform.Left > Lefts[Indexes.Left + 1].Transform.Left;
+
+        // Right border moved right
         bool movedRight = HasIndex(Rights, Indexes.Right + 1) &&
             element.Transform.Right > Rights[Indexes.Right + 1].Transform.Right;
 
-        bool movedUp = HasIndex(Rights, Indexes.Top - 1) &&
-            element.Transform.Top < Rights[Indexes.Top - 1].Transform.Top;
+        // Right border moved left
+        bool movedRightReversed = HasIndex(Rights, Indexes.Right - 1) &&
+            element.Transform.Right < Rights[Indexes.Right - 1].Transform.Right;
 
-        bool movedDown = HasIndex(Rights, Indexes.Bottom + 1) &&
-            element.Transform.Bottom > Rights[Indexes.Bottom - 1].Transform.Bottom;
+        // Top border moved up
+        // bool movedUp = firstTime || (HasIndex(Tops, Indexes.Top - 1) &&
+        //     element.Transform.Top < Tops[Indexes.Top - 1].Transform.Top);
 
-        return directions;
+        // Top border moved down
+        // bool movedUpR = firstTime || (!movedUp && HasIndex(Tops, Indexes.Top + 1) &&
+        //     element.Transform.Top > Tops[Indexes.Top + 1].Transform.Top);
+
+        // Bottom border moved down
+        // bool movedDown = firstTime || (HasIndex(Bottoms, Indexes.Bottom + 1) &&
+        //     element.Transform.Bottom > Bottoms[Indexes.Bottom + 1].Transform.Bottom);
+
+        // Bottom border moved up
+        // bool movedDownR = firstTime || (!movedDown && HasIndex(Bottoms, Indexes.Bottom - 1) &&
+        //     element.Transform.Bottom < Bottoms[Indexes.Bottom - 1].Transform.Bottom);
+
+        if (movedLeft)
+        {
+            int newIndex = Indexes.Left - 1;
+            while (newIndex >= 0 && element.Transform.Left < Lefts[newIndex].Transform.Left)
+            {
+                newIndex--;
+            }
+
+            newIndex++; // move back one position because we went too far
+            Lefts.RemoveAt(Indexes.Left);
+            Lefts.Insert(newIndex, element);
+            Indexes.Left = newIndex;
+        }
+        else if (movedLeftReversed)
+        {
+            int newIndex = Indexes.Left + 1;
+            while (newIndex < Lefts.Count && element.Transform.Left > Lefts[newIndex].Transform.Left)
+            {
+                newIndex++;
+            }
+            newIndex--; // move back one position because we went too far
+            Lefts.RemoveAt(Indexes.Left);
+            Lefts.Insert(newIndex, element);
+            Indexes.Left = newIndex;
+        }
+        else if (movedRight)
+        {
+            int newIndex = Indexes.Right + 1;
+            while (newIndex < Rights.Count && element.Transform.Right > Rights[newIndex].Transform.Right)
+            {
+                newIndex++;
+            }
+            newIndex--; // move back one position because we went too far
+            Rights.RemoveAt(Indexes.Right);
+            Rights.Insert(newIndex, element);
+            Indexes.Right = newIndex;
+        }
+        else if (movedRightReversed)
+        {
+            int newIndex = Indexes.Right - 1;
+            while (newIndex >= 0 && element.Transform.Right < Rights[newIndex].Transform.Right)
+            {
+                newIndex--;
+            }
+            newIndex++; // move back one position because we went too far
+            Rights.RemoveAt(Indexes.Right);
+            Rights.Insert(newIndex, element);
+            Indexes.Right = newIndex;
+        }
     }
 
-    private bool HasIndex(List<VisualElement> list, int index)
+    private static bool HasIndex(List<VisualElement> list, int index)
     {
         return index >= 0 && index < list.Count;
     }
 
+    public Rect GetBoundingRect()
+    {
+        return new Rect(
+            Lefts[0].Transform.X,
+            Tops[0].Transform.Y,
+            Rights.Last().Transform.Right,
+            Bottoms.Last().Transform.Bottom
+        );
+    }
+
     // public VisualElement[] GetNeighbours(VisualElement element)
     // {
-    //     throw NotImplementedException;
+
     // }
 }
