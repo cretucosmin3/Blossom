@@ -18,6 +18,9 @@ public abstract class VisualElement : IDisposable
     internal View ParentView { get; set; }
 
     private VisualElement _Parent = null;
+    private readonly SKPaint paint = new SKPaint();
+    private readonly SKPaint shadowPaint = new SKPaint();
+
     public VisualElement Parent
     {
         get => _Parent;
@@ -36,7 +39,7 @@ public abstract class VisualElement : IDisposable
     internal List<VisualElement> Children { get; set; } = new List<VisualElement>();
 
     internal event ForDispose OnDisposing;
-    internal event Action<Transform> TransformChanged;
+    internal event Action<VisualElement, Transform> TransformChanged;
     internal SKPoint TextPosition;
 
     private Transform _Transform = new Transform();
@@ -77,12 +80,7 @@ public abstract class VisualElement : IDisposable
         Children.Remove(child);
     }
 
-    private bool _Visible = true;
-    public bool Visible
-    {
-        get => _Visible;
-        set => _Visible = value;
-    }
+    public bool Visible { get; set; } = true;
 
     public bool CanRender
     {
@@ -162,9 +160,6 @@ public abstract class VisualElement : IDisposable
         }
     }
 
-    readonly SKPaint paint = new();
-    readonly SKPaint shadowPaint = new();
-
     internal void DrawBase()
     {
         SKRect rect = new SKRect(
@@ -174,7 +169,7 @@ public abstract class VisualElement : IDisposable
             Transform.Computed.Y + Transform.Computed.Height
         );
 
-        SKRoundRect roundRect = new();
+        SKRoundRect roundRect = new SKRoundRect();
 
         roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
@@ -183,7 +178,7 @@ public abstract class VisualElement : IDisposable
                 new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
 
-        if (Style.Shadow?.HasValidValues() == true)
+        if (Style.Shadow is not null && Style.Shadow.HasValidValues())
         {
             shadowPaint.Style = SKPaintStyle.Fill;
             shadowPaint.Color = Style.BackColor;
@@ -230,7 +225,7 @@ public abstract class VisualElement : IDisposable
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style != null && Text.Length > 0)
-            Style.Text.Paint.MeasureText(Text[..^1] + '|', ref TextBounds);
+            Style.Text.Paint.MeasureText(Text.Substring(0, Text.Length - 1) + '|', ref TextBounds);
     }
 
     internal void CalculateText()
@@ -278,14 +273,14 @@ public abstract class VisualElement : IDisposable
         TextPosition.Y += 2;
     }
 
-    private void ChangedTransform(Transform x)
+    private void ChangedTransform(Transform transform)
     {
         this.Transform.Evaluate();
         CalculateText();
-        TransformChanged?.Invoke(x);
+        TransformChanged?.Invoke(this, transform);
     }
 
-    private void ParentTransformChanged(Transform _)
+    private void ParentTransformChanged(VisualElement e, Transform t)
     {
         this.Transform.Evaluate();
         CalculateText();

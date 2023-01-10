@@ -10,6 +10,7 @@ namespace Blossom.Core
     public class ElementTree : IDisposable
     {
         private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
+        internal readonly SortedAxis BoundAxis = new();
 
         private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
             float.MinValue / 2f, float.MinValue / 2f,
@@ -40,7 +41,6 @@ namespace Blossom.Core
 
         public VisualElement FirstFromPoint(PointF point) =>
             FirstFromPoint(point.X, point.Y);
-
 
         public VisualElement FirstFromPoint(float x, float y)
         {
@@ -105,16 +105,24 @@ namespace Blossom.Core
 
             // Add element and tracker to the map
             Map.Add(element.Name, (element, tracker));
+            BoundAxis.AddElement(element);
 
+            element.Transform.OnChanged += OnTransformChanged;
             element.OnDisposing += Element_OnDispose;
         }
 
-        public void RemoveElement(VisualElement e)
+        public void RemoveElement(VisualElement element)
         {
-            Map.Remove(e.Name);
+            Map.Remove(element.Name);
+            BoundAxis.RemoveElement(element);
 
             // Remove children if any
-            e.Children.ForEach(child => child.Dispose());
+            element.Children.ForEach(child => child.Dispose());
+        }
+
+        private void OnTransformChanged(Transform transform)
+        {
+
         }
 
         private void Element_OnDispose(VisualElement e)
