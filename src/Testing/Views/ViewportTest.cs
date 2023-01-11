@@ -15,10 +15,10 @@ public class ViewportTest : View
 
     public override void Main()
     {
-        for (int i = 0; i < 1000; i++)
+        for (int i = 0; i < 15; i++)
         {
-            float x = Random.Shared.Next(300, 700);
-            float y = Random.Shared.Next(300, 700);
+            float x = Random.Shared.Next(150, 750);
+            float y = Random.Shared.Next(100, 550);
 
             var newEl = new Draggable()
             {
@@ -80,6 +80,23 @@ public class ViewportTest : View
         foreach (var (el, indx) in Elements.BoundAxis.SortIndexes)
         {
             el.Text = $"{indx.Right}";
+        }
+
+        var neighbours = Elements.BoundAxis.GetNeighbours(element);
+
+        foreach (var item in Elements.Items)
+        {
+            if (item.Name != element.Name)
+            {
+                item.Style.Border.Color = new(0, 0, 0, 255);
+                item.Style.Border.Width = 1;
+            }
+        }
+
+        foreach (var neighbour in neighbours)
+        {
+            neighbour.Style.Border.Color = SKColors.Purple;
+            neighbour.Style.Border.Width = 3;
         }
 
         BoundingArea.Transform.X = boundingRect.X - 10;
