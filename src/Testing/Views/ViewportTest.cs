@@ -9,27 +9,21 @@ namespace Blossom.Testing;
 
 public class ViewportTest : View
 {
-    private VisualElement TestingElement;
-    private List<VisualElement> ListToTest = new();
-
-    private VisualElement Top;
-    private VisualElement Left;
-    private VisualElement Right;
-    private VisualElement Bottom;
+    private AreaMarker BoundingArea;
 
     public ViewportTest() : base("Viewport Test") { }
 
     public override void Main()
     {
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 1000; i++)
         {
-            float x = Random.Shared.Next(100, 500);
-            float y = Random.Shared.Next(100, 500);
+            float x = Random.Shared.Next(300, 700);
+            float y = Random.Shared.Next(300, 700);
 
             var newEl = new Draggable()
             {
                 Name = $"e{i}",
-                Transform = new(x, y, Random.Shared.Next(120, 160), 80)
+                Transform = new(x, y, Random.Shared.Next(120, 160), 65)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
@@ -41,6 +35,17 @@ public class ViewportTest : View
 
             AddElement(newEl);
         }
+
+        BoundingArea = new()
+        {
+            Name = "Bounding Area",
+            Transform = new(150, 150, 100, 100)
+            {
+                Anchor = Anchor.Left | Anchor.Top
+            }
+        };
+
+        AddElement(BoundingArea);
     }
 
     public void ElementDropped(VisualElement element)
@@ -48,14 +53,14 @@ public class ViewportTest : View
         var max = Elements.BoundAxis.SortIndexes.Count;
         foreach (var (el, indx) in Elements.BoundAxis.SortIndexes)
         {
-            el.Text = $"{indx.Left}";
+            el.Text = $"{indx.Right}";
 
-            if (indx.Left == 0)
+            if (indx.Right == 0)
             {
                 el.Style.Border.Color = SKColors.Red;
                 el.Style.Border.Width = 3;
             }
-            else if (indx.Left == max - 1)
+            else if (indx.Right == max - 1)
             {
                 el.Style.Border.Color = SKColors.Green;
                 el.Style.Border.Width = 3;
@@ -70,9 +75,16 @@ public class ViewportTest : View
 
     public void ElementDragged(VisualElement element)
     {
+        var boundingRect = Elements.BoundAxis.GetBoundingRect();
+
         foreach (var (el, indx) in Elements.BoundAxis.SortIndexes)
         {
-            el.Text = $"{indx.Left}";
+            el.Text = $"{indx.Right}";
         }
+
+        BoundingArea.Transform.X = boundingRect.X - 10;
+        BoundingArea.Transform.Y = boundingRect.Y - 10;
+        BoundingArea.Transform.Width = boundingRect.Width + 20;
+        BoundingArea.Transform.Height = boundingRect.Height + 20;
     }
 }

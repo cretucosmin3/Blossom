@@ -105,7 +105,9 @@ namespace Blossom.Core
 
             // Add element and tracker to the map
             Map.Add(element.Name, (element, tracker));
-            BoundAxis.AddElement(element);
+
+            if (element.Name != "Bounding Area")
+                BoundAxis.AddElement(element);
 
             element.Transform.OnChanged += OnTransformChanged;
             element.OnDisposing += Element_OnDispose;

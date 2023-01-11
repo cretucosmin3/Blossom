@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using Blossom.Core.Visual;
 using System.Linq;
+using System.Diagnostics;
 
 namespace Blossom.Core;
 
@@ -19,13 +20,8 @@ public class SortedAxis
         public int Bottom;
     }
 
-    private enum Direction
-    {
-        Left,
-        Right,
-        Top,
-        Bottom
-    }
+
+    private readonly Stopwatch performanceTracker = new Stopwatch();
 
     public readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();
 
@@ -75,8 +71,11 @@ public class SortedAxis
         Reposition(element);
     }
 
+    private float averageTick = 0;
     private void Reposition(VisualElement element)
     {
+        performanceTracker.Restart();
+
         var Indexes = SortIndexes[element];
 
         // Left border moved left
@@ -100,7 +99,7 @@ public class SortedAxis
             element.Transform.Top < Tops[Indexes.Top - 1].Transform.Top;
 
         // Top border moved down
-        bool movedUpR = !movedUp && HasIndex(Tops, Indexes.Top + 1) &&
+        bool movedUpReversed = !movedUp && HasIndex(Tops, Indexes.Top + 1) &&
             element.Transform.Top > Tops[Indexes.Top + 1].Transform.Top;
 
         // Bottom border moved down
@@ -108,58 +107,73 @@ public class SortedAxis
             element.Transform.Bottom > Bottoms[Indexes.Bottom + 1].Transform.Bottom;
 
         // Bottom border moved up
-        bool movedDownR = !movedDown && HasIndex(Bottoms, Indexes.Bottom - 1) &&
+        bool movedDownReversed = !movedDown && HasIndex(Bottoms, Indexes.Bottom - 1) &&
             element.Transform.Bottom < Bottoms[Indexes.Bottom - 1].Transform.Bottom;
 
-        if (movedLeft)
+        if (movedLeft || movedLeftReversed)
         {
-            Indexes.Left = FindAndShiftPositions(element, Lefts, Indexes.Left, false);
-        }
-        else if (movedLeftReversed)
-        {
-            Indexes.Left = FindAndShiftPositions(element, Lefts, Indexes.Left, true);
+            Indexes.Left = FindAndShiftPositions(
+                element, Lefts,
+                e => e.Transform.Left,
+                (e, val) => e.Left += val,
+                Indexes.Left, !movedLeft && movedLeftReversed);
         }
 
-        // if (movedRight)
-        //     Indexes.Right = FindAndShiftPositions(element, Rights, Indexes.Right, true);
+        if (movedRight || movedRightReversed)
+        {
+            Indexes.Right = FindAndShiftPositions(
+                element, Rights,
+                e => e.Transform.Right,
+                (e, val) => e.Right += val,
+                Indexes.Right,
+                movedRight || !movedRightReversed);
+        }
 
-        // else if (movedRight)
-        // {
-        //     int newIndex = Indexes.Right + 1;
-        //     while (newIndex < Rights.Count && element.Transform.Right > Rights[newIndex].Transform.Right)
-        //     {
-        //         newIndex++;
-        //     }
-        //     newIndex--; // move back one position because we went too far
-        //     Rights.RemoveAt(Indexes.Right);
-        //     Rights.Insert(newIndex, element);
-        //     Indexes.Right = newIndex;
-        // }
-        // else if (movedRightReversed)
-        // {
-        //     int newIndex = Indexes.Right - 1;
-        //     while (newIndex >= 0 && element.Transform.Right < Rights[newIndex].Transform.Right)
-        //     {
-        //         newIndex--;
-        //     }
-        //     newIndex++; // move back one position because we went too far
-        //     Rights.RemoveAt(Indexes.Right);
-        //     Rights.Insert(newIndex, element);
-        //     Indexes.Right = newIndex;
-        // }
+        if (movedUp || movedUpReversed)
+        {
+            Indexes.Top = FindAndShiftPositions(
+                element, Tops,
+                e => e.Transform.Top,
+                (e, val) => e.Top += val,
+                Indexes.Top, !movedUp && movedUpReversed);
+        }
+
+        if (movedDown || movedDownReversed)
+        {
+            Indexes.Bottom = FindAndShiftPositions(
+                element, Bottoms,
+                e => e.Transform.Bottom,
+                (e, val) => e.Bottom += val,
+                Indexes.Bottom, movedDown && !movedDownReversed);
+        }
+
+        performanceTracker.Stop();
+
+        if (averageTick == 0)
+            averageTick = performanceTracker.ElapsedMilliseconds;
+
+        averageTick += performanceTracker.ElapsedMilliseconds;
+        averageTick /= 2f;
+
+        Console.WriteLine($"Reposition in {averageTick}ms");
     }
 
-    private int FindAndShiftPositions(VisualElement e, List<VisualElement> list, int currentIndex, bool linear = false)
+    private int FindAndShiftPositions(
+        VisualElement e,
+        List<VisualElement> list,
+        Func<VisualElement, float> propertySelector,
+        Action<SortedPositions, int> positionAttributor,
+        int currentIndex, bool linear = false)
     {
         int newIndex = currentIndex + (linear ? 1 : -1);
 
         Func<bool> whileCheck = linear ?
-        () => newIndex < list.Count && e.Transform.Left > list[newIndex].Transform.Left :
-        () => newIndex >= 0 && e.Transform.Left < list[newIndex].Transform.Left;
+        () => newIndex < list.Count && propertySelector(e) > propertySelector(list[newIndex]) :
+        () => newIndex >= 0 && propertySelector(e) < propertySelector(list[newIndex]);
 
         while (whileCheck())
         {
-            SortIndexes[list[newIndex]].Left += linear ? -1 : 1;
+            positionAttributor(SortIndexes[list[newIndex]], linear ? -1 : 1);
             newIndex += linear ? 1 : -1;
         }
 
@@ -179,8 +193,8 @@ public class SortedAxis
         return new Rect(
             Lefts[0].Transform.X,
             Tops[0].Transform.Y,
-            Rights.Last().Transform.Right,
-            Bottoms.Last().Transform.Bottom
+            Rights.Last().Transform.Right - Lefts[0].Transform.X,
+            Bottoms.Last().Transform.Bottom - Tops[0].Transform.Y
         );
     }
 
