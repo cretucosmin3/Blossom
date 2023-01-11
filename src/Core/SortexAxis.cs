@@ -88,58 +88,41 @@ public class SortedAxis
             element.Transform.Left > Lefts[Indexes.Left + 1].Transform.Left;
 
         // Right border moved right
-        // bool movedRight = HasIndex(Rights, Indexes.Right + 1) &&
-        //     element.Transform.Right > Rights[Indexes.Right + 1].Transform.Right;
+        bool movedRight = HasIndex(Rights, Indexes.Right + 1) &&
+            element.Transform.Right > Rights[Indexes.Right + 1].Transform.Right;
 
-        // // Right border moved left
-        // bool movedRightReversed = HasIndex(Rights, Indexes.Right - 1) &&
-        //     element.Transform.Right < Rights[Indexes.Right - 1].Transform.Right;
+        // Right border moved left
+        bool movedRightReversed = HasIndex(Rights, Indexes.Right - 1) &&
+            element.Transform.Right < Rights[Indexes.Right - 1].Transform.Right;
 
         // Top border moved up
-        // bool movedUp = firstTime || (HasIndex(Tops, Indexes.Top - 1) &&
-        //     element.Transform.Top < Tops[Indexes.Top - 1].Transform.Top);
+        bool movedUp = HasIndex(Tops, Indexes.Top - 1) &&
+            element.Transform.Top < Tops[Indexes.Top - 1].Transform.Top;
 
         // Top border moved down
-        // bool movedUpR = firstTime || (!movedUp && HasIndex(Tops, Indexes.Top + 1) &&
-        //     element.Transform.Top > Tops[Indexes.Top + 1].Transform.Top);
+        bool movedUpR = !movedUp && HasIndex(Tops, Indexes.Top + 1) &&
+            element.Transform.Top > Tops[Indexes.Top + 1].Transform.Top;
 
         // Bottom border moved down
-        // bool movedDown = firstTime || (HasIndex(Bottoms, Indexes.Bottom + 1) &&
-        //     element.Transform.Bottom > Bottoms[Indexes.Bottom + 1].Transform.Bottom);
+        bool movedDown = HasIndex(Bottoms, Indexes.Bottom + 1) &&
+            element.Transform.Bottom > Bottoms[Indexes.Bottom + 1].Transform.Bottom;
 
         // Bottom border moved up
-        // bool movedDownR = firstTime || (!movedDown && HasIndex(Bottoms, Indexes.Bottom - 1) &&
-        //     element.Transform.Bottom < Bottoms[Indexes.Bottom - 1].Transform.Bottom);
+        bool movedDownR = !movedDown && HasIndex(Bottoms, Indexes.Bottom - 1) &&
+            element.Transform.Bottom < Bottoms[Indexes.Bottom - 1].Transform.Bottom;
 
         if (movedLeft)
         {
-            int newIndex = Indexes.Left - 1;
-            while (newIndex >= 0 && element.Transform.Left < Lefts[newIndex].Transform.Left)
-            {
-                SortIndexes[Lefts[newIndex]].Left++;
-                newIndex--;
-            }
-
-            newIndex++;
-            Lefts.RemoveAt(Indexes.Left);
-            Lefts.Insert(newIndex, element);
-            Indexes.Left = newIndex;
+            Indexes.Left = FindAndShiftPositions(element, Lefts, Indexes.Left, false);
         }
         else if (movedLeftReversed)
         {
-            int newIndex = Indexes.Left + 1;
-            while (newIndex < Lefts.Count && element.Transform.Left > Lefts[newIndex].Transform.Left)
-            {
-                SortIndexes[Lefts[newIndex]].Left--;
-                newIndex++;
-            }
-
-            newIndex--;
-
-            Lefts.RemoveAt(Indexes.Left);
-            Lefts.Insert(newIndex, element);
-            Indexes.Left = newIndex;
+            Indexes.Left = FindAndShiftPositions(element, Lefts, Indexes.Left, true);
         }
+
+        // if (movedRight)
+        //     Indexes.Right = FindAndShiftPositions(element, Rights, Indexes.Right, true);
+
         // else if (movedRight)
         // {
         //     int newIndex = Indexes.Right + 1;
@@ -164,6 +147,26 @@ public class SortedAxis
         //     Rights.Insert(newIndex, element);
         //     Indexes.Right = newIndex;
         // }
+    }
+
+    private int FindAndShiftPositions(VisualElement e, List<VisualElement> list, int currentIndex, bool linear = false)
+    {
+        int newIndex = currentIndex + (linear ? 1 : -1);
+
+        Func<bool> whileCheck = linear ?
+        () => newIndex < list.Count && e.Transform.Left > list[newIndex].Transform.Left :
+        () => newIndex >= 0 && e.Transform.Left < list[newIndex].Transform.Left;
+
+        while (whileCheck())
+        {
+            SortIndexes[list[newIndex]].Left += linear ? -1 : 1;
+            newIndex += linear ? 1 : -1;
+        }
+
+        newIndex += linear ? -1 : 1;
+        list.RemoveAt(currentIndex);
+        list.Insert(newIndex, e);
+        return newIndex;
     }
 
     private static bool HasIndex(List<VisualElement> list, int index)
