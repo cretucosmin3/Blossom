@@ -21,7 +21,7 @@ public class ViewportTest : View
 
     public override void Main()
     {
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 5; i++)
         {
             float x = Random.Shared.Next(100, 500);
             float y = Random.Shared.Next(100, 500);
@@ -29,47 +29,50 @@ public class ViewportTest : View
             var newEl = new Draggable()
             {
                 Name = $"e{i}",
-                Transform = new(x, y, Random.Shared.Next(120, 220), 120)
+                Transform = new(x, y, Random.Shared.Next(120, 160), 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
                 Text = $"{i}"
             };
 
-            newEl.OnDropped += ElementDragged;
+            newEl.OnDragged += ElementDragged;
+            newEl.OnDropped += ElementDropped;
 
             AddElement(newEl);
         }
     }
 
-    public void ElementDragged(VisualElement element)
+    public void ElementDropped(VisualElement element)
     {
-        // Rect BoundingRect = this.Elements.BoundAxis.GetBoundingRect();
-
-        for (int i = 0; i < Elements.BoundAxis.Lefts.Count; i++)
+        var max = Elements.BoundAxis.SortIndexes.Count;
+        foreach (var (el, indx) in Elements.BoundAxis.SortIndexes)
         {
-            var leftElement = Elements.BoundAxis.Lefts[i];
-            leftElement.Text = $"{leftElement.Name} : {i}";
+            el.Text = $"{indx.Left}";
 
-            leftElement.Style.Border.Width = 1f;
-            leftElement.Style.Border.Color = new(0, 0, 0, 255);
-
-            if (i == 0)
+            if (indx.Left == 0)
             {
-                leftElement.Style.Border.Color = SKColors.Red;
-                leftElement.Style.Border.Width = 3;
+                el.Style.Border.Color = SKColors.Red;
+                el.Style.Border.Width = 3;
             }
-            else if (i == Elements.BoundAxis.Lefts.Count - 1)
+            else if (indx.Left == max - 1)
             {
-                leftElement.Style.Border.Color = SKColors.Green;
-                leftElement.Style.Border.Width = 3;
+                el.Style.Border.Color = SKColors.Green;
+                el.Style.Border.Width = 3;
+            }
+            else
+            {
+                el.Style.Border.Width = 1f;
+                el.Style.Border.Color = new(0, 0, 0, 255);
             }
         }
+    }
 
-        // for (int i = 1; i < this.Elements.BoundAxis.Tops.Count; i++)
-        // {
-        //     var rightElement = this.Elements.BoundAxis.Tops[i];
-        //     rightElement.Text += $" {i}";
-        // }
+    public void ElementDragged(VisualElement element)
+    {
+        foreach (var (el, indx) in Elements.BoundAxis.SortIndexes)
+        {
+            el.Text = $"{indx.Left}";
+        }
     }
 }

@@ -11,7 +11,7 @@ namespace Blossom.Core;
 
 public class SortedAxis
 {
-    private class SortedPositions
+    public class SortedPositions
     {
         public int Left;
         public int Right;
@@ -27,7 +27,7 @@ public class SortedAxis
         Bottom
     }
 
-    private readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();
+    public readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();
 
     public List<VisualElement> Lefts = new();
     public List<VisualElement> Rights = new();
@@ -116,6 +116,7 @@ public class SortedAxis
             int newIndex = Indexes.Left - 1;
             while (newIndex >= 0 && element.Transform.Left < Lefts[newIndex].Transform.Left)
             {
+                SortIndexes[Lefts[newIndex]].Left++;
                 newIndex--;
             }
 
@@ -129,6 +130,7 @@ public class SortedAxis
             int newIndex = Indexes.Left + 1;
             while (newIndex < Lefts.Count && element.Transform.Left > Lefts[newIndex].Transform.Left)
             {
+                SortIndexes[Lefts[newIndex]].Left--;
                 newIndex++;
             }
 
