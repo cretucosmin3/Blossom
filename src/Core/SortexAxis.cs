@@ -71,10 +71,10 @@ public class SortedAxis
         Reposition(element);
     }
 
-    private float averageTick = 0;
     private void Reposition(VisualElement element)
     {
-        performanceTracker.Restart();
+        if (!SortIndexes.ContainsKey(element))
+            return;
 
         var Indexes = SortIndexes[element];
 
@@ -146,16 +146,6 @@ public class SortedAxis
                 (e, val) => e.Bottom += val,
                 Indexes.Bottom, movedDown && !movedDownReversed);
         }
-
-        performanceTracker.Stop();
-
-        if (averageTick == 0)
-            averageTick = performanceTracker.ElapsedMilliseconds;
-
-        averageTick += performanceTracker.ElapsedMilliseconds;
-        averageTick /= 2f;
-
-        Console.WriteLine($"Reposition in {averageTick}ms");
     }
 
     private int FindAndShiftPositions(
@@ -198,8 +188,36 @@ public class SortedAxis
         );
     }
 
-    // public VisualElement[] GetNeighbours(VisualElement element)
-    // {
+    public VisualElement[] GetNeighbours(VisualElement element)
+    {
+        HashSet<VisualElement> Result = new();
 
-    // }
+        var Indexes = SortIndexes[element];
+
+        if (HasIndex(Lefts, Indexes.Left - 1) && !Result.Contains(Lefts[Indexes.Left - 1]))
+            Result.Add(Lefts[Indexes.Left - 1]);
+
+        if (HasIndex(Lefts, Indexes.Left + 1) && !Result.Contains(Lefts[Indexes.Left + 1]))
+            Result.Add(Lefts[Indexes.Left + 1]);
+
+        if (HasIndex(Rights, Indexes.Right - 1) && !Result.Contains(Rights[Indexes.Right - 1]))
+            Result.Add(Rights[Indexes.Right - 1]);
+
+        if (HasIndex(Rights, Indexes.Right + 1) && !Result.Contains(Rights[Indexes.Right + 1]))
+            Result.Add(Rights[Indexes.Right + 1]);
+
+        if (HasIndex(Tops, Indexes.Top - 1) && !Result.Contains(Tops[Indexes.Top - 1]))
+            Result.Add(Tops[Indexes.Top - 1]);
+
+        if (HasIndex(Tops, Indexes.Top + 1) && !Result.Contains(Tops[Indexes.Top + 1]))
+            Result.Add(Tops[Indexes.Top + 1]);
+
+        if (HasIndex(Bottoms, Indexes.Bottom - 1) && !Result.Contains(Bottoms[Indexes.Bottom - 1]))
+            Result.Add(Bottoms[Indexes.Bottom - 1]);
+
+        if (HasIndex(Bottoms, Indexes.Bottom + 1) && !Result.Contains(Bottoms[Indexes.Bottom + 1]))
+            Result.Add(Bottoms[Indexes.Bottom + 1]);
+
+        return Result.ToArray();
+    }
 }
