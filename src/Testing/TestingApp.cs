@@ -11,23 +11,20 @@ namespace Blossom.Testing
         // private readonly PrettyUi BrowserView;
         // private readonly LoadView LoadView;
         // private readonly AnchorsView AnchorsView;
-        private readonly ViewportTest ViewportTest;
+        // private readonly ViewportTest ViewportTest;
+        private readonly GridTest GridTest = new GridTest();
 
         public TestingApplication()
         {
             this.Events.Access = EventAccess.Keyboard;
 
-            // BrowserView = new PrettyUi();
-            // LoadView = new LoadView();
-            // AnchorsView = new AnchorsView();
-            ViewportTest = new ViewportTest();
-
             // AddView(BrowserView);
             // AddView(AnchorsView);
             // AddView(LoadView);
-            AddView(ViewportTest);
+            // AddView(ViewportTest);
+            AddView(GridTest);
 
-            SetActiveView(ViewportTest);
+            SetActiveView(GridTest);
         }
     }
 }

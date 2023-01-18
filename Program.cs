@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Blossom
 {
-    internal class BlossomEntry
+    internal static class BlossomEntry
     {
         [DllImport("kernel32.dll")]
         static extern IntPtr GetConsoleWindow();
@@ -31,102 +31,8 @@ namespace Blossom
         private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
         private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
-        public static int GetHash(int[] values)
-        {
-            // Create a hash code based on the values in the array
-            int hash = 17;
-            foreach (int value in values)
-            {
-                hash = hash * 23 + value.GetHashCode();
-            }
-            return hash;
-        }
-
-        public static float GetProcentageDifference(float a, float b)
-        {
-            return (a - b) / b;
-        }
-
-        public static int ExtractPatternKey(float[] values, float alpha)
-        {
-            float[] procentages = new float[values.Length];
-
-            procentages[0] = GetProcentageDifference(values[0], values[1]);
-            for (int i = 1; i < values.Length; i++)
-            {
-                procentages[i] = GetProcentageDifference(values[i], values[i - 1]);
-            }
-
-            int[] normalized = NormalizeArray(procentages, 0, alpha);
-
-            return GetHash(normalized);
-        }
-
-        public static int[] NormalizeArray(float[] values, float minValue, float maxValue)
-        {
-            float arrayMin = values.Min();
-            float arrayMax = values.Max();
-
-            float arrayRange = arrayMax - arrayMin;
-            float outputRange = maxValue - minValue;
-            int[] normalizedValues = new int[values.Length];
-
-            for (int i = 0; i < values.Length; i++)
-            {
-                var value = ((values[i] - arrayMin) / arrayRange) * outputRange + minValue;
-                normalizedValues[i] = (int)Math.Round(value, MidpointRounding.ToZero); ;
-            }
-
-            return normalizedValues;
-        }
-
-        public static int BytesOf(object obj)
-        {
-            return Marshal.SizeOf(obj);
-        }
-
         static void Main(string[] args)
         {
-            // List<string> TestList = new List<string>(){
-            //     "Bob", // 0
-            //     "Alice", // 1
-            //     "Michael", // 2
-            // };
-
-            // Console.WriteLine(string.Join(", ", TestList));
-
-            // TestList.Insert(3, "John");
-
-            // Console.WriteLine(string.Join(", ", TestList));
-            // Console.ReadKey();
-            // return;
-
-            // DateTime startTime = new DateTime(2019, 7, 13);
-            // DateTime endTime = DateTime.Now;
-
-            // TimeSpan difference = endTime - startTime;
-            // var years = difference.Days / 365d;
-            // var restYears = years - Math.Truncate(years);
-            // var months = restYears * 12;
-            // var restMonths = months - Math.Truncate(months);
-            // var days = restMonths * 30;
-            // var restDays = days - Math.Truncate(days);
-            // var hours = restDays * 24;
-            // var restHours = hours - Math.Truncate(hours);
-            // var minutes = restHours * 60;
-
-            // Console.WriteLine($"{(int)years} years, {(int)months} months, {(int)days} days, {(int)hours} hours, {(int)minutes} minutes");
-
-            // Console.ReadKey();
-            // return;
-
-            // Hide console
-            // var consoleHnd = GetConsoleWindow();
-            // NativeMethods.FreeConsole();
-
-            // SendMessage(consoleHnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            // ShowWindow(consoleHnd, 0);
-
             Log.Info(_appName);
             Log.Info(_appPath);
             Log.Info(_appDataPath);
@@ -134,13 +40,9 @@ namespace Blossom
             Log.Info(_appDataPathLog);
             Log.Info(_appDataPathScreenshot);
 
-            AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-            {
-                Log.Debug("Closing");
-            };
+            AppDomain.CurrentDomain.ProcessExit += (sender, e) => Log.Debug("Closing");
 
             Browser.Initialize();
-
             Environment.Exit(0);
         }
 
@@ -264,47 +166,5 @@ namespace Blossom
         // 	ImageWriter imageWriter = new();
         // 	imageWriter.WritePng(image.ToArray(), w, h, ColorComponents.RedGreenBlueAlpha, File.OpenWrite(name));
         // }
-    }
-
-    public static class ObjectSizeCalculator
-    {
-        public static int CalculateSize(object obj)
-        {
-            if (obj == null)
-                return 0;
-
-            if (obj is string)
-                return Encoding.UTF8.GetByteCount((string)obj);
-            else if (obj is ValueType)
-                return Marshal.SizeOf(obj);
-
-            return CalculateSizeInternal(obj);
-        }
-
-        private static int CalculateSizeInternal(object obj)
-        {
-            int size = 0;
-            var props = obj.GetType().GetProperties();
-            foreach (var prop in props)
-            {
-                object value = prop.GetValue(obj);
-                if (value == null)
-                    continue;
-
-                if (value is string)
-                {
-                    size += Encoding.UTF8.GetByteCount((string)value);
-                }
-                else if (value is ValueType)
-                {
-                    size += Marshal.SizeOf(value);
-                }
-                else
-                {
-                    size += CalculateSizeInternal(value);
-                }
-            }
-            return size;
-        }
     }
 }
