@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using SkiaSharp;
@@ -79,6 +80,7 @@ public class Draggable : VisualElement
         Style.Border.Width = 2;
 
         Style.Shadow.Color = new(0, 0, 0, 35);
+        Style.BackColor = SKColors.SkyBlue;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Hand);
     }
@@ -96,6 +98,8 @@ public class Draggable : VisualElement
 
         Style.Border.Color = new(0, 0, 0, 255);
         Style.Border.Width = 1f;
+
+        Style.BackColor = new(235, 235, 235, 255);
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         OnDropped?.Invoke(this);

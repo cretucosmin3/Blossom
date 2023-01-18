@@ -36,7 +36,7 @@ public class Transform
 
     private readonly Rect ComputedTransform = new(0, 0, 0, 0);
     public Rect Computed { get => ComputedTransform; }
-    public Rect Local { get; private set; } = new Rect(0, 0, 0, 0);
+    public Rect Local { get; } = new Rect(0, 0, 0, 0);
 
     public bool FixedHeight { get; set; } = false;
     public bool FixedWidth { get; set; } = false;
@@ -298,40 +298,5 @@ public class Transform
     {
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
-    }
-}
-
-public class Rect
-{
-    private System.Drawing.RectangleF _Rect;
-    public System.Drawing.RectangleF RectF => _Rect;
-
-    public float X
-    {
-        get => _Rect.X;
-        set => _Rect.X = value;
-    }
-
-    public float Y
-    {
-        get => _Rect.Y;
-        set => _Rect.Y = value;
-    }
-
-    public float Width
-    {
-        get => _Rect.Width;
-        set => _Rect.Width = value;
-    }
-
-    public float Height
-    {
-        get => _Rect.Height;
-        set => _Rect.Height = value;
-    }
-
-    public Rect(float x, float y, float width, float height)
-    {
-        _Rect = new System.Drawing.RectangleF(x, y, width, height);
     }
 }

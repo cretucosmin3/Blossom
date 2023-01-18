@@ -54,8 +54,6 @@ namespace Blossom.Core
             }
 
             return null;
-            // int maxLayer = components.Max(t => t.Element.Layer);
-            // return components.Find(t => t.Element.Layer == maxLayer).Element;
         }
 
         public VisualElement FirstFromQuad(RectangleF quad)
@@ -109,7 +107,6 @@ namespace Blossom.Core
             if (element.Name != "Bounding Area")
                 BoundAxis.AddElement(element);
 
-            element.Transform.OnChanged += OnTransformChanged;
             element.OnDisposing += Element_OnDispose;
         }
 
@@ -117,14 +114,6 @@ namespace Blossom.Core
         {
             Map.Remove(element.Name);
             BoundAxis.RemoveElement(element);
-
-            // Remove children if any
-            element.Children.ForEach(child => child.Dispose());
-        }
-
-        private void OnTransformChanged(Transform transform)
-        {
-
         }
 
         private void Element_OnDispose(VisualElement e)

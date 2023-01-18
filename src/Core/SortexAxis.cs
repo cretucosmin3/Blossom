@@ -22,6 +22,7 @@ public class SortedAxis
 
 
     private readonly Stopwatch performanceTracker = new Stopwatch();
+    private readonly object lockObj = new();
 
     public readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();
 
@@ -68,7 +69,10 @@ public class SortedAxis
 
     private void ElementMoved(VisualElement element, Transform transform)
     {
-        Reposition(element);
+        lock (lockObj)
+        {
+            Reposition(element);
+        }
     }
 
     private void Reposition(VisualElement element)
@@ -180,12 +184,15 @@ public class SortedAxis
 
     public Rect GetBoundingRect()
     {
-        return new Rect(
-            Lefts[0].Transform.X,
-            Tops[0].Transform.Y,
-            Rights.Last().Transform.Right - Lefts[0].Transform.X,
-            Bottoms.Last().Transform.Bottom - Tops[0].Transform.Y
-        );
+        lock (lockObj)
+        {
+            return new Rect(
+                Lefts[0].Transform.X,
+                Tops[0].Transform.Y,
+                Rights.Last().Transform.Right - Lefts[0].Transform.X,
+                Bottoms.Last().Transform.Bottom - Tops[0].Transform.Y
+            );
+        }
     }
 
     public VisualElement[] GetNeighbours(VisualElement element)

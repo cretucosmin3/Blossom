@@ -6,11 +6,11 @@ using Blossom.Testing.CustomElements;
 
 namespace Blossom.Testing;
 
-public class ViewportTest : View
+public class GridTest : View
 {
     private AreaMarker BoundingArea;
 
-    public ViewportTest() : base("Viewport Test") { }
+    public GridTest() : base("Viewport Test") { }
 
     public override void Main()
     {
@@ -46,43 +46,6 @@ public class ViewportTest : View
         };
 
         AddElement(BoundingArea);
-
-        foreach (var n in Elements.Items)
-        {
-            if (n.Name != "Bounding Area")
-                SpinElementAnimation(n, 0.0005f, Random.Shared.Next(50, 150));
-        }
-    }
-
-    public void SpinElementAnimation(VisualElement eA, float Speed, float R)
-    {
-
-        new Thread(() =>
-        {
-            var x_0 = eA.Transform.X;
-            var y_0 = eA.Transform.Y;
-
-            Speed *= Random.Shared.NextSingle() > 0.5f ? 1 : -1;
-
-            Thread.Sleep(Random.Shared.Next(100, 1500));
-
-            while (true)
-            {
-                for (double t = 0; t < 2 * Math.PI; t += Speed)
-                {
-                    var x = (R * Math.Cos(t)) + x_0;
-                    var y = (R * Math.Sin(t)) + y_0;
-
-                    this.RenderChanges(() =>
-                    {
-                        eA.Transform.X = (float)x;
-                        eA.Transform.Y = (float)y;
-                    });
-                }
-
-                Thread.Sleep(1);
-            }
-        }).Start();
     }
 
     public void OnTransformChanged(VisualElement el, Transform tr)

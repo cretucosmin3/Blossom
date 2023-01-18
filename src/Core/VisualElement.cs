@@ -1,13 +1,14 @@
 using System.Numerics;
 using System.Text;
 using System;
-using System.Collections.Generic;
 using SkiaSharp;
-namespace Blossom.Core.Visual;
+using Blossom.Core.Visual;
 
-public abstract class VisualElement : IDisposable
+namespace Blossom.Core;
+
+public class VisualElement : IDisposable
 {
-    public abstract void AddedToView();
+    public virtual void AddedToView() { }
 
     public string Name { get; set; }
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
@@ -16,6 +17,7 @@ public abstract class VisualElement : IDisposable
 
     internal Application ParentApplication { get; set; }
     internal View ParentView { get; set; }
+    private ElementTree ChildElements { get; } = new();
 
     private VisualElement _Parent = null;
     private readonly SKPaint paint = new SKPaint();
@@ -36,7 +38,7 @@ public abstract class VisualElement : IDisposable
         }
     }
 
-    internal List<VisualElement> Children { get; set; } = new List<VisualElement>();
+    internal VisualElement[] Children { get => ChildElements.Items; }
 
     internal event ForDispose OnDisposing;
     internal event Action<VisualElement, Transform> TransformChanged;
@@ -71,13 +73,13 @@ public abstract class VisualElement : IDisposable
     public void AddChild(VisualElement child)
     {
         child.Parent = this;
-        Children.Add(child);
+        ChildElements.AddElement(ref child, ParentView);
     }
 
     public void RemoveChild(VisualElement child)
     {
         child.Parent = null;
-        Children.Remove(child);
+        ChildElements.RemoveElement(child);
     }
 
     public bool Visible { get; set; } = true;
@@ -313,7 +315,7 @@ public abstract class VisualElement : IDisposable
         OnDisposing?.Invoke(this);
 
         if (Parent != null)
-            Parent.Children.Remove(this);
+            Parent.ChildElements.RemoveElement(this);
 
         foreach (var Child in Children)
         {
