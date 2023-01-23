@@ -9,7 +9,7 @@ public class ShadowStyle : StyleProperty, IDisposable
     private float _OffsetY = 0;
     private float _SpreadX = 0;
     private float _SpreadY = 0;
-    private SkiaSharp.SKColor _Color = new(0, 0, 0, 0);
+    private SKColor _Color = new(0, 0, 0, 0);
 
     public ShadowStyle()
     {
@@ -26,9 +26,8 @@ public class ShadowStyle : StyleProperty, IDisposable
         RedoFilter();
     }
 
-    public SKPaint shadowPaint { get; private set; } = new SKPaint();
-
     public SKImageFilter Filter { get; private set; }
+    internal SKPaint ShadowPaint { get; } = new SKPaint();
 
     public float OffsetX
     {
@@ -78,7 +77,7 @@ public class ShadowStyle : StyleProperty, IDisposable
         }
     }
 
-    public SkiaSharp.SKColor Color
+    public SKColor Color
     {
         get { return _Color; }
         set
@@ -97,13 +96,13 @@ public class ShadowStyle : StyleProperty, IDisposable
 
     private void RedoFilter()
     {
-        this.Filter?.Dispose();
+        Filter?.Dispose();
 
         if (HasValidValues())
         {
-            this.Filter = SKImageFilter.CreateDropShadow(
-                    OffsetX, OffsetY, SpreadX, SpreadY, Color,
-                    null, null);
+            Filter = SKImageFilter.CreateDropShadow(
+                OffsetX, OffsetY, SpreadX, SpreadY, Color,
+                null, null);
         }
     }
 

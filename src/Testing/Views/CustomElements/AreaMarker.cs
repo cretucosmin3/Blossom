@@ -1,3 +1,4 @@
+using System;
 using Blossom.Core;
 using Blossom.Core.Visual;
 using SkiaSharp;
@@ -15,7 +16,7 @@ public class AreaMarker : VisualElement
             {
                 Roundness = 5,
                 Width = 2f,
-                Color = new(0, 0, 0, 255)
+                Color = new(0, 0, 0, 255),
             },
             Text = new()
             {

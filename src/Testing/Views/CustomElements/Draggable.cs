@@ -20,25 +20,31 @@ public class Draggable : VisualElement
     {
         Style = new()
         {
-            BackColor = new(235, 235, 235, 255),
+            BackColor = new(245, 245, 245, 255),
             IsClipping = false,
             Border = new()
             {
                 Roundness = 5,
-                Width = 1f,
-                Color = new(0, 0, 0, 255)
+                Width = 3f,
+                Color = new(0, 0, 0, 255),
+                PathEffect = SKPathEffect.CreateSum(
+                    SKPathEffect.CreateDiscrete(15f, 4f, 0),
+                    SKPathEffect.CreateDiscrete(25f, 2f, 0)
+                )
             },
             Shadow = new()
             {
                 Color = new(0, 0, 0, 0),
-                SpreadX = 4,
-                SpreadY = 4,
-                OffsetY = 6
+                SpreadX = 1,
+                SpreadY = 1,
+                OffsetY = 6,
+                OffsetX = 1
             },
             Text = new()
             {
-                Size = 20,
-                Color = SKColors.Black,
+                Size = 42,
+                Weight = 900,
+                Color = new(0, 0, 0, 150),
             }
         };
     }
@@ -65,6 +71,8 @@ public class Draggable : VisualElement
 
     private void DraggableMouseDown(object obj, MouseEventArgs args)
     {
+        isDragged = true;
+
         Transform.X -= InflationWhenDragged / 2f;
         Transform.Width += InflationWhenDragged;
         Transform.Y -= InflationWhenDragged / 2f;
@@ -74,32 +82,23 @@ public class Draggable : VisualElement
         args.Relative.Y += InflationWhenDragged / 2f;
 
         dragPoint = args.Relative;
-        isDragged = true;
 
-        Style.Border.Color = SKColors.Black;
-        Style.Border.Width = 2;
-
-        Style.Shadow.Color = new(0, 0, 0, 35);
-        Style.BackColor = SKColors.SkyBlue;
+        Style.BackColor = SKColors.AliceBlue;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Hand);
     }
 
     private void DraggableMouseUp(object obj, MouseEventArgs args)
     {
+        if (!isDragged) return;
+        isDragged = false;
+
         Transform.X += InflationWhenDragged / 2f;
         Transform.Width -= InflationWhenDragged;
         Transform.Y += InflationWhenDragged / 2f;
         Transform.Height -= InflationWhenDragged;
 
-        isDragged = false;
-
-        Style.Shadow.Color = new(0, 0, 0, 0);
-
-        Style.Border.Color = new(0, 0, 0, 255);
-        Style.Border.Width = 1f;
-
-        Style.BackColor = new(235, 235, 235, 255);
+        Style.BackColor = new(245, 245, 245, 255);
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         OnDropped?.Invoke(this);
