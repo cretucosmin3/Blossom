@@ -1,16 +1,19 @@
 using Blossom.Core.Visual;
+using SkiaSharp;
+
 namespace Blossom.Core.Visual;
 
 public class BorderStyle : StyleProperty
 {
     private SkiaSharp.SKColor _Color;
 
-    private float _Width = 2;
+    private float _Width = 2f;
     private float _Roundness = 0f;
     private float _RTopLeft = 0f;
     private float _RTopRight = 0f;
     private float _RBottomLeft = 0f;
     private float _RBottomRight = 0f;
+    private SKPathEffect _PathEffect = null;
 
     public float Width
     {
@@ -83,6 +86,16 @@ public class BorderStyle : StyleProperty
         set
         {
             _RBottomRight = value;
+            TriggerRender();
+        }
+    }
+
+    public SKPathEffect PathEffect
+    {
+        get => _PathEffect;
+        set
+        {
+            _PathEffect = value;
             TriggerRender();
         }
     }

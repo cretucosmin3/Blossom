@@ -1,16 +1,15 @@
 using System.Threading;
-using System.Diagnostics;
 using System.Numerics;
+using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
+using Silk.NET.Windowing.Glfw;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
 using Blossom.Testing;
-using Silk.NET.Windowing.Glfw;
 using System;
-using Silk.NET.Core;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
@@ -24,7 +23,7 @@ public static class Browser
     public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
     private static IInputContext input;
 
-    internal static TestingApplication BrowserApp = new TestingApplication();
+    internal static TestingApplication BrowserApp = new();
     internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
     internal static Action OnRenderRequired;
 

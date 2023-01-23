@@ -23,7 +23,6 @@ namespace Blossom.Core
             set => _renderRequired = value;
         }
 
-        private int DefaultFont;
         private VisualElement hoveredElement;
         private VisualElement mouseDownElement;
 
@@ -63,7 +62,7 @@ namespace Blossom.Core
                 // Main();
             };
 
-            Events.OnMouseDown += (obj, args) =>
+            Events.OnMouseDown += (_, args) =>
             {
                 var element = Elements.FirstFromPoint(
                     new System.Drawing.PointF(args.Global.X, args.Global.Y));
@@ -72,7 +71,7 @@ namespace Blossom.Core
                 mouseDownElement = element;
             };
 
-            Events.OnMouseUp += (obj, args) =>
+            Events.OnMouseUp += (_, args) =>
             {
                 if (mouseDownElement != null)
                 {
@@ -85,7 +84,7 @@ namespace Blossom.Core
                 element?.Events.HandleMouseUp(args.Button, args.Global, element);
             };
 
-            Events.OnMouseMove += (obj, args) =>
+            Events.OnMouseMove += (_, args) =>
             {
                 var element = Elements.FirstFromPoint(new System.Drawing.PointF(args.Global.X, args.Global.Y));
                 element?.Events.HandleMouseMove(args.Global, element);

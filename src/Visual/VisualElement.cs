@@ -3,8 +3,9 @@ using System.Text;
 using System;
 using SkiaSharp;
 using Blossom.Core.Visual;
+using System.Diagnostics.CodeAnalysis;
 
-namespace Blossom.Core;
+namespace Blossom.Core.Visual;
 
 public class VisualElement : IDisposable
 {
@@ -19,7 +20,7 @@ public class VisualElement : IDisposable
     internal View ParentView { get; set; }
     private ElementTree ChildElements { get; } = new();
 
-    private VisualElement _Parent = null;
+    private VisualElement _Parent;
     private readonly SKPaint paint = new SKPaint();
     private readonly SKPaint shadowPaint = new SKPaint();
 
@@ -129,23 +130,11 @@ public class VisualElement : IDisposable
         {
             if (!isWithin) return;
 
-            var prect = new SKRoundRect(
-                new SKRect(
-                    Parent.Transform.Computed.X + 1,
-                    Parent.Transform.Computed.Y + 1,
-                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width - 2,
-                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height - 2
-                ),
-                Style.Border.Roundness, Style.Border.Roundness
-            );
-
-            Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
-
-            using (new SKAutoCanvasRestore(Renderer.Canvas))
+            WithClipping(() =>
             {
                 DrawBase();
                 DrawText();
-            }
+            });
         }
         else
         {
@@ -162,9 +151,29 @@ public class VisualElement : IDisposable
         }
     }
 
+    private void WithClipping(Action action)
+    {
+        var prect = new SKRoundRect(
+                new SKRect(
+                    Parent.Transform.Computed.X + 1,
+                    Parent.Transform.Computed.Y + 1,
+                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width - 2,
+                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height - 2
+                ),
+                Style.Border.Roundness, Style.Border.Roundness
+            );
+
+        Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
+
+        using (new SKAutoCanvasRestore(Renderer.Canvas))
+        {
+            action();
+        }
+    }
+
     internal void DrawBase()
     {
-        SKRect rect = new SKRect(
+        SKRect rect = new(
             Transform.Computed.X,
             Transform.Computed.Y,
             Transform.Computed.X + Transform.Computed.Width,
@@ -180,28 +189,42 @@ public class VisualElement : IDisposable
                 new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
 
-        if (Style.Shadow is not null && Style.Shadow.HasValidValues())
+        if (Style.Shadow?.HasValidValues() == true)
         {
             shadowPaint.Style = SKPaintStyle.Fill;
             shadowPaint.Color = Style.BackColor;
             shadowPaint.IsAntialias = true;
             shadowPaint.ImageFilter = Style.Shadow.Filter;
+            shadowPaint.PathEffect = Style.BackgroundPathEffect;
             Renderer.Canvas.DrawRoundRect(roundRect, shadowPaint);
         }
 
         paint.Style = SKPaintStyle.Fill;
         paint.Color = Style.BackColor;
         paint.IsAntialias = true;
+        paint.PathEffect = Style.BackgroundPathEffect;
 
         Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
         if (Style.Border.Width > 0)
         {
             paint.Style = SKPaintStyle.Stroke;
+
+            if (this.Style.Border.PathEffect != null)
+                paint.PathEffect = this.Style.Border.PathEffect;
+
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
+            // paint.Shader = SKShader.CreateRadialGradient(
+            //     new SKPoint(rect.MidX, rect.MidY), rect.Width / 1.7f,
+            //     new SKColor[] { SKColors.Transparent, new(0, 0, 0, 70) },
+            //     SKShaderTileMode.Clamp);
+
             roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
             Renderer.Canvas.DrawRoundRect(roundRect, paint);
+
+            // paint.Shader?.Dispose();
+            // paint.Shader = null;
         }
     }
 
@@ -213,9 +236,7 @@ public class VisualElement : IDisposable
 
         // CalculateTextBounds();
         CalculateText();
-
-        // DrawTextShadow();
-        Renderer.Canvas.DrawText(Text, TextPosition, Style.Text.Paint);
+        DrawTextShadow();
     }
 
     internal void DrawTextShadow()

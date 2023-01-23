@@ -3,13 +3,15 @@ using System.Collections.Generic;
 
 public class ElementStyle
 {
-    internal List<VisualElement> AssignedElements = new List<VisualElement>();
+    internal List<VisualElement> AssignedElements = new();
+
+    private bool _IsClipping = true;
+    private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
+    private SkiaSharp.SKPathEffect _BackgroundPathEffect;
 
     public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; } = new();
     public ShadowStyle Shadow { get; set; } = new();
-
-    public ElementStyle() { }
 
     internal void AssignElement(VisualElement element)
     {
@@ -30,7 +32,6 @@ public class ElementStyle
             element.ScheduleRender();
     }
 
-    private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
     public SkiaSharp.SKColor BackColor
     {
         get => _BackColor;
@@ -41,7 +42,16 @@ public class ElementStyle
         }
     }
 
-    private bool _IsClipping = true;
+    public SkiaSharp.SKPathEffect BackgroundPathEffect
+    {
+        get => _BackgroundPathEffect;
+        set
+        {
+            _BackgroundPathEffect = value;
+            ScheduleRender();
+        }
+    }
+
     public bool IsClipping
     {
         get => _IsClipping;

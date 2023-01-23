@@ -12,7 +12,7 @@ namespace Blossom.Testing
         // private readonly LoadView LoadView;
         // private readonly AnchorsView AnchorsView;
         // private readonly ViewportTest ViewportTest;
-        private readonly GridTest GridTest = new GridTest();
+        private readonly GridTest GridTest = new();
 
         public TestingApplication()
         {

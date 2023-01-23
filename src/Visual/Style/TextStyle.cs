@@ -12,6 +12,7 @@ public class TextStyle : StyleProperty
     private int _Weight = 100;
     private int _Width = 0;
     private float _Padding = 0f;
+    private SKPathEffect _PathEffect = null;
     private TextAlign _Alignment = TextAlign.Center;
     private SKColor _Color;
     private string _FontName = "DejaVu Sans Mono";
@@ -44,6 +45,9 @@ public class TextStyle : StyleProperty
         Paint.IsAntialias = true;
         Paint.Typeface = typeFace;
         Paint.TextSize = _Size;
+
+        if (_PathEffect != null)
+            Paint.PathEffect = _PathEffect;
 
         TriggerRender();
     }
@@ -129,6 +133,16 @@ public class TextStyle : StyleProperty
 
             RedoFont();
             _Shadow.OnChanged += RedoFont;
+        }
+    }
+
+    public SKPathEffect PathEffect
+    {
+        get => _PathEffect;
+        set
+        {
+            _PathEffect = value;
+            RedoFont();
         }
     }
 }
