@@ -26,7 +26,7 @@ public class GridTest : View
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
-                Text = $"{i}"
+                Text = "Hello"
             };
 
             newEl.OnDragged += ElementDragged;

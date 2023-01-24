@@ -27,10 +27,6 @@ public class Draggable : VisualElement
                 Roundness = 5,
                 Width = 3f,
                 Color = new(0, 0, 0, 255),
-                PathEffect = SKPathEffect.CreateSum(
-                    SKPathEffect.CreateDiscrete(15f, 4f, 0),
-                    SKPathEffect.CreateDiscrete(25f, 2f, 0)
-                )
             },
             Shadow = new()
             {
