@@ -11,7 +11,10 @@ public class Draggable : VisualElement
 {
     private bool isDragged = false;
     private Vector2 dragPoint;
-    private readonly float InflationWhenDragged = 6f;
+    private readonly float InflationWhenDragged = 3f;
+
+    public SKColor DownColor { get; set; } = new(252, 80, 27);
+    public SKColor UpColor { get; set; } = new(255, 100, 57);
 
     public Action<VisualElement> OnDragged;
     public Action<VisualElement> OnDropped;
@@ -20,27 +23,33 @@ public class Draggable : VisualElement
     {
         Style = new()
         {
-            BackColor = new(245, 245, 245, 255),
+            BackColor = UpColor,
             IsClipping = false,
             Border = new()
             {
-                Roundness = 5,
-                Width = 1f,
-                Color = new(50, 50, 50, 255),
+                Roundness = 5f
             },
             Shadow = new()
             {
-                Color = new(0, 0, 0, 0),
-                SpreadX = 1,
-                SpreadY = 1,
-                OffsetY = 6,
-                OffsetX = 1
+                Color = new(0, 0, 0, 75),
+                SpreadX = 4,
+                SpreadY = 4,
+                OffsetY = 4,
+                OffsetX = 0
             },
             Text = new()
             {
-                Size = 26,
+                Size = 24,
                 Weight = 400,
-                Color = new(0, 0, 0, 150),
+                Color = SKColors.White,
+                Shadow = new()
+                {
+                    Color = new(0, 0, 0, 75),
+                    SpreadX = 2,
+                    SpreadY = 2,
+                    OffsetY = 3,
+                    OffsetX = 0
+                },
             }
         };
     }
@@ -79,7 +88,7 @@ public class Draggable : VisualElement
 
         dragPoint = args.Relative;
 
-        Style.BackColor = SKColors.AliceBlue;
+        Style.BackColor = DownColor;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Hand);
     }
@@ -94,7 +103,7 @@ public class Draggable : VisualElement
         Transform.Y += InflationWhenDragged / 2f;
         Transform.Height -= InflationWhenDragged;
 
-        Style.BackColor = new(245, 245, 245, 255);
+        Style.BackColor = UpColor;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
         OnDropped?.Invoke(this);
