@@ -25,8 +25,8 @@ public class Draggable : VisualElement
             Border = new()
             {
                 Roundness = 5,
-                Width = 3f,
-                Color = new(0, 0, 0, 255),
+                Width = 1f,
+                Color = new(50, 50, 50, 255),
             },
             Shadow = new()
             {
@@ -38,8 +38,8 @@ public class Draggable : VisualElement
             },
             Text = new()
             {
-                Size = 42,
-                Weight = 900,
+                Size = 26,
+                Weight = 400,
                 Color = new(0, 0, 0, 150),
             }
         };
