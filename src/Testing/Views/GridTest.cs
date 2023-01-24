@@ -14,7 +14,7 @@ public class GridTest : View
 
     public override void Main()
     {
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < 4; i++)
         {
             float x = Random.Shared.Next(240, 950);
             float y = Random.Shared.Next(170, 550);

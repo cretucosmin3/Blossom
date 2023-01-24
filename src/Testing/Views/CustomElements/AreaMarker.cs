@@ -1,5 +1,3 @@
-using System;
-using Blossom.Core;
 using Blossom.Core.Visual;
 using SkiaSharp;
 
@@ -15,8 +13,9 @@ public class AreaMarker : VisualElement
             Border = new()
             {
                 Roundness = 5,
-                Width = 2f,
+                Width = 1f,
                 Color = new(0, 0, 0, 255),
+                PathEffect = SKPathEffect.CreateDiscrete(15f, 1f, 0)
             },
             Text = new()
             {
