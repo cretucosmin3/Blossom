@@ -292,9 +292,9 @@ public class VisualElement : IDisposable
             _ => cy + (ch / 2f) - TextBounds.MidY // Center
         };
 
-        TextPosition.Y *= 0.995f;
+        // TextPosition.Y *= 0.995f;
 
-        TextPosition.Y += 2;
+        // TextPosition.Y += 2;
     }
 
     private void ChangedTransform(Transform transform)

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Numerics;
 using Blossom.Core;
@@ -13,8 +14,8 @@ public class Draggable : VisualElement
     private Vector2 dragPoint;
     private readonly float InflationWhenDragged = 3f;
 
-    public SKColor DownColor { get; set; } = new(252, 80, 27);
-    public SKColor UpColor { get; set; } = new(255, 100, 57);
+    public SKColor DownColor { get; set; } = new(255, 100, 57);
+    public SKColor UpColor { get; set; } = new(252, 80, 27);
 
     public Action<VisualElement> OnDragged;
     public Action<VisualElement> OnDropped;
@@ -96,6 +97,7 @@ public class Draggable : VisualElement
     private void DraggableMouseUp(object obj, MouseEventArgs args)
     {
         if (!isDragged) return;
+
         isDragged = false;
 
         Transform.X += InflationWhenDragged / 2f;
