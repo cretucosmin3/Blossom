@@ -22,7 +22,7 @@ public class GridTest : View
             var newEl = new Draggable()
             {
                 Name = $"e{i}",
-                Transform = new(x, y, Random.Shared.Next(120, 160), 65)
+                Transform = new(x, y, 130, 40)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
