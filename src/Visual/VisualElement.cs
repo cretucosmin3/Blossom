@@ -234,7 +234,6 @@ public class VisualElement : IDisposable
         if (string.IsNullOrEmpty(Text) || Style.Text is null)
             return;
 
-        // CalculateTextBounds();
         CalculateText();
         DrawTextShadow();
     }
@@ -248,7 +247,7 @@ public class VisualElement : IDisposable
     private void CalculateTextBounds()
     {
         if (Browser.IsLoaded && Style != null && Text.Length > 0)
-            Style.Text.Paint.MeasureText(Text.Substring(0, Text.Length - 1) + '|', ref TextBounds);
+            Style.Text.Paint.MeasureText(Text, ref TextBounds);
     }
 
     internal void CalculateText()
@@ -284,7 +283,7 @@ public class VisualElement : IDisposable
                 x == TextAlign.Top ||
                 x == TextAlign.TopLeft ||
                 x == TextAlign.TopRight
-                => (cy + TextBounds.Height + Style.Text.Padding) - TextBounds.Bottom,
+                => cy + TextBounds.Height + Style.Text.Padding - TextBounds.Bottom,
             var x when
                 x == TextAlign.Bottom ||
                 x == TextAlign.BottomLeft ||
@@ -292,6 +291,8 @@ public class VisualElement : IDisposable
                 => cy + ch - Style.Text.Padding,
             _ => cy + (ch / 2f) - TextBounds.MidY // Center
         };
+
+        TextPosition.Y *= 0.995f;
 
         TextPosition.Y += 2;
     }
