@@ -4,8 +4,6 @@ using System.Collections.Generic;
 public class ElementStyle
 {
     internal List<VisualElement> AssignedElements = new();
-
-    private bool _IsClipping = true;
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
     private SkiaSharp.SKPathEffect _BackgroundPathEffect;
 
@@ -48,16 +46,6 @@ public class ElementStyle
         set
         {
             _BackgroundPathEffect = value;
-            ScheduleRender();
-        }
-    }
-
-    public bool IsClipping
-    {
-        get => _IsClipping;
-        set
-        {
-            _IsClipping = value;
             ScheduleRender();
         }
     }

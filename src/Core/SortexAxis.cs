@@ -20,8 +20,6 @@ public class SortedAxis
         public int Bottom;
     }
 
-
-    private readonly Stopwatch performanceTracker = new Stopwatch();
     private readonly object lockObj = new();
 
     public readonly Dictionary<VisualElement, SortedPositions> SortIndexes = new();

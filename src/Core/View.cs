@@ -2,6 +2,7 @@ using System;
 using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
+using SkiaSharp;
 
 namespace Blossom.Core
 {
@@ -55,12 +56,6 @@ namespace Blossom.Core
         internal View(string name)
         {
             Name = name;
-
-            Browser.OnLoaded += () =>
-            {
-                // Console.WriteLine("-- OnLoaded --");
-                // Main();
-            };
 
             Events.OnMouseDown += (_, args) =>
             {
@@ -120,13 +115,29 @@ namespace Blossom.Core
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
+        public void TrackElement(ref VisualElement element)
+        {
+            Elements.AddElement(ref element, this);
+            Browser.BrowserApp.ActiveView.RenderRequired = true;
+        }
+
+        public void UntrackElement(ref VisualElement element)
+        {
+
+            Elements.RemoveElement(element);
+            Browser.BrowserApp.ActiveView.RenderRequired = true;
+        }
+
         internal void Render()
         {
             foreach (var element in Elements.Items)
             {
                 lock (element)
                 {
-                    element.Render();
+                    using (new SKAutoCanvasRestore(Renderer.Canvas))
+                    {
+                        element.Render();
+                    }
                 }
             }
         }

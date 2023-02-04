@@ -203,15 +203,17 @@ public static class Browser
         OnLoaded.Invoke();
         LoadLogo();
 
-        User32.makeWindowBorderless(winHandle);
+        // User32.makeWindowBorderless(winHandle);
         StartWindow();
     }
 
     private static void Render(double time)
     {
         Renderer.ResetContext();
+
         Renderer.Canvas.Clear(new(255, 255, 255, 255));
         BrowserApp.Render();
+
         Renderer.Canvas.Flush();
     }
 }
