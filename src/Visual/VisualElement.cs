@@ -7,6 +7,13 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Blossom.Core.Visual;
 
+public enum Visibility
+{
+    Visible,
+    Clipped,
+    Hidden
+}
+
 public class VisualElement : IDisposable
 {
     public virtual void AddedToView() { }
@@ -16,20 +23,25 @@ public class VisualElement : IDisposable
     public bool IsClickthrough { get; set; } = false;
     public ElementEvents Events { get; } = new();
 
-    internal Application ParentApplication { get; set; }
-    internal View ParentView { get; set; }
-    private ElementTree ChildElements { get; } = new();
+    private View _ParentView;
+    internal View ParentView
+    {
+        get => Parent != null ? Parent.ParentView : _ParentView;
+        set => _ParentView = value;
+    }
+
+    internal ElementTree ChildElements { get; } = new();
 
     private VisualElement _Parent;
-    private readonly SKPaint paint = new SKPaint();
-    private readonly SKPaint shadowPaint = new SKPaint();
+    private readonly SKPaint paint = new();
+    private readonly SKPaint shadowPaint = new();
+    public Visibility ComputedVisibility { get; private set; }
 
     public VisualElement Parent
     {
         get => _Parent;
         set
         {
-            Console.WriteLine($"Parent '{value.Name}' added to '{this.Name}'");
             if (_Parent != null)
                 _Parent.TransformChanged -= ParentTransformChanged;
 
@@ -71,16 +83,32 @@ public class VisualElement : IDisposable
         }
     }
 
+    private bool _IsClipping = true;
+    public bool IsClipping
+    {
+        get => _IsClipping;
+        set
+        {
+            _IsClipping = value;
+            ScheduleRender();
+        }
+    }
+
     public void AddChild(VisualElement child)
     {
         child.Parent = this;
         ChildElements.AddElement(ref child, ParentView);
+
+        ParentView.TrackElement(ref child);
     }
 
     public void RemoveChild(VisualElement child)
     {
         child.Parent = null;
         ChildElements.RemoveElement(child);
+
+
+        ParentView.UntrackElement(ref child);
     }
 
     public bool Visible { get; set; } = true;
@@ -119,31 +147,36 @@ public class VisualElement : IDisposable
 
     internal void Render()
     {
-        this.Transform.Evaluate();
+        Transform.Evaluate();
 
-        bool isWithin = true;
+        ComputedVisibility = Visibility.Visible;
+        bool isWithinParent = true;
+        bool isClipped = false;
+        Rect clippingRect = null;
 
         if (Parent != null)
-            isWithin = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
-
-        if (Parent?.Style.IsClipping == true)
         {
-            if (!isWithin) return;
+            isClipped = Parent.IsClipping;
+            clippingRect = Parent.GetClippingRect();
+            isWithinParent =
+                Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) ||
+                Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
+        }
 
-            WithClipping(() =>
-            {
-                DrawBase();
-                DrawText();
-            });
-        }
-        else
+        if (isClipped && !isWithinParent)
         {
-            using (new SKAutoCanvasRestore(Renderer.Canvas))
-            {
-                DrawBase();
-                DrawText();
-            }
+            ComputedVisibility = Visibility.Hidden;
+            return;
         }
+
+        if (isClipped || clippingRect != null)
+        {
+            ComputedVisibility = Visibility.Clipped;
+            ApplyClipping(clippingRect);
+        }
+
+        DrawBase();
+        DrawText();
 
         foreach (var child in Children)
         {
@@ -151,24 +184,22 @@ public class VisualElement : IDisposable
         }
     }
 
-    private void WithClipping(Action action)
+    private void ApplyClipping(Rect clippingRect = null)
     {
+        if (clippingRect == null)
+            clippingRect = Parent.Transform.Computed;
+
         var prect = new SKRoundRect(
                 new SKRect(
-                    Parent.Transform.Computed.X + 1,
-                    Parent.Transform.Computed.Y + 1,
-                    Parent.Transform.Computed.X + Parent.Transform.Computed.Width - 2,
-                    Parent.Transform.Computed.Y + Parent.Transform.Computed.Height - 2
+                    clippingRect.X,
+                    clippingRect.Y,
+                    clippingRect.X + clippingRect.Width,
+                    clippingRect.Y + clippingRect.Height
                 ),
-                Style.Border.Roundness, Style.Border.Roundness
+                Parent.Style.Border.Roundness, Parent.Style.Border.Roundness
             );
 
         Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
-
-        using (new SKAutoCanvasRestore(Renderer.Canvas))
-        {
-            action();
-        }
     }
 
     internal void DrawBase()
@@ -230,7 +261,6 @@ public class VisualElement : IDisposable
 
     private void DrawText()
     {
-        // Early return if there's no text or color
         if (string.IsNullOrEmpty(Text) || Style.Text is null)
             return;
 
@@ -291,10 +321,6 @@ public class VisualElement : IDisposable
                 => cy + ch - Style.Text.Padding,
             _ => cy + (ch / 2f) - TextBounds.MidY // Center
         };
-
-        // TextPosition.Y *= 0.995f;
-
-        // TextPosition.Y += 2;
     }
 
     private void ChangedTransform(Transform transform)
@@ -323,25 +349,35 @@ public class VisualElement : IDisposable
 
     public Vector2 PointToClient(float x, float y)
     {
-        Vector2 relative = new Vector2(
+        return new Vector2(
             x - Transform.Computed.X,
             y - Transform.Computed.Y
         );
+    }
 
-        return relative;
+    internal Rect GetClippingRect()
+    {
+        if (IsClipping)
+            return Transform.Computed;
+
+        if (Parent != null)
+            return Parent.GetClippingRect();
+
+        return null;
     }
 
     public void Dispose()
     {
-        //Parent.OnComputedSize -= HandleParentResized;
         OnDisposing?.Invoke(this);
 
-        if (Parent != null)
-            Parent.ChildElements.RemoveElement(this);
+        ParentView.Elements.RemoveElement(this);
 
         foreach (var Child in Children)
         {
             Child.Dispose();
         }
+
+        if (Parent != null)
+            Parent.ChildElements.RemoveElement(this);
     }
 }

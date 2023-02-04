@@ -12,7 +12,7 @@ namespace Blossom.Testing
         // private readonly LoadView LoadView;
         // private readonly AnchorsView AnchorsView;
         // private readonly ViewportTest ViewportTest;
-        private readonly GridTest GridTest = new();
+        private readonly ChildrenAxis ChildrenAxis = new();
 
         public TestingApplication()
         {
@@ -22,9 +22,9 @@ namespace Blossom.Testing
             // AddView(AnchorsView);
             // AddView(LoadView);
             // AddView(ViewportTest);
-            AddView(GridTest);
+            AddView(ChildrenAxis);
 
-            SetActiveView(GridTest);
+            SetActiveView(ChildrenAxis);
         }
     }
 }

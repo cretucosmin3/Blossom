@@ -97,8 +97,6 @@ namespace Blossom.Core
                 return;
             }
 
-            element.ParentApplication = view.Application;
-            element.ParentView = view;
             var tracker = AddTracker(ref element);
 
             // Add element and tracker to the map

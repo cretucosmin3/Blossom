@@ -14,7 +14,6 @@ namespace Blossom.Core.Input;
 
 public class EventMap : IDisposable
 {
-
     // TODO: manage events by access
     public EventAccess Access = EventAccess.All;
 
@@ -149,8 +148,19 @@ public class EventMap : IDisposable
     #region Mouse
     internal void HandleMouseMove(Vector2 pos, VisualElement el = default)
     {
+        // if (el == null) return;
+
+        // var childClicked = el.ChildElements.FirstFromPoint(pos.X, pos.Y); // Get affected child
+
+        // THE LOGIC
+        // If there is a child that could have this event
+        // We call the event on the child
+        // If the child OnMouseMove returns false
+        // Then we revoke the event in here
+
         var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
-        OnMouseMove?.Invoke(el, new()
+
+        OnMouseMove?.Invoke(el, new() // Here return if parent event has to be revoked
         {
             Global = pos,
             Relative = relative

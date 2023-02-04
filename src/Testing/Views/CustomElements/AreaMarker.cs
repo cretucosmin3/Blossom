@@ -9,13 +9,11 @@ public class AreaMarker : VisualElement
     {
         Style = new()
         {
-            IsClipping = false,
             Border = new()
             {
                 Roundness = 5,
                 Width = 1f,
                 Color = new(0, 0, 0, 255),
-                PathEffect = SKPathEffect.CreateDiscrete(15f, 1f, 0)
             },
             Text = new()
             {
