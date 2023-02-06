@@ -27,7 +27,7 @@ public class Draggable : VisualElement
             BackColor = UpColor,
             Border = new()
             {
-                Roundness = 5f
+                Roundness = 15f
             },
             Shadow = new()
             {

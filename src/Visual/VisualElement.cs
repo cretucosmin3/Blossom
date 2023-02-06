@@ -36,6 +36,7 @@ public class VisualElement : IDisposable
     private readonly SKPaint paint = new();
     private readonly SKPaint shadowPaint = new();
     public Visibility ComputedVisibility { get; private set; }
+    public SKRoundRect ComputedClipping { get; private set; }
 
     public VisualElement Parent
     {
@@ -152,27 +153,25 @@ public class VisualElement : IDisposable
         ComputedVisibility = Visibility.Visible;
         bool isWithinParent = true;
         bool isClipped = false;
-        Rect clippingRect = null;
 
         if (Parent != null)
         {
             isClipped = Parent.IsClipping;
-            clippingRect = Parent.GetClippingRect();
             isWithinParent =
                 Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) ||
                 Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
         }
 
-        if (isClipped && !isWithinParent)
+        if (Parent?.ComputedVisibility == Visibility.Hidden || (isClipped && !isWithinParent))
         {
             ComputedVisibility = Visibility.Hidden;
             return;
         }
 
-        if (isClipped || clippingRect != null)
+        if (isClipped || Parent?.ComputedVisibility == Visibility.Clipped)
         {
             ComputedVisibility = Visibility.Clipped;
-            ApplyClipping(clippingRect);
+            ApplyClipping();
         }
 
         DrawBase();
@@ -184,22 +183,35 @@ public class VisualElement : IDisposable
         }
     }
 
-    private void ApplyClipping(Rect clippingRect = null)
+    private void ApplyClipping()
     {
-        if (clippingRect == null)
-            clippingRect = Parent.Transform.Computed;
+        var prevClipping = Parent.GetPreviousClippingRect();
 
-        var prect = new SKRoundRect(
-                new SKRect(
-                    clippingRect.X,
-                    clippingRect.Y,
-                    clippingRect.X + clippingRect.Width,
-                    clippingRect.Y + clippingRect.Height
-                ),
+        var clippingRect = Parent?.IsClipping == true ? new SKRect(
+            Parent.Transform.Computed.X,
+            Parent.Transform.Computed.Y,
+            Parent.Transform.Computed.RectF.Right,
+            Parent.Transform.Computed.RectF.Bottom
+        ) : prevClipping.Rect;
+
+        if (prevClipping?.Rect != clippingRect && prevClipping != null)
+            clippingRect = SKRect.Intersect(clippingRect, prevClipping.Rect);
+
+        var compClippingRect = new SKRoundRect(
+                clippingRect,
                 Parent.Style.Border.Roundness, Parent.Style.Border.Roundness
             );
 
-        Renderer.Canvas.ClipRoundRect(prect, SKClipOperation.Intersect, true);
+        compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
+            new(15,5),
+            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+        });
+
+        Renderer.Canvas.ClipRoundRect(compClippingRect, SKClipOperation.Intersect, true);
+
+        ComputedClipping = compClippingRect;
     }
 
     internal void DrawBase()
@@ -355,13 +367,13 @@ public class VisualElement : IDisposable
         );
     }
 
-    internal Rect GetClippingRect()
+    internal SKRoundRect GetPreviousClippingRect()
     {
-        if (IsClipping)
-            return Transform.Computed;
+        if (ComputedVisibility == Visibility.Clipped)
+            return ComputedClipping;
 
         if (Parent != null)
-            return Parent.GetClippingRect();
+            return Parent.GetPreviousClippingRect();
 
         return null;
     }

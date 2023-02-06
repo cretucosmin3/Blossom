@@ -19,9 +19,9 @@ public class ChildrenAxis : View
         DraggableParent = new Draggable()
         {
             Name = "Draggable parent",
+            IsClipping = true,
             DownColor = new(240, 240, 240),
             UpColor = new(220, 220, 220),
-            IsClipping = false,
             Transform = new(100, 100, 650, 550)
             {
                 Anchor = Anchor.Top | Anchor.Left,
@@ -45,7 +45,7 @@ public class ChildrenAxis : View
 
             var newEl = new Draggable()
             {
-                IsClipping = true,
+                IsClipping = false,
                 Name = $"e{i}",
                 Transform = new(x, y, Random.Shared.Next(120, 160), 65)
                 {
@@ -63,17 +63,18 @@ public class ChildrenAxis : View
                 Name = $"Child of child {i}",
                 DownColor = new(240, 240, 240),
                 UpColor = new(220, 220, 220),
-                IsClipping = true,
-                Transform = new(120, 120, 120, 120)
+                IsClipping = false,
+                Transform = new(45, 45, 120, 120)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
                 Style = new()
                 {
-                    BackColor = new(255, 255, 255),
+                    BackColor = new(25, 25, 200),
                     Border = new()
                     {
-                        Color = SKColors.DarkGray
+                        Color = SKColors.DarkGray,
+                        Width = 0
                     }
                 }
             };
