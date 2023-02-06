@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Threading;
 using System;
 using Blossom.Core;
@@ -47,11 +48,11 @@ public class ChildrenAxis : View
             {
                 IsClipping = false,
                 Name = $"e{i}",
+                Text = "Hello",
                 Transform = new(x, y, Random.Shared.Next(120, 160), 65)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
-                Text = "Hello"
             };
 
             newEl.OnDragged += ElementDragged;
@@ -64,17 +65,30 @@ public class ChildrenAxis : View
                 DownColor = new(240, 240, 240),
                 UpColor = new(220, 220, 220),
                 IsClipping = false,
-                Transform = new(45, 45, 120, 120)
+                Text = "Hello",
+                Transform = new(45, 45, 135, 60)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
                 Style = new()
                 {
-                    BackColor = new(25, 25, 200),
+                    BackColor = new(255, 55, 92),
+                    Text = new()
+                    {
+                        Color = SKColors.White,
+                        Size = 26,
+                        Weight = 600
+                    },
                     Border = new()
                     {
-                        Color = SKColors.DarkGray,
-                        Width = 0
+                        Roundness = 10
+                    },
+                    Shadow = new()
+                    {
+                        Color = new(255, 55, 92, 90),
+                        OffsetY = 4,
+                        SpreadX = 5,
+                        SpreadY = 5
                     }
                 }
             };
