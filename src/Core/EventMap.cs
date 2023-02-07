@@ -148,14 +148,6 @@ public class EventMap : IDisposable
     #region Mouse
     internal void HandleMouseMove(Vector2 pos, VisualElement el = default)
     {
-        // if (el == null) return;
-
-        // THE LOGIC
-        // If there is a child that could have this event
-        // We call the event on the child
-        // If the child OnMouseMove returns false
-        // Then we revoke the event in here
-
         var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
 
         OnMouseMove?.Invoke(el, new()

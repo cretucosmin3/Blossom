@@ -51,18 +51,11 @@ namespace Blossom.Core
             for (int i = components.Count - 1; i >= 0; i--)
             {
                 var elementFromPoint = components[i].Element;
-                var isWithinParent = true;
 
                 if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
                     continue;
 
-
-                if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
-                {
-                    isWithinParent = elementFromPoint.Parent.Transform.Computed.RectF.Contains(elementFromPoint.Transform.Computed.RectF);
-                }
-
-                if (isWithinParent && !elementFromPoint.IsClickthrough)
+                if (!elementFromPoint.IsClickthrough)
                     return elementFromPoint;
             }
 
