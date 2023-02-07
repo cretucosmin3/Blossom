@@ -21,18 +21,20 @@ public class ChildrenAxis : View
         {
             Name = "Draggable parent",
             IsClipping = true,
-            DownColor = new(240, 240, 240),
-            UpColor = new(220, 220, 220),
-            Transform = new(100, 100, 650, 550)
+            DownColor = new(245, 245, 245),
+            UpColor = new(235, 235, 235),
+            Transform = new(100, 100, 750, 550)
             {
                 Anchor = Anchor.Top | Anchor.Left,
             },
             Style = new()
             {
-                BackColor = new(220, 220, 220),
+                BackColor = new(235, 235, 235),
                 Border = new()
                 {
-                    Color = SKColors.DarkGray
+                    Color = SKColors.Black,
+                    Width = 1,
+                    Roundness = 5
                 }
             }
         };
@@ -46,18 +48,28 @@ public class ChildrenAxis : View
 
             var newEl = new Draggable()
             {
-                IsClipping = false,
+                IsClipping = Random.Shared.Next(100) > 50,
                 Name = $"e{i}",
-                Text = "Hello",
-                Transform = new(x, y, Random.Shared.Next(120, 160), 65)
+                Text = "Child",
+                Transform = new(x, y, Random.Shared.Next(120, 160), 45)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
             };
 
-            newEl.Events.OnMouseDown += (_, _) =>
+            newEl.Style.Border = new()
             {
-                Console.WriteLine("What a joke!");
+                Color = SKColors.White,
+                Width = 1,
+                Roundness = 10
+            };
+
+            newEl.Style.Shadow = new()
+            {
+                Color = new(0, 0, 0, 200),
+                OffsetY = 3,
+                SpreadX = 3,
+                SpreadY = 3
             };
 
             newEl.OnDragged += ElementDragged;
@@ -70,8 +82,8 @@ public class ChildrenAxis : View
                 DownColor = new(255, 80, 130),
                 UpColor = new(255, 55, 92),
                 IsClipping = false,
-                Text = "Hello",
-                Transform = new(45, 45, 135, 60)
+                Text = "Grand Child",
+                Transform = new(45, 25, 135, 42)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
@@ -81,19 +93,21 @@ public class ChildrenAxis : View
                     Text = new()
                     {
                         Color = SKColors.White,
-                        Size = 26,
-                        Weight = 600
+                        Size = 22,
+                        Weight = 400
                     },
                     Border = new()
                     {
+                        Color = SKColors.White,
+                        Width = 1,
                         Roundness = 10
                     },
                     Shadow = new()
                     {
-                        Color = new(255, 55, 92, 90),
-                        OffsetY = 4,
-                        SpreadX = 5,
-                        SpreadY = 5
+                        Color = new(0, 0, 0, 255),
+                        OffsetY = 3,
+                        SpreadX = 3,
+                        SpreadY = 3
                     }
                 }
             };
