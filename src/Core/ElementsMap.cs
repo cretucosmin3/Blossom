@@ -44,13 +44,26 @@ namespace Blossom.Core
 
         public VisualElement FirstFromPoint(float x, float y)
         {
-            var components = QuadTree.GetObjects(new RectangleF(x, y, 1, 1));
+            var hitPoint = new RectangleF(x, y, 1, 1);
+            var components = QuadTree.GetObjects(hitPoint);
             if (!components.Any()) return null;
 
             for (int i = components.Count - 1; i >= 0; i--)
             {
-                if (components[i].Element.Style?.BackColor.Alpha > 0 && !components[i].Element.IsClickthrough)
-                    return components[i].Element;
+                var elementFromPoint = components[i].Element;
+                var isWithinParent = true;
+
+                if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
+                    continue;
+
+
+                if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
+                {
+                    isWithinParent = elementFromPoint.Parent.Transform.Computed.RectF.Contains(elementFromPoint.Transform.Computed.RectF);
+                }
+
+                if (isWithinParent && !elementFromPoint.IsClickthrough)
+                    return elementFromPoint;
             }
 
             return null;

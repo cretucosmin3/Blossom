@@ -60,7 +60,7 @@ namespace Blossom.Core
             Events.OnMouseDown += (_, args) =>
             {
                 var element = Elements.FirstFromPoint(
-                    new System.Drawing.PointF(args.Global.X, args.Global.Y));
+                    new(args.Global.X, args.Global.Y));
 
                 element?.Events.HandleMouseDown(args.Button, args.Global, element);
                 mouseDownElement = element;
@@ -75,13 +75,13 @@ namespace Blossom.Core
                     return;
                 }
 
-                var element = Elements.FirstFromPoint(new System.Drawing.PointF(args.Global.X, args.Global.Y));
+                var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
                 element?.Events.HandleMouseUp(args.Button, args.Global, element);
             };
 
             Events.OnMouseMove += (_, args) =>
             {
-                var element = Elements.FirstFromPoint(new System.Drawing.PointF(args.Global.X, args.Global.Y));
+                var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
                 element?.Events.HandleMouseMove(args.Global, element);
 
                 if (hoveredElement != element)
