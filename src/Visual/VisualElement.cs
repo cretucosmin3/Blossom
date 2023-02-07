@@ -154,14 +154,14 @@ public class VisualElement : IDisposable
 
         ComputedVisibility = Visibility.Visible;
         bool isWithinParent = true;
+        bool isInsideParent = true;
         bool isClipped = false;
 
         if (Parent != null)
         {
             isClipped = Parent.IsClipping;
-            isWithinParent =
-                Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF) ||
-                Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
+            isInsideParent = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF);
+            isWithinParent = isInsideParent || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
         }
 
         if (Parent?.ComputedVisibility == Visibility.Hidden || (isClipped && !isWithinParent))

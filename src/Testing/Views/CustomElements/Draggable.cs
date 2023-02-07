@@ -12,7 +12,6 @@ public class Draggable : VisualElement
 {
     private bool isDragged = false;
     private Vector2 dragPoint;
-    private readonly float InflationWhenDragged = 3f;
 
     public SKColor DownColor { get; set; } = new(255, 100, 57);
     public SKColor UpColor { get; set; } = new(252, 80, 27);
@@ -65,10 +64,13 @@ public class Draggable : VisualElement
     {
         if (!isDragged) return;
 
+        var parentX = Parent != null ? Parent.Transform.Computed.X : 0;
+        var parentY = Parent != null ? Parent.Transform.Computed.Y : 0;
+
         ParentView.RenderChanges(() =>
         {
-            Transform.X = args.Global.X - dragPoint.X;
-            Transform.Y = args.Global.Y - dragPoint.Y;
+            Transform.X = args.Relative.X - dragPoint.X - parentX;
+            Transform.Y = args.Relative.Y - dragPoint.Y - parentY;
         });
 
         OnDragged?.Invoke(this);
@@ -77,15 +79,6 @@ public class Draggable : VisualElement
     private void DraggableMouseDown(object obj, MouseEventArgs args)
     {
         isDragged = true;
-
-        Transform.X -= InflationWhenDragged / 2f;
-        Transform.Width += InflationWhenDragged;
-        Transform.Y -= InflationWhenDragged / 2f;
-        Transform.Height += InflationWhenDragged;
-
-        args.Relative.X += InflationWhenDragged / 2f;
-        args.Relative.Y += InflationWhenDragged / 2f;
-
         dragPoint = args.Relative;
 
         Style.BackColor = DownColor;
@@ -98,12 +91,6 @@ public class Draggable : VisualElement
         if (!isDragged) return;
 
         isDragged = false;
-
-        Transform.X += InflationWhenDragged / 2f;
-        Transform.Width -= InflationWhenDragged;
-        Transform.Y += InflationWhenDragged / 2f;
-        Transform.Height -= InflationWhenDragged;
-
         Style.BackColor = UpColor;
 
         Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);

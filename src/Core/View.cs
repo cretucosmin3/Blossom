@@ -118,6 +118,7 @@ namespace Blossom.Core
         public void TrackElement(ref VisualElement element)
         {
             Elements.AddElement(ref element, this);
+            element.AddedToView();
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 

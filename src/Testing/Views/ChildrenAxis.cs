@@ -55,6 +55,11 @@ public class ChildrenAxis : View
                 },
             };
 
+            newEl.Events.OnMouseDown += (_, _) =>
+            {
+                Console.WriteLine("What a joke!");
+            };
+
             newEl.OnDragged += ElementDragged;
             newEl.OnDropped += ElementDropped;
             newEl.TransformChanged += OnTransformChanged;
@@ -62,8 +67,8 @@ public class ChildrenAxis : View
             var newChildOfChild = new Draggable()
             {
                 Name = $"Child of child {i}",
-                DownColor = new(240, 240, 240),
-                UpColor = new(220, 220, 220),
+                DownColor = new(255, 80, 130),
+                UpColor = new(255, 55, 92),
                 IsClipping = false,
                 Text = "Hello",
                 Transform = new(45, 45, 135, 60)
