@@ -150,8 +150,6 @@ public class EventMap : IDisposable
     {
         // if (el == null) return;
 
-        // var childClicked = el.ChildElements.FirstFromPoint(pos.X, pos.Y); // Get affected child
-
         // THE LOGIC
         // If there is a child that could have this event
         // We call the event on the child
@@ -160,7 +158,7 @@ public class EventMap : IDisposable
 
         var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
 
-        OnMouseMove?.Invoke(el, new() // Here return if parent event has to be revoked
+        OnMouseMove?.Invoke(el, new()
         {
             Global = pos,
             Relative = relative
