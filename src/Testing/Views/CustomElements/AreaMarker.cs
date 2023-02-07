@@ -13,7 +13,7 @@ public class AreaMarker : VisualElement
             {
                 Roundness = 5,
                 Width = 1f,
-                Color = new(0, 0, 0, 255),
+                Color = new(0, 0, 0, 0),
             },
             Text = new()
             {

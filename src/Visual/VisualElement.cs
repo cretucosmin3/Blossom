@@ -237,7 +237,7 @@ public class VisualElement : IDisposable
         if (Style.Shadow?.HasValidValues() == true)
         {
             shadowPaint.Style = SKPaintStyle.Fill;
-            shadowPaint.Color = Style.BackColor;
+            shadowPaint.Color = Style.Shadow.Color;
             shadowPaint.IsAntialias = true;
             shadowPaint.ImageFilter = Style.Shadow.Filter;
             shadowPaint.PathEffect = Style.BackgroundPathEffect;
@@ -255,8 +255,8 @@ public class VisualElement : IDisposable
         {
             paint.Style = SKPaintStyle.Stroke;
 
-            if (this.Style.Border.PathEffect != null)
-                paint.PathEffect = this.Style.Border.PathEffect;
+            if (Style.Border.PathEffect != null)
+                paint.PathEffect = Style.Border.PathEffect;
 
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
