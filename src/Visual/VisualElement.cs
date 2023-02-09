@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 using System.Text;
 using System;
@@ -36,7 +37,6 @@ public class VisualElement : IDisposable
 
     private VisualElement _Parent;
     private readonly SKPaint paint = new();
-    private readonly SKPaint shadowPaint = new();
     public Visibility ComputedVisibility { get; private set; }
     public SKRoundRect ComputedClipping { get; private set; }
 
@@ -101,7 +101,6 @@ public class VisualElement : IDisposable
     {
         child.Parent = this;
         ChildElements.AddElement(ref child, ParentView);
-
         ParentView.TrackElement(ref child);
     }
 
@@ -109,8 +108,6 @@ public class VisualElement : IDisposable
     {
         child.Parent = null;
         ChildElements.RemoveElement(child);
-
-
         ParentView.UntrackElement(ref child);
     }
 
@@ -130,6 +127,19 @@ public class VisualElement : IDisposable
     public int Layer
     {
         get => Parent != null ? Parent.Layer + 1 : 0;
+    }
+
+    public Rect BoundingRect
+    {
+        get
+        {
+            if (Children.Length == 0)
+                return Transform.Computed;
+
+            var elementsRect = ChildElements.BoundAxis.GetBoundingRect();
+
+            return Rect.Max(elementsRect, Transform.Computed);
+        }
     }
 
     private readonly StringBuilder _Text = new("");
@@ -170,14 +180,17 @@ public class VisualElement : IDisposable
             return;
         }
 
-        if (isClipped || Parent?.ComputedVisibility == Visibility.Clipped)
+        using (new SKAutoCanvasRestore(Renderer.Canvas))
         {
-            ComputedVisibility = Visibility.Clipped;
-            ApplyClipping();
-        }
+            if (isClipped || Parent?.ComputedVisibility == Visibility.Clipped)
+            {
+                ComputedVisibility = Visibility.Clipped;
+                ApplyClipping();
+            }
 
-        DrawBase();
-        DrawText();
+            DrawBase();
+            DrawText();
+        }
 
         foreach (var child in Children)
         {
@@ -204,12 +217,12 @@ public class VisualElement : IDisposable
                 Parent.Style.Border.Roundness, Parent.Style.Border.Roundness
             );
 
-        compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
-            new(15,5),
-            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-            new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-        });
+        // compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
+        //     new(15,5),
+        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
+        // });
 
         Renderer.Canvas.ClipRoundRect(compClippingRect, SKClipOperation.Intersect, true);
 
@@ -225,7 +238,7 @@ public class VisualElement : IDisposable
             Transform.Computed.Y + Transform.Computed.Height
         );
 
-        SKRoundRect roundRect = new SKRoundRect();
+        SKRoundRect roundRect = new();
 
         roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
@@ -236,12 +249,8 @@ public class VisualElement : IDisposable
 
         if (Style.Shadow?.HasValidValues() == true)
         {
-            shadowPaint.Style = SKPaintStyle.Fill;
-            shadowPaint.Color = Style.Shadow.Color;
-            shadowPaint.IsAntialias = true;
-            shadowPaint.ImageFilter = Style.Shadow.Filter;
-            shadowPaint.PathEffect = Style.BackgroundPathEffect;
-            Renderer.Canvas.DrawRoundRect(roundRect, shadowPaint);
+            Style.Shadow.Paint.PathEffect = Style.BackgroundPathEffect;
+            Renderer.Canvas.DrawRoundRect(roundRect, Style.Shadow.Paint);
         }
 
         paint.Style = SKPaintStyle.Fill;
@@ -271,6 +280,8 @@ public class VisualElement : IDisposable
             // paint.Shader?.Dispose();
             // paint.Shader = null;
         }
+
+        roundRect.Dispose();
     }
 
     private void DrawText()
