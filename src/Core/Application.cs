@@ -50,7 +50,9 @@ namespace Blossom.Core
                 view.Application = this;
             }
             else
+            {
                 Log.Error($"View with name {view.Name} already exists!");
+            }
         }
 
         public void RemoveView(View view)
@@ -61,7 +63,9 @@ namespace Blossom.Core
                 view.Dispose();
             }
             else
+            {
                 Log.Error($"View with name {view.Name} does not exist!");
+            }
         }
 
         internal void Render() => ActiveView?.Render();

@@ -10,7 +10,7 @@ public class GridTest : View
 {
     private AreaMarker BoundingArea;
 
-    public GridTest() : base("Viewport Test") { }
+    public GridTest() : base("Grid Test") { }
 
     public override void Main()
     {
