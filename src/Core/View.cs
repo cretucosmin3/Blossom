@@ -13,6 +13,8 @@ namespace Blossom.Core
         public ElementTree Elements = new();
         public event ForVoid Loop;
 
+        internal bool IsLoaded { get; set; } = false;
+
         private bool _renderRequired = true;
         public bool RenderRequired
         {

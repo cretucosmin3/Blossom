@@ -123,7 +123,7 @@ public class LoadView : View
         {
             Name = "Renders",
             IsClipping = false,
-            Transform = new(600, 10, 40, 40)
+            Transform = new(900, 10, 40, 40)
             {
                 Anchor = Anchor.Right,
                 FixedWidth = true,

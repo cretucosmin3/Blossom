@@ -22,9 +22,8 @@ public class VisualElement : IDisposable
     public string Name { get; set; }
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
 
-    private bool _IsClickThrough = false;
-    // public bool IsClickthrough { get => _IsClickThrough || Style?.BackColor.Alpha == 0; set => _IsClickThrough = value; }
-    public bool IsClickthrough { get => false; set => _IsClickThrough = value; }
+    public bool IsClickthrough { get; set; } = false;
+
     public ElementEvents Events { get; } = new();
 
     private View _ParentView;

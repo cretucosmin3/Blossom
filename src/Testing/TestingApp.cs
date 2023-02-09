@@ -27,7 +27,7 @@ namespace Blossom.Testing
             AddView(ChildrenAxis);
             AddView(GridTest);
 
-            SetActiveView(LoadView);
+            SetActiveView(ChildrenAxis);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},

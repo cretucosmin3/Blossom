@@ -41,9 +41,14 @@ public static class Browser
             ManageInputEvents();
 
             if (BrowserApp.ActiveView != null)
+            {
                 BrowserApp.ActiveView.Main();
-            else Console.WriteLine("-- No active view --");
-
+                BrowserApp.ActiveView.IsLoaded = true;
+            }
+            else
+            {
+                Console.WriteLine("-- No active view --");
+            }
         };
 
         SetWindow();

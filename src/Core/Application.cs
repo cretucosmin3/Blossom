@@ -32,10 +32,18 @@ namespace Blossom.Core
 
         public void SetActiveView(string name)
         {
-            if (Views.ContainsKey(name))
-                _ActiveView = name;
-            else
+            if (!Views.ContainsKey(name))
                 Log.Error($"View {name} does not exist");
+
+            _ActiveView = name;
+
+            if (Browser.IsLoaded && !ActiveView.IsLoaded)
+            {
+                ActiveView.Main();
+                ActiveView.IsLoaded = true;
+            }
+
+            ActiveView.RenderRequired = true;
         }
 
         public void SetActiveView(View view) => SetActiveView(view.Name);
