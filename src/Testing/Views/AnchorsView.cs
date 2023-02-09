@@ -53,22 +53,22 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            ElementStyle AnchorStyle = new()
-            {
-                BackColor = new(200, 50, 35, 120),
-                Border = new()
-                {
-                    Roundness = 5,
-                    Width = 2f,
-                    Color = new(255, 255, 255, 255)
-                },
-                Shadow = new()
-                {
-                    Color = new(0, 0, 0, 160),
-                    SpreadX = 5,
-                    SpreadY = 5,
-                }
-            };
+            // ElementStyle AnchorStyle = new()
+            // {
+            //     BackColor = new(200, 50, 35, 120),
+            //     Border = new()
+            //     {
+            //         Roundness = 5,
+            //         Width = 2f,
+            //         Color = new(255, 255, 255, 255)
+            //     },
+            //     Shadow = new()
+            //     {
+            //         Color = new(0, 0, 0, 160),
+            //         SpreadX = 5,
+            //         SpreadY = 5,
+            //     }
+            // };
 
             Draggable = new VisualElement()
             {
@@ -84,28 +84,24 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
+                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(20, 1, 0),
                     Border = new()
                     {
-                        Roundness = 5,
-                        Width = 0.5f,
-                        Color = new(0, 0, 0, 25)
+                        Color = new(0, 0, 0, 70),
+                        Width = 1f,
+                        Roundness = 3,
+                        PathEffect = SKPathEffect.CreateDiscrete(20, 1, 0)
                     },
                     Text = new()
                     {
                         Alignment = TextAlign.Center,
-                        Color = new(200, 0, 0, 200),
-                        Size = 22,
+                        Color = new(25, 25, 25, 255),
+                        Size = 24,
                         Spacing = 20,
                         Padding = 20,
                         Weight = 450,
+                        PathEffect = SKPathEffect.CreateDiscrete(3, 0.5f, 0)
                     },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 35),
-                        SpreadX = 4,
-                        SpreadY = 4,
-                        OffsetY = 3
-                    }
                 },
                 Text = "Hold to Move"
             };
@@ -120,18 +116,15 @@ namespace Blossom.Testing
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.IndianRed,
+                    BackColor = SKColors.Gray,
+                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
-                        Roundness = 5,
+                        Color = new(150, 150, 150),
+                        Width = 1,
+                        Roundness = 2,
+                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 25),
-                        SpreadX = 5,
-                        SpreadY = 5,
-                        OffsetY = 1
-                    }
                 },
             };
 
@@ -146,17 +139,14 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
+                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
-                        Roundness = 5,
+                        Color = new(150, 150, 150),
+                        Width = 1,
+                        Roundness = 2,
+                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 25),
-                        SpreadX = 5,
-                        SpreadY = 5,
-                        OffsetY = 1
-                    }
                 },
             };
 
@@ -170,18 +160,15 @@ namespace Blossom.Testing
                 },
                 Style = new()
                 {
-                    BackColor = SKColors.IndianRed,
+                    BackColor = SKColors.Gray,
+                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
-                        Roundness = 5,
+                        Color = new(150, 150, 150),
+                        Width = 1,
+                        Roundness = 2,
+                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 25),
-                        SpreadX = 5,
-                        SpreadY = 5,
-                        OffsetY = 1
-                    }
                 },
             };
 
@@ -196,39 +183,13 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
+                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
-                        Roundness = 5,
-                        Width = 2f,
-                        // Color = new(0, 0, 0, 50)
-                    },
-                    Shadow = new()
-                    {
-                        Color = new(0, 0, 0, 25),
-                        SpreadX = 5,
-                        SpreadY = 5,
-                        OffsetY = 1
-                    }
-                },
-            };
-
-            TestElement = new VisualElement() // Test
-            {
-                Name = "Test Element",
-                Text = "Testing element",
-                Transform = new(50, 50, 80, 40)
-                {
-                    Anchor = Anchor.Left | Anchor.Top,
-                    FixedSize = true,
-                },
-                Style = new()
-                {
-                    BackColor = SKColors.HotPink,
-                    Border = new()
-                    {
-                        Roundness = 5,
-                        Width = 10f,
-                        Color = new(0, 0, 0, 50)
+                        Color = new(150, 150, 150),
+                        Width = 1,
+                        Roundness = 2,
+                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
                 },
             };
@@ -258,7 +219,7 @@ namespace Blossom.Testing
             }
             else
             {
-                anchorEl.Style.BackColor = SKColors.IndianRed;
+                anchorEl.Style.BackColor = SKColors.Gray;
                 Draggable.Transform.Anchor |= anchor;
             }
         }
@@ -276,16 +237,8 @@ namespace Blossom.Testing
             dragPoint = args.Relative;
             isDragged = true;
 
-            Draggable.Style.Border.Color = SKColors.IndianRed;
+            Draggable.Style.Border.Color = SKColors.Black;
             Draggable.Style.Border.Width = 2;
-
-            Draggable.Style.Shadow = new()
-            {
-                Color = new(0, 0, 0, 0),
-                SpreadX = 4,
-                SpreadY = 4,
-                OffsetY = 3
-            };
 
             Draggable.Text = "Moving...";
 
@@ -301,16 +254,8 @@ namespace Blossom.Testing
 
             isDragged = false;
 
-            Draggable.Style.Border.Color = new(0, 0, 0, 25);
-            Draggable.Style.Border.Width = 0.5f;
-
-            Draggable.Style.Shadow = new()
-            {
-                Color = new(0, 0, 0, 35),
-                SpreadX = 4,
-                SpreadY = 4,
-                OffsetY = 3
-            };
+            Draggable.Style.Border.Color = new(0, 0, 0, 70);
+            Draggable.Style.Border.Width = 1f;
 
             Draggable.Text = "Hold to Move";
             Browser.ChangeCursor(Silk.NET.Input.StandardCursor.Default);
