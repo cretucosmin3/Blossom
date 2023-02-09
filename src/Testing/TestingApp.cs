@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using Blossom.Core;
 using Blossom.Core.Input;
@@ -8,23 +9,40 @@ namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {
-        // private readonly PrettyUi BrowserView;
-        // private readonly LoadView LoadView;
-        // private readonly AnchorsView AnchorsView;
-        // private readonly ViewportTest ViewportTest;
+        private readonly PrettyUi PrettyUi = new();
+        private readonly LoadView LoadView = new();
+        private readonly AnchorsView AnchorsView = new();
+        private readonly ViewportTest ViewportTest = new();
         private readonly ChildrenAxis ChildrenAxis = new();
+        private readonly GridTest GridTest = new();
+
+        private readonly Dictionary<int, View> ViewSelectors;
 
         public TestingApplication()
         {
-            this.Events.Access = EventAccess.Keyboard;
-
-            // AddView(BrowserView);
-            // AddView(AnchorsView);
-            // AddView(LoadView);
-            // AddView(ViewportTest);
+            AddView(PrettyUi);
+            AddView(AnchorsView);
+            AddView(LoadView);
+            AddView(ViewportTest);
             AddView(ChildrenAxis);
+            AddView(GridTest);
 
-            SetActiveView(ChildrenAxis);
+            SetActiveView(LoadView);
+
+            ViewSelectors = new Dictionary<int, View>(){
+                {59, PrettyUi},
+                {60, AnchorsView},
+                {61, LoadView},
+                {62, ViewportTest},
+                {63, ChildrenAxis},
+                {64, GridTest},
+            };
+
+            Events.OnKeyUp += (int keyPressed) =>
+            {
+                if (!ViewSelectors.ContainsKey(keyPressed)) return;
+                SetActiveView(ViewSelectors[keyPressed]);
+            };
         }
     }
 }
