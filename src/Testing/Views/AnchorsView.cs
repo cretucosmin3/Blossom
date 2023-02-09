@@ -28,11 +28,10 @@ namespace Blossom.Testing
 
         VisualElement TestElement;
 
-        public AnchorsView() : base("AnchorsView View")
+        public AnchorsView() : base("Anchors View")
         {
-            this.Events.OnMouseMove += HandleMove;
-
-            this.Events.OnKeyDown += (int key) =>
+            Events.OnMouseMove += HandleMove;
+            Events.OnKeyDown += (int key) =>
             {
                 switch (key)
                 {
@@ -242,17 +241,12 @@ namespace Blossom.Testing
             Draggable.Events.OnMouseDown += DraggableMouseDown;
             Draggable.Events.OnMouseUp += DraggableMouseUp;
 
+            AddElement(Draggable);
+
             Draggable.AddChild(AnchorTop);
             Draggable.AddChild(AnchorBottom);
             Draggable.AddChild(AnchorLeft);
             Draggable.AddChild(AnchorRight);
-
-            this.AddElement(Draggable);
-            this.AddElement(AnchorBottom);
-            this.AddElement(AnchorTop);
-            this.AddElement(AnchorLeft);
-            this.AddElement(AnchorRight);
-            this.AddElement(TestElement); // Test
         }
 
         private void HandleAnchorClick(VisualElement anchorEl, Anchor anchor)

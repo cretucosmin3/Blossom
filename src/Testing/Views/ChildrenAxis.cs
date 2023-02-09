@@ -118,6 +118,7 @@ public class ChildrenAxis : View
         BoundingArea = new()
         {
             Name = "Bounding Area",
+            IsClickthrough = true,
             Transform = new(150, 150, 100, 100)
             {
                 Anchor = Anchor.Left | Anchor.Top
