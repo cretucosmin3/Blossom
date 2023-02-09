@@ -55,6 +55,20 @@ namespace Blossom.Core
                 if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
                     continue;
 
+                if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
+                {
+                    var insideClipping = elementFromPoint.ComputedClipping.Contains(
+                        new(
+                            hitPoint.Left,
+                            hitPoint.Top,
+                            hitPoint.Right,
+                            hitPoint.Bottom
+                        )
+                    );
+
+                    if (!insideClipping) continue;
+                }
+
                 if (!elementFromPoint.IsClickthrough)
                     return elementFromPoint;
             }

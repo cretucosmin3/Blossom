@@ -49,6 +49,7 @@ public class ChildrenAxis : View
             var newEl = new Draggable()
             {
                 IsClipping = Random.Shared.Next(100) > 50,
+                // IsClipping = false,
                 Name = $"e{i}",
                 Text = "Child",
                 Transform = new(x, y, Random.Shared.Next(120, 160), 45)
@@ -67,9 +68,8 @@ public class ChildrenAxis : View
             newEl.Style.Shadow = new()
             {
                 Color = new(0, 0, 0, 200),
-                OffsetY = 3,
-                SpreadX = 3,
-                SpreadY = 3
+                OffsetY = 8,
+                OffsetX = 6
             };
 
             newEl.OnDragged += ElementDragged;
@@ -83,7 +83,7 @@ public class ChildrenAxis : View
                 UpColor = new(255, 55, 92),
                 IsClipping = false,
                 Text = "Grand Child",
-                Transform = new(45, 25, 135, 42)
+                Transform = new(45, 25, 180, 55)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
@@ -104,10 +104,9 @@ public class ChildrenAxis : View
                     },
                     Shadow = new()
                     {
-                        Color = new(0, 0, 0, 255),
-                        OffsetY = 3,
-                        SpreadX = 3,
-                        SpreadY = 3
+                        Color = new(0, 0, 0, 200),
+                        OffsetY = 8,
+                        OffsetX = 6
                     }
                 }
             };
@@ -140,7 +139,7 @@ public class ChildrenAxis : View
 
     public void ElementDragged(VisualElement element)
     {
-        var boundingRect = Elements.BoundAxis.GetBoundingRect();
+        var boundingRect = DraggableParent.BoundingRect;
 
         BoundingArea.Transform.X = boundingRect.X - 10;
         BoundingArea.Transform.Y = boundingRect.Y - 10;
