@@ -15,6 +15,7 @@ namespace Blossom.Testing
         private readonly ViewportTest ViewportTest = new();
         private readonly ChildrenAxis ChildrenAxis = new();
         private readonly GridTest GridTest = new();
+        private readonly DatePicker DatePickerView = new();
 
         private readonly Dictionary<int, View> ViewSelectors;
 
@@ -26,8 +27,9 @@ namespace Blossom.Testing
             AddView(ViewportTest);
             AddView(ChildrenAxis);
             AddView(GridTest);
+            AddView(DatePickerView);
 
-            SetActiveView(ChildrenAxis);
+            SetActiveView(DatePickerView);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},
@@ -36,6 +38,7 @@ namespace Blossom.Testing
                 {62, ViewportTest},
                 {63, ChildrenAxis},
                 {64, GridTest},
+                {65, DatePickerView},
             };
 
             Events.OnKeyUp += (int keyPressed) =>

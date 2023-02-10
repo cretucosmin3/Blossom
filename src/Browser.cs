@@ -216,7 +216,7 @@ public static class Browser
     {
         Renderer.ResetContext();
 
-        Renderer.Canvas.Clear(new(255, 255, 255, 255));
+        Renderer.Canvas.Clear(new(0, 0, 0, 255));
         BrowserApp.Render();
 
         Renderer.Canvas.Flush();

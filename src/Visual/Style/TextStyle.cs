@@ -46,8 +46,8 @@ public class TextStyle : StyleProperty
         Paint.Typeface = typeFace;
         Paint.TextSize = _Size;
 
-        if (_PathEffect != null)
-            Paint.PathEffect = _PathEffect;
+        // if (_PathEffect != null)
+        Paint.PathEffect = _PathEffect;
 
         TriggerRender();
     }
