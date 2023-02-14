@@ -195,6 +195,9 @@ public class SortedAxis
 
     public VisualElement[] GetNeighbours(VisualElement element)
     {
+        if (element == null)
+            return Array.Empty<VisualElement>();
+
         HashSet<VisualElement> Result = new();
 
         var Indexes = SortIndexes[element];

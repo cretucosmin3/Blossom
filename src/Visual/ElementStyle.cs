@@ -1,19 +1,21 @@
+using System;
 namespace Blossom.Core.Visual;
 using System.Collections.Generic;
 
-public class ElementStyle
+public class ElementStyle : IDisposable
 {
     internal List<VisualElement> AssignedElements = new();
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
     private SkiaSharp.SKPathEffect _BackgroundPathEffect;
 
     public TextStyle Text { get; set; }
-    public BorderStyle Border { get; set; } = new();
-    public ShadowStyle Shadow { get; set; } = new();
+    public BorderStyle Border { get; set; }
+    public ShadowStyle Shadow { get; set; }
 
     internal void AssignElement(VisualElement element)
     {
         AssignedElements.Add(element);
+
         if (Text is not null) Text.StyleContext = this;
         if (Border is not null) Border.StyleContext = this;
         if (Shadow is not null) Shadow.StyleContext = this;
@@ -28,6 +30,14 @@ public class ElementStyle
     {
         foreach (var element in AssignedElements)
             element.ScheduleRender();
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+
+        Border?.Dispose();
+        Shadow?.Dispose();
     }
 
     public SkiaSharp.SKColor BackColor
