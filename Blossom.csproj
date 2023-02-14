@@ -5,6 +5,7 @@
     <ApplicationIcon>icon64.ico</ApplicationIcon>
     <RootNamespace>Blossom</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'"/>
   <ItemGroup>

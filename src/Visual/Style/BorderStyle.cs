@@ -1,9 +1,10 @@
+using System;
 using Blossom.Core.Visual;
 using SkiaSharp;
 
 namespace Blossom.Core.Visual;
 
-public class BorderStyle : StyleProperty
+public class BorderStyle : StyleProperty, IDisposable
 {
     private SkiaSharp.SKColor _Color;
 
@@ -98,5 +99,11 @@ public class BorderStyle : StyleProperty
             _PathEffect = value;
             TriggerRender();
         }
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        PathEffect?.Dispose();
     }
 }

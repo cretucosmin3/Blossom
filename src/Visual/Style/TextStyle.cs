@@ -1,9 +1,10 @@
+using System;
 using System.Security.Cryptography;
 namespace Blossom.Core.Visual;
 
 using SkiaSharp;
 
-public class TextStyle : StyleProperty
+public class TextStyle : StyleProperty, IDisposable
 {
     public readonly SKPaint Paint;
 
@@ -17,7 +18,7 @@ public class TextStyle : StyleProperty
     private SKColor _Color;
     private string _FontName = "DejaVu Sans Mono";
 
-    public ShadowStyle _Shadow = null;
+    public ShadowStyle _Shadow;
 
     public TextStyle()
     {
@@ -37,7 +38,7 @@ public class TextStyle : StyleProperty
             new SKFontStyle(_Weight, _Width, SKFontStyleSlant.Upright)
         );
 
-        if (_Shadow != null && _Shadow.Filter != null)
+        if (_Shadow?.Filter != null)
         {
             Paint.ImageFilter = _Shadow.Filter;
         }
@@ -144,5 +145,14 @@ public class TextStyle : StyleProperty
             _PathEffect = value;
             RedoFont();
         }
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+
+        _PathEffect?.Dispose();
+        _Shadow?.Dispose();
+
     }
 }

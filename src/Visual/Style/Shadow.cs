@@ -10,13 +10,28 @@ public class ShadowStyle : StyleProperty, IDisposable
     private float _SpreadX = 0;
     private float _SpreadY = 0;
 
+    public SKImageFilter Filter { get; private set; }
+    public SKPaint Paint { get; }
+
     public ShadowStyle()
     {
+        Paint = new SKPaint()
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+
         RedoFilter();
     }
 
     public ShadowStyle(float oX, float oY, float sX, float sY, SKColor color)
     {
+        Paint = new SKPaint()
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+
         _OffsetX = oX;
         _OffsetY = oY;
         _SpreadX = sX;
@@ -24,13 +39,6 @@ public class ShadowStyle : StyleProperty, IDisposable
         Paint.Color = color;
         RedoFilter();
     }
-
-    public SKImageFilter Filter { get; private set; }
-    internal SKPaint Paint { get; } = new SKPaint()
-    {
-        Style = SKPaintStyle.Fill,
-        IsAntialias = true,
-    };
 
     public float OffsetX
     {
@@ -113,6 +121,8 @@ public class ShadowStyle : StyleProperty, IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
+
         Filter.Dispose();
         Paint.Dispose();
     }
