@@ -28,7 +28,7 @@ internal class RenderFlow
         ElementsToRender.Clear();
     }
 
-    public void ProcessImage()
+    public void RenderImage()
     {
         // Use AffectedLayers to create an image of all layers combined
     }
