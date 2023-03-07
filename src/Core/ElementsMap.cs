@@ -5,149 +5,148 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace Blossom.Core
+namespace Blossom.Core;
+
+public class ElementTree : IDisposable
 {
-    public class ElementTree : IDisposable
+    private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
+    internal readonly SortedAxis BoundAxis = new();
+
+    private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
+        float.MinValue / 2f, float.MinValue / 2f,
+        float.MaxValue, float.MaxValue
+    );
+
+    public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
+
+    internal ElementTree() { }
+
+    public List<VisualElement> ComponentsFromPoint(PointF point)
     {
-        private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
-        internal readonly SortedAxis BoundAxis = new();
+        return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
+    }
 
-        private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
-            float.MinValue / 2f, float.MinValue / 2f,
-            float.MaxValue, float.MaxValue
-        );
-
-        public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
-
-        internal ElementTree() { }
-
-        public List<VisualElement> ComponentsFromPoint(PointF point)
+    public List<VisualElement> CollidedComponents(VisualElement element)
+    {
+        var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
+        List<VisualElement> Result = new();
+        foreach (var Tracker in Collided)
         {
-            return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
+            if (Tracker.Element == element) continue;
+            Result.Add(Tracker.Element);
         }
 
-        public List<VisualElement> CollidedComponents(VisualElement element)
+        return Result;
+    }
+
+    public VisualElement FirstFromPoint(PointF point) =>
+        FirstFromPoint(point.X, point.Y);
+
+    public VisualElement FirstFromPoint(float x, float y)
+    {
+        var hitPoint = new RectangleF(x, y, 1, 1);
+        var components = QuadTree.GetObjects(hitPoint);
+        if (!components.Any()) return null;
+
+        for (int i = components.Count - 1; i >= 0; i--)
         {
-            var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
-            List<VisualElement> Result = new();
-            foreach (var Tracker in Collided)
+            var elementFromPoint = components[i].Element;
+
+            if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
+                continue;
+
+            if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
             {
-                if (Tracker.Element == element) continue;
-                Result.Add(Tracker.Element);
+                var insideClipping = elementFromPoint.ComputedClipping.Contains(
+                    new(
+                        hitPoint.Left,
+                        hitPoint.Top,
+                        hitPoint.Right,
+                        hitPoint.Bottom
+                    )
+                );
+
+                if (!insideClipping) continue;
             }
 
-            return Result;
+            if (!elementFromPoint.IsClickthrough)
+                return elementFromPoint;
         }
 
-        public VisualElement FirstFromPoint(PointF point) =>
-            FirstFromPoint(point.X, point.Y);
+        return null;
+    }
 
-        public VisualElement FirstFromPoint(float x, float y)
+    public VisualElement FirstFromQuad(RectangleF quad)
+    {
+        var components = QuadTree.GetObjects(quad);
+        if (!components.Any()) return null;
+
+        int maxLayer = components.Max(t => t.Element.Layer);
+        return components.Find(t => t.Element.Layer == maxLayer).Element;
+    }
+
+    public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
+    {
+        var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
+
+        foreach (var Tracker in Intersected)
+            if (Tracker.Element == elm2) return true;
+
+        return false;
+    }
+
+    private ElementTracker AddTracker(ref VisualElement element)
+    {
+        var NewTracker = new ElementTracker(ref element);
+        QuadTree.Add(NewTracker);
+
+        return NewTracker;
+    }
+
+    private void RemoveTracker(VisualElement Element)
+    {
+        var (_, tracker) = Map[Element.Name];
+        QuadTree.Remove(tracker);
+    }
+
+    public void AddElement(ref VisualElement element, View view)
+    {
+        if (Map.ContainsKey(element.Name))
         {
-            var hitPoint = new RectangleF(x, y, 1, 1);
-            var components = QuadTree.GetObjects(hitPoint);
-            if (!components.Any()) return null;
-
-            for (int i = components.Count - 1; i >= 0; i--)
-            {
-                var elementFromPoint = components[i].Element;
-
-                if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
-                    continue;
-
-                if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
-                {
-                    var insideClipping = elementFromPoint.ComputedClipping.Contains(
-                        new(
-                            hitPoint.Left,
-                            hitPoint.Top,
-                            hitPoint.Right,
-                            hitPoint.Bottom
-                        )
-                    );
-
-                    if (!insideClipping) continue;
-                }
-
-                if (!elementFromPoint.IsClickthrough)
-                    return elementFromPoint;
-            }
-
-            return null;
+            Log.Error($"A component with name {element.Name} already exists.");
+            return;
         }
 
-        public VisualElement FirstFromQuad(RectangleF quad)
+        var tracker = AddTracker(ref element);
+
+        // Add element and tracker to the map
+        Map.Add(element.Name, (element, tracker));
+
+        if (element.Name != "Bounding Area")
+            BoundAxis.AddElement(element);
+
+        element.OnDisposing += Element_OnDispose;
+    }
+
+    public void RemoveElement(VisualElement element)
+    {
+        Map.Remove(element.Name);
+        BoundAxis.RemoveElement(element);
+    }
+
+    private void Element_OnDispose(VisualElement e)
+    {
+        RemoveElement(e);
+    }
+
+    public void Dispose()
+    {
+        foreach (var (element, _) in Map.Values)
         {
-            var components = QuadTree.GetObjects(quad);
-            if (!components.Any()) return null;
-
-            int maxLayer = components.Max(t => t.Element.Layer);
-            return components.Find(t => t.Element.Layer == maxLayer).Element;
+            element.Dispose();
         }
 
-        public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
-        {
-            var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
-
-            foreach (var Tracker in Intersected)
-                if (Tracker.Element == elm2) return true;
-
-            return false;
-        }
-
-        private ElementTracker AddTracker(ref VisualElement element)
-        {
-            var NewTracker = new ElementTracker(ref element);
-            QuadTree.Add(NewTracker);
-
-            return NewTracker;
-        }
-
-        private void RemoveTracker(VisualElement Element)
-        {
-            var (_, tracker) = Map[Element.Name];
-            QuadTree.Remove(tracker);
-        }
-
-        public void AddElement(ref VisualElement element, View view)
-        {
-            if (Map.ContainsKey(element.Name))
-            {
-                Log.Error($"A component with name {element.Name} already exists.");
-                return;
-            }
-
-            var tracker = AddTracker(ref element);
-
-            // Add element and tracker to the map
-            Map.Add(element.Name, (element, tracker));
-
-            if (element.Name != "Bounding Area")
-                BoundAxis.AddElement(element);
-
-            element.OnDisposing += Element_OnDispose;
-        }
-
-        public void RemoveElement(VisualElement element)
-        {
-            Map.Remove(element.Name);
-            BoundAxis.RemoveElement(element);
-        }
-
-        private void Element_OnDispose(VisualElement e)
-        {
-            RemoveElement(e);
-        }
-
-        public void Dispose()
-        {
-            foreach (var (element, _) in Map.Values)
-            {
-                element.Dispose();
-            }
-
-            QuadTree.Clear();
-            Map.Clear();
-        }
+        QuadTree.Clear();
+        Map.Clear();
     }
 }

@@ -33,6 +33,15 @@ public class VisualElement : IDisposable
         set => _ParentView = value;
     }
 
+    internal int LayerPosition
+    {
+        get
+        {
+            if (Parent == null) return 0;
+            return Parent.LayerPosition + 1;
+        }
+    }
+
     internal ElementTree ChildElements { get; } = new();
 
     private VisualElement _Parent;
@@ -240,12 +249,15 @@ public class VisualElement : IDisposable
 
         SKRoundRect roundRect = new();
 
-        roundRect.SetRectRadii(rect, new SKPoint[] {
+        if (Style.Border != null)
+        {
+            roundRect.SetRectRadii(rect, new SKPoint[] {
                 new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
                 new SKPoint(Style.Border.RoundnessTopRight, Style.Border.RoundnessTopRight),
                 new SKPoint(Style.Border.RoundnessBottomRight, Style.Border.RoundnessBottomRight),
                 new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
+        }
 
         if (Style.Shadow?.HasValidValues() == true)
         {
@@ -260,7 +272,7 @@ public class VisualElement : IDisposable
 
         Renderer.Canvas.DrawRoundRect(roundRect, paint);
 
-        if (Style.Border.Width > 0)
+        if (Style.Border?.Width > 0)
         {
             paint.Style = SKPaintStyle.Stroke;
 
