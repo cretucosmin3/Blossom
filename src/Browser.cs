@@ -19,16 +19,16 @@ namespace Blossom;
 
 public static class Browser
 {
-    internal static IWindow window;
-    public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
     private static IInputContext input;
 
+    internal static IWindow window;
     internal static TestingApplication BrowserApp = new();
     internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
     internal static Action OnRenderRequired;
 
     public static event ForVoid OnLoaded;
 
+    public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
     public static bool IsLoaded { get; private set; } = false;
     public static bool IsRunning { get; private set; } = false;
     public static int TotalRenders { get; private set; }
@@ -216,7 +216,7 @@ public static class Browser
     {
         Renderer.ResetContext();
 
-        Renderer.Canvas.Clear(new(0, 0, 0, 255));
+        Renderer.Canvas.Clear(new(255, 255, 255, 255));
         BrowserApp.Render();
 
         Renderer.Canvas.Flush();

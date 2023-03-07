@@ -29,7 +29,7 @@ namespace Blossom.Testing
             AddView(GridTest);
             AddView(DatePickerView);
 
-            SetActiveView(DatePickerView);
+            SetActiveView(AnchorsView);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},

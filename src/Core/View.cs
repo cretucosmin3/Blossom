@@ -4,6 +4,7 @@ using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
 using SkiaSharp;
+using Blossom.Core.Render;
 
 namespace Blossom.Core
 {
@@ -11,6 +12,8 @@ namespace Blossom.Core
     {
         public EventMap Events = new();
         public ElementTree Elements = new();
+        internal RenderFlow RenderFlow = new();
+
         public event ForVoid Loop;
 
         internal bool IsLoaded { get; set; } = false;
