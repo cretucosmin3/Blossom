@@ -6,7 +6,7 @@ using Blossom.Core.Visual;
 
 namespace Blossom.Core.Render;
 
-internal class RenderFlow
+internal class RenderCycle
 {
     public RenderLayers RenderLayers;
 
@@ -28,7 +28,7 @@ internal class RenderFlow
         ElementsToRender.Clear();
     }
 
-    public void RenderImage()
+    public void RenderCycleImage()
     {
         // Use AffectedLayers to create an image of all layers combined
     }
