@@ -1,10 +1,7 @@
-using System.Linq;
 using System.Numerics;
 using System.Text;
 using System;
 using SkiaSharp;
-using Blossom.Core.Visual;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Blossom.Core.Visual;
 
@@ -33,13 +30,9 @@ public class VisualElement : IDisposable
         set => _ParentView = value;
     }
 
-    internal int LayerPosition
+    public int Layer
     {
-        get
-        {
-            if (Parent == null) return 0;
-            return Parent.LayerPosition + 1;
-        }
+        get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
     internal ElementTree ChildElements { get; } = new();
@@ -57,9 +50,13 @@ public class VisualElement : IDisposable
             if (_Parent != null)
                 _Parent.TransformChanged -= ParentTransformChanged;
 
+            ParentView.RenderCycle.AddLayerToCycle(Layer);
+
             _Parent = value;
             Transform.Parent = value.Transform;
             value.TransformChanged += ParentTransformChanged;
+
+            ScheduleRender();
         }
     }
 
@@ -133,11 +130,6 @@ public class VisualElement : IDisposable
         }
     }
 
-    public int Layer
-    {
-        get => Parent != null ? Parent.Layer + 1 : 0;
-    }
-
     public Rect BoundingRect
     {
         get
@@ -173,13 +165,12 @@ public class VisualElement : IDisposable
 
         ComputedVisibility = Visibility.Visible;
         bool isWithinParent = true;
-        bool isInsideParent = true;
         bool isClipped = false;
 
         if (Parent != null)
         {
             isClipped = Parent.IsClipping;
-            isInsideParent = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF);
+            bool isInsideParent = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF);
             isWithinParent = isInsideParent || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
         }
 
@@ -375,6 +366,7 @@ public class VisualElement : IDisposable
 
     internal void ScheduleRender()
     {
+        ParentView.RenderCycle.AddToCycle(this);
         Browser.BrowserApp.ActiveView.RenderRequired = true;
     }
 
