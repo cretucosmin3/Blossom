@@ -9,6 +9,8 @@ internal class RenderLayers
 {
     private readonly Dictionary<int, SKSurface> SurfaceLayers = new();
 
+    public int Count { get => SurfaceLayers.Count; }
+
     public bool HasLayer(int index) => SurfaceLayers.ContainsKey(index);
 
     public void CreateLayer(int layer)

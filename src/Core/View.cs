@@ -12,7 +12,11 @@ namespace Blossom.Core
     {
         public EventMap Events = new();
         public ElementTree Elements = new();
+<<<<<<< Updated upstream
         internal RenderCycle RenderFlow = new();
+=======
+        internal RenderCycle RenderCycle = new();
+>>>>>>> Stashed changes
 
         public event ForVoid Loop;
 

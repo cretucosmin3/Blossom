@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using System;
 using Silk.NET.Windowing;
@@ -17,19 +18,42 @@ internal class RenderCycle
     {
         ElementsToRender.Add(element);
 
-        if (!AffectedLayers.ContainsKey(element.LayerPosition))
-            AffectedLayers.Add(element.LayerPosition, new());
+        if (!AffectedLayers.ContainsKey(element.Layer))
+            AffectedLayers.Add(element.Layer, new());
 
-        AffectedLayers[element.LayerPosition].Add(element);
+        AffectedLayers[element.Layer].Add(element);
+    }
+
+    public void AddLayerToCycle(int layerIndex)
+    {
+        if (!AffectedLayers.ContainsKey(layerIndex))
+            AffectedLayers.Add(layerIndex, new());
     }
 
     public void ResetCycle()
     {
         ElementsToRender.Clear();
+        AffectedLayers.Clear();
     }
 
     public void RenderCycleImage()
     {
-        // Use AffectedLayers to create an image of all layers combined
+        int maxLayer = RenderLayers.Count;
+        for (int i = 0; i < maxLayer; i++)
+        {
+            bool layerIsChanged = AffectedLayers.ContainsKey(i);
+
+            if (layerIsChanged)
+            {
+                // Clear old layer image
+                RenderLayers[i].Canvas.Clear();
+
+                // Re-draw layer image
+
+            }
+
+            // Draw layer image to final image
+
+        }
     }
 }
