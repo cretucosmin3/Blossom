@@ -56,7 +56,6 @@ public class ViewportTest : View
 
     public void SpinElementAnimation(VisualElement eA, float Speed, float R)
     {
-
         new Thread(() =>
         {
             var x_0 = eA.Transform.X;

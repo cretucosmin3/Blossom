@@ -35,6 +35,8 @@ public class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
+    internal bool LastChangeAffectsOverlapRender { get; set; } = false;
+
     internal ElementTree ChildElements { get; } = new();
 
     private VisualElement _Parent;
@@ -66,7 +68,7 @@ public class VisualElement : IDisposable
     internal event Action<VisualElement, Transform> TransformChanged;
     internal SKPoint TextPosition;
 
-    private Transform _Transform = new Transform();
+    private Transform _Transform = new();
     public Transform Transform
     {
         get => _Transform;
@@ -87,6 +89,8 @@ public class VisualElement : IDisposable
         get => _Style;
         set
         {
+            LastChangeAffectsOverlapRender = true;
+
             _Style = value;
             _Style.AssignElement(this);
         }
@@ -98,6 +102,8 @@ public class VisualElement : IDisposable
         get => _IsClipping;
         set
         {
+            LastChangeAffectsOverlapRender = true;
+
             _IsClipping = value;
             ScheduleRender();
         }
@@ -105,6 +111,8 @@ public class VisualElement : IDisposable
 
     public void AddChild(VisualElement child)
     {
+        if (!IsClipping) LastChangeAffectsOverlapRender = true;
+
         child.Parent = this;
         ChildElements.AddElement(ref child, ParentView);
         ParentView.TrackElement(ref child);
@@ -353,20 +361,20 @@ public class VisualElement : IDisposable
 
     private void ChangedTransform(Transform transform)
     {
-        this.Transform.Evaluate();
+        Transform.Evaluate();
         CalculateText();
         TransformChanged?.Invoke(this, transform);
     }
 
     private void ParentTransformChanged(VisualElement e, Transform t)
     {
-        this.Transform.Evaluate();
+        Transform.Evaluate();
         CalculateText();
     }
 
     internal void ScheduleRender()
     {
-        ParentView.RenderCycle.AddToCycle(this);
+        ParentView?.RenderCycle?.AddToCycle(this);
         Browser.BrowserApp.ActiveView.RenderRequired = true;
     }
 
@@ -406,7 +414,6 @@ public class VisualElement : IDisposable
             Child.Dispose();
         }
 
-        if (Parent != null)
-            Parent.ChildElements.RemoveElement(this);
+        Parent?.ChildElements.RemoveElement(this);
     }
 }

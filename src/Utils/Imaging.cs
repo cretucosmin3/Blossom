@@ -12,15 +12,15 @@ namespace Blossom.Utils
     {
         private static HttpClient client;
 
-        public static async Task<System.Drawing.Bitmap> LoadImageFromUrl(string url)
+        public static async Task<Bitmap> LoadImageFromUrl(string url)
         {
-            System.Drawing.Bitmap bmp = null;
-            using (HttpClient webClient = new HttpClient())
+            Bitmap bmp = null;
+            using (HttpClient webClient = new())
             {
                 byte[] data = await webClient.GetByteArrayAsync(url);
 
-                using MemoryStream mem = new MemoryStream(data);
-                bmp = (System.Drawing.Bitmap)System.Drawing.Image.FromStream(mem);
+                using MemoryStream mem = new(data);
+                bmp = (Bitmap)Image.FromStream(mem);
             }
 
             return bmp;
@@ -28,20 +28,20 @@ namespace Blossom.Utils
 
         public static byte[] BytesFromBitmap(Bitmap imgo)
         {
-            var bitmapData = imgo.LockBits(new System.Drawing.Rectangle(0, 0, imgo.Width, imgo.Height), ImageLockMode.ReadOnly, imgo.PixelFormat);
+            var bitmapData = imgo.LockBits(new Rectangle(0, 0, imgo.Width, imgo.Height), ImageLockMode.ReadOnly, imgo.PixelFormat);
             var length = bitmapData.Stride * bitmapData.Height;
             byte[] bytes = new byte[length];
             System.Runtime.InteropServices.Marshal.Copy(bitmapData.Scan0, bytes, 0, length);
             imgo.UnlockBits(bitmapData);
+
             return bytes;
         }
 
         public static async Task<byte[]> LoadImageBytes(string url)
         {
-            byte[] bytes = new byte[0];
+            byte[] bytes = Array.Empty<byte>();
 
-            if (client == null)
-                client = new HttpClient();
+            client ??= new HttpClient();
 
             try
             {

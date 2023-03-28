@@ -17,16 +17,13 @@ namespace Blossom
 
         private static void LogToFile(string message, Severity severity)
         {
-            if (Directory.Exists("logs") == false)
+            if (!Directory.Exists("logs"))
                 Directory.CreateDirectory("logs");
 
-            string filePath = $"{Directory.GetCurrentDirectory()}/logs/{DateTime.Now.ToString("yyyy-MM-dd")}.log";
+            string filePath = $"{Directory.GetCurrentDirectory()}/logs/{DateTime.Now:yyyy-MM-dd}.log";
 
-            using (StreamWriter writer = new StreamWriter(filePath, true))
-            {
-                writer.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss")}] [{severity.ToString()}] {message}");
-                writer.Close();
-            }
+            using StreamWriter writer = new StreamWriter(filePath, true);
+            writer.WriteLine($"[{DateTime.Now:HH:mm:ss}] [{severity}] {message}");
         }
 
         private static void WritePrefix(string text, ConsoleColor color)
@@ -50,7 +47,6 @@ namespace Blossom
 
             WritePrefix($"[{severity.ToString().ToUpper()}] ", SeverityColor);
             WriteLine(LogMessage);
-            // LogToFile(LogMessage, severity);
         }
 
         public static void Debug(string LogMessage) => CWrite(LogMessage, Severity.Debug);

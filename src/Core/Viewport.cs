@@ -9,8 +9,8 @@ namespace Blossom.Core;
 public abstract class Viewport
 {
     private Scrollable _scrollable = Scrollable.None;
-    public Rect FirstRect { get; private set; } = new Rect(0, 0, 0, 0);
-    public Rect ProvisionalRect = new Rect(0, 0, 0, 0);
+    public Rect FirstRect { get; } = new(0, 0, 0, 0);
+    public Rect ProvisionalRect = new(0, 0, 0, 0);
 
     public Scrollable Scrollable
     {

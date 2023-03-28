@@ -14,28 +14,21 @@ public class Transform
         }
     }
 
-    private float ParentWidth
-    {
-        get => Parent != null ? Parent.Width : Browser.window.Size.X;
-    }
+    private float ParentWidth => Parent != null ? Parent.Width : Browser.window.Size.X;
+    private float ParentHeight => Parent != null ? Parent.Height : Browser.window.Size.Y;
 
-    private float ParentHeight
-    {
-        get => Parent != null ? Parent.Height : Browser.window.Size.Y;
-    }
+    internal float FixedLeft;
+    internal float FixedRight;
+    internal float FixedTop;
+    internal float FixedBottom;
 
-    internal float FixedLeft = 0f;
-    internal float FixedRight = 0f;
-    internal float FixedTop = 0f;
-    internal float FixedBottom = 0f;
-
-    internal float RelativeLeft = 0f;
-    internal float RelativeRight = 0f;
-    internal float RelativeTop = 0f;
-    internal float RelativeBottom = 0f;
+    internal float RelativeLeft;
+    internal float RelativeRight;
+    internal float RelativeTop;
+    internal float RelativeBottom;
 
     private readonly Rect ComputedTransform = new(0, 0, 0, 0);
-    public Rect Computed { get => ComputedTransform; }
+    public Rect Computed => ComputedTransform;
     public Rect Local { get; } = new Rect(0, 0, 0, 0);
 
     public bool FixedHeight { get; set; } = false;

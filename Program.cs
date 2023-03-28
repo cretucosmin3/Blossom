@@ -21,10 +21,6 @@ namespace Blossom
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
 
-        const UInt32 WM_CLOSE = 0x0010;
-        const int SW_HIDE = 0;
-        const int SW_SHOW = 5;
-
         private static readonly string[] _args = Environment.GetCommandLineArgs();
         private static readonly string _appName = Path.GetFileNameWithoutExtension(_args[0]);
         private static readonly string _appPath = Path.GetDirectoryName(_args[0]);
@@ -33,7 +29,7 @@ namespace Blossom
         private static readonly string _appDataPathLog = Path.Combine(_appDataPath, "log.txt");
         private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
-        static void Main(string[] args)
+        static void Main()
         {
             Log.Info(_appName);
             Log.Info(_appPath);

@@ -39,6 +39,7 @@ internal class RenderCycle
     public void RenderCycleImage()
     {
         int maxLayer = RenderLayers.Count;
+
         for (int i = 0; i < maxLayer; i++)
         {
             bool layerIsChanged = AffectedLayers.ContainsKey(i);
