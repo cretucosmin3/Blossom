@@ -1,9 +1,5 @@
 using System.Collections.Generic;
-using System;
 using Blossom.Core;
-using Blossom.Core.Input;
-using Blossom.Core.Visual;
-using System.Drawing;
 
 namespace Blossom.Testing
 {
@@ -29,7 +25,7 @@ namespace Blossom.Testing
             AddView(GridTest);
             AddView(DatePickerView);
 
-            SetActiveView(LoadView);
+            SetActiveView(AnchorsView);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},

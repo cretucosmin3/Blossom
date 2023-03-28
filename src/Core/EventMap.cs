@@ -1,10 +1,6 @@
-using System.Net;
-using Microsoft.VisualBasic.CompilerServices;
-using System.Text;
 using System.Collections.Generic;
 using System;
 using Silk.NET.Input;
-using Silk.NET.Windowing;
 using Blossom.Core.Delegates.Inputs;
 using Blossom.Utils;
 using System.Numerics;
@@ -210,7 +206,7 @@ public class EventMap : IDisposable
         OnMouseScroll?.Invoke(target, pos);
     #endregion
 
-    internal bool isMouseDown(int key) => keysDown[key];
+    internal bool IsMouseDown(int key) => keysDown[key];
 
     public void Dispose()
     {

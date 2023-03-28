@@ -26,8 +26,6 @@ namespace Blossom.Testing
         VisualElement AnchorLeft;
         VisualElement AnchorRight;
 
-        VisualElement TestElement;
-
         public AnchorsView() : base("Anchors View")
         {
             Events.OnMouseMove += HandleMove;
@@ -53,23 +51,6 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            // ElementStyle AnchorStyle = new()
-            // {
-            //     BackColor = new(200, 50, 35, 120),
-            //     Border = new()
-            //     {
-            //         Roundness = 5,
-            //         Width = 2f,
-            //         Color = new(255, 255, 255, 255)
-            //     },
-            //     Shadow = new()
-            //     {
-            //         Color = new(0, 0, 0, 160),
-            //         SpreadX = 5,
-            //         SpreadY = 5,
-            //     }
-            // };
-
             Draggable = new VisualElement()
             {
                 Name = "Draggable",

@@ -17,7 +17,7 @@ public abstract class Application : IDisposable
         }
     }
 
-    private Dictionary<string, View> Views = new();
+    private readonly Dictionary<string, View> Views = new();
     private string _ActiveView = "";
     public View ActiveView
     {

@@ -352,7 +352,7 @@ public class LoadView : View
         el.Style.Border.Width = 2;
         el.Style.Border.Color = ColorToDraw;
 
-        if (Events.isMouseDown(0))
+        if (Events.IsMouseDown(0))
         {
             MarkAsDrawn(el);
         }

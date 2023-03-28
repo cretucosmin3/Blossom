@@ -28,9 +28,9 @@ public static class Browser
 
     public static event ForVoid OnLoaded;
 
-    public static IntPtr window_handle { get => window.Native.Win32.Value.Hwnd; }
+    public static IntPtr Window_handle => window.Native.Win32.Value.Hwnd;
     public static bool IsLoaded { get; private set; } = false;
-    public static bool IsRunning { get; private set; } = false;
+    public static bool IsRunning { get; } = false;
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
 
@@ -189,26 +189,23 @@ public static class Browser
             foreach (var memory in memoryGroup)
             {
                 memory.Span.CopyTo(block);
-                block = block.Slice(memory.Length);
+                block = block[memory.Length..];
             }
 
             var icon = new RawImage(image.Width, image.Height, array);
             window.SetWindowIcon(ref icon);
             Console.WriteLine("Logo loaded");
-        };
+        }
     }
 
     private static void Load()
     {
-        var winHandle = window.Native.Win32.Value.Hwnd;
-
         IsLoaded = true;
         window.Center();
         Renderer.SetCanvas(window);
         OnLoaded.Invoke();
         LoadLogo();
 
-        // User32.makeWindowBorderless(winHandle);
         StartWindow();
     }
 

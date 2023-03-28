@@ -109,7 +109,7 @@ public class ElementTree : IDisposable
         QuadTree.Remove(tracker);
     }
 
-    public void AddElement(ref VisualElement element, View view)
+    public void AddElement(ref VisualElement element)
     {
         if (Map.ContainsKey(element.Name))
         {
@@ -130,6 +130,7 @@ public class ElementTree : IDisposable
 
     public void RemoveElement(VisualElement element)
     {
+        RemoveTracker(element);
         Map.Remove(element.Name);
         BoundAxis.RemoveElement(element);
     }

@@ -12,11 +12,7 @@ namespace Blossom.Core
     {
         public EventMap Events = new();
         public ElementTree Elements = new();
-<<<<<<< Updated upstream
-        internal RenderCycle RenderFlow = new();
-=======
         internal RenderCycle RenderCycle = new();
->>>>>>> Stashed changes
 
         public event ForVoid Loop;
 
@@ -113,7 +109,7 @@ namespace Blossom.Core
         public void AddElement(VisualElement element)
         {
             element.ParentView = this;
-            Elements.AddElement(ref element, this);
+            Elements.AddElement(ref element);
 
             element.AddedToView();
             Browser.BrowserApp.ActiveView.RenderRequired = true;
@@ -127,14 +123,13 @@ namespace Blossom.Core
 
         public void TrackElement(ref VisualElement element)
         {
-            Elements.AddElement(ref element, this);
+            Elements.AddElement(ref element);
             element.AddedToView();
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
         public void UntrackElement(ref VisualElement element)
         {
-
             Elements.RemoveElement(element);
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
@@ -165,7 +160,7 @@ namespace Blossom.Core
 
         public void Dispose()
         {
-
+            // Not implemented yet
         }
     }
 }

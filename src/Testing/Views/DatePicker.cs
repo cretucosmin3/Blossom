@@ -12,10 +12,7 @@ namespace Blossom.Testing
     {
         private bool MouseLeft = true;
 
-        public DatePicker() : base("DatePicker View")
-        {
-
-        }
+        public DatePicker() : base("DatePicker View") { }
 
         public override void Main()
         {
@@ -150,7 +147,6 @@ namespace Blossom.Testing
                         neonButton.Style.Text.PathEffect = null;
                         neonButton.Style.Text.Color = new(255, 0, 65, 35);
                     });
-
                 }).Start();
             };
         }
