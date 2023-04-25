@@ -13,6 +13,7 @@ namespace Blossom.Core
         public EventMap Events = new();
         public ElementTree Elements = new();
         internal RenderCycle RenderCycle = new();
+        public SKColor BackColor = SKColors.White;
 
         public event ForVoid Loop;
 

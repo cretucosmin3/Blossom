@@ -114,7 +114,7 @@ public class VisualElement : IDisposable
         if (!IsClipping) LastChangeAffectsOverlapRender = true;
 
         child.Parent = this;
-        ChildElements.AddElement(ref child, ParentView);
+        ChildElements.AddElement(ref child);
         ParentView.TrackElement(ref child);
     }
 
