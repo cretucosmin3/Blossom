@@ -8,14 +8,16 @@ using SkiaSharp;
 
 namespace Blossom.Testing
 {
-    public class DatePicker : View
+    public class NeonView : View
     {
         private bool MouseLeft = true;
 
-        public DatePicker() : base("DatePicker View") { }
+        public NeonView() : base("NeonView View") { }
 
         public override void Main()
         {
+            this.BackColor = SKColors.Black;
+
             var neonButton = new VisualElement()
             {
                 Name = "Button",

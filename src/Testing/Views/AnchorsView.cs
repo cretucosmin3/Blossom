@@ -1,23 +1,14 @@
-using System.Globalization;
-using System.Security.Cryptography;
 using System.Numerics;
-using System.Net.Mime;
-using System;
-using System.Diagnostics;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
-using System.Drawing;
-using System.Threading;
 using SkiaSharp;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace Blossom.Testing
 {
     public class AnchorsView : View
     {
-        private bool isDragged = false;
+        private bool isDragged;
         private Vector2 dragPoint;
         VisualElement Draggable;
 

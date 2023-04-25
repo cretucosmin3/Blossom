@@ -213,7 +213,8 @@ public static class Browser
     {
         Renderer.ResetContext();
 
-        Renderer.Canvas.Clear(new(255, 255, 255, 255));
+        Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? new(255, 255, 255, 255));
+
         BrowserApp.Render();
 
         Renderer.Canvas.Flush();
