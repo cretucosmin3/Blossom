@@ -35,8 +35,6 @@ public class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
-    internal bool LastChangeAffectsOverlapRender { get; set; } = false;
-
     internal ElementTree ChildElements { get; } = new();
 
     private VisualElement _Parent;
@@ -51,8 +49,6 @@ public class VisualElement : IDisposable
         {
             if (_Parent != null)
                 _Parent.TransformChanged -= ParentTransformChanged;
-
-            ParentView.RenderCycle.AddLayerToCycle(Layer);
 
             _Parent = value;
             Transform.Parent = value.Transform;
@@ -80,6 +76,8 @@ public class VisualElement : IDisposable
             // Attach new
             _Transform = value;
             _Transform.OnChanged += ChangedTransform;
+
+            _Transform.ParentElement = this;
         }
     }
 
@@ -89,8 +87,6 @@ public class VisualElement : IDisposable
         get => _Style;
         set
         {
-            LastChangeAffectsOverlapRender = true;
-
             _Style = value;
             _Style.AssignElement(this);
         }
@@ -102,8 +98,6 @@ public class VisualElement : IDisposable
         get => _IsClipping;
         set
         {
-            LastChangeAffectsOverlapRender = true;
-
             _IsClipping = value;
             ScheduleRender();
         }
@@ -111,8 +105,6 @@ public class VisualElement : IDisposable
 
     public void AddChild(VisualElement child)
     {
-        if (!IsClipping) LastChangeAffectsOverlapRender = true;
-
         child.Parent = this;
         ChildElements.AddElement(ref child);
         ParentView.TrackElement(ref child);
@@ -167,7 +159,7 @@ public class VisualElement : IDisposable
         }
     }
 
-    internal void Render()
+    internal void Render(SKCanvas targetCanvas)
     {
         Transform.Evaluate();
 
@@ -188,25 +180,20 @@ public class VisualElement : IDisposable
             return;
         }
 
-        using (new SKAutoCanvasRestore(Renderer.Canvas))
+        using (new SKAutoCanvasRestore(targetCanvas))
         {
             if (isClipped || Parent?.ComputedVisibility == Visibility.Clipped)
             {
                 ComputedVisibility = Visibility.Clipped;
-                ApplyClipping();
+                ApplyClipping(targetCanvas);
             }
 
-            DrawBase();
-            DrawText();
-        }
-
-        foreach (var child in Children)
-        {
-            child.Render();
+            DrawBase(targetCanvas);
+            DrawText(targetCanvas);
         }
     }
 
-    private void ApplyClipping()
+    private void ApplyClipping(SKCanvas targetCanvas)
     {
         var prevClipping = Parent.GetPreviousClippingRect();
 
@@ -232,12 +219,12 @@ public class VisualElement : IDisposable
         //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
         // });
 
-        Renderer.Canvas.ClipRoundRect(compClippingRect, SKClipOperation.Intersect, true);
+        targetCanvas.ClipRoundRect(compClippingRect, SKClipOperation.Intersect, true);
 
         ComputedClipping = compClippingRect;
     }
 
-    internal void DrawBase()
+    internal void DrawBase(SKCanvas targetCanvas)
     {
         SKRect rect = new(
             Transform.Computed.X,
@@ -261,7 +248,7 @@ public class VisualElement : IDisposable
         if (Style.Shadow?.HasValidValues() == true)
         {
             Style.Shadow.Paint.PathEffect = Style.BackgroundPathEffect;
-            Renderer.Canvas.DrawRoundRect(roundRect, Style.Shadow.Paint);
+            targetCanvas.DrawRoundRect(roundRect, Style.Shadow.Paint);
         }
 
         paint.Style = SKPaintStyle.Fill;
@@ -269,7 +256,7 @@ public class VisualElement : IDisposable
         paint.IsAntialias = true;
         paint.PathEffect = Style.BackgroundPathEffect;
 
-        Renderer.Canvas.DrawRoundRect(roundRect, paint);
+        targetCanvas.DrawRoundRect(roundRect, paint);
 
         if (Style.Border?.Width > 0)
         {
@@ -280,13 +267,14 @@ public class VisualElement : IDisposable
 
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
+
             // paint.Shader = SKShader.CreateRadialGradient(
             //     new SKPoint(rect.MidX, rect.MidY), rect.Width / 1.7f,
             //     new SKColor[] { SKColors.Transparent, new(0, 0, 0, 70) },
             //     SKShaderTileMode.Clamp);
 
             roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
-            Renderer.Canvas.DrawRoundRect(roundRect, paint);
+            targetCanvas.DrawRoundRect(roundRect, paint);
 
             // paint.Shader?.Dispose();
             // paint.Shader = null;
@@ -295,18 +283,18 @@ public class VisualElement : IDisposable
         roundRect.Dispose();
     }
 
-    private void DrawText()
+    private void DrawText(SKCanvas targetCanvas)
     {
         if (string.IsNullOrEmpty(Text) || Style.Text is null)
             return;
 
         CalculateText();
-        DrawTextShadow();
+        DrawTextShadow(targetCanvas);
     }
 
-    internal void DrawTextShadow()
+    internal void DrawTextShadow(SKCanvas targetCanvas)
     {
-        Renderer.Canvas.DrawText(Text, TextPosition, Style.Text.Paint);
+        targetCanvas.DrawText(Text, TextPosition, Style.Text.Paint);
     }
 
     private SKRect TextBounds;
@@ -364,18 +352,29 @@ public class VisualElement : IDisposable
         Transform.Evaluate();
         CalculateText();
         TransformChanged?.Invoke(this, transform);
+
+        ScheduleRender();
     }
 
     private void ParentTransformChanged(VisualElement e, Transform t)
     {
         Transform.Evaluate();
         CalculateText();
+        ScheduleRender();
     }
 
     internal void ScheduleRender()
     {
-        ParentView?.RenderCycle?.AddToCycle(this);
-        Browser.BrowserApp.ActiveView.RenderRequired = true;
+        if (ParentView != null)
+            ParentView.RenderRequired = true;
+
+        if (Children.Length > 0)
+        {
+            foreach (var child in Children)
+            {
+                child.ScheduleRender();
+            }
+        }
     }
 
     public void GetFocus()
@@ -405,6 +404,7 @@ public class VisualElement : IDisposable
 
     public void Dispose()
     {
+        paint.Dispose();
         OnDisposing?.Invoke(this);
 
         ParentView.Elements.RemoveElement(this);
