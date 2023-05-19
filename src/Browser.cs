@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading;
 using System.Numerics;
 using Silk.NET.Core;
@@ -14,6 +15,7 @@ using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
+using SkiaSharp;
 
 namespace Blossom;
 
@@ -33,6 +35,8 @@ public static class Browser
     public static bool IsRunning { get; } = false;
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
+
+    static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
 
     internal static void Initialize()
     {
@@ -81,12 +85,11 @@ public static class Browser
     {
         while (!window.IsClosing)
         {
-            Thread.Sleep(1);
             BrowserApp.ActiveView?.TriggerLoop();
             window.DoEvents();
             window.ContinueEvents();
 
-            if (BrowserApp.ActiveView?.RenderRequired == true)
+            if (BrowserApp.ActiveView?.ElementLayers.HasChanges() == true)
             {
                 window.DoRender();
 
@@ -100,6 +103,8 @@ public static class Browser
                     SkipCountingNextRender = false;
                 }
             }
+
+            Thread.Sleep(1);
         }
 
         window.Dispose();
@@ -201,21 +206,44 @@ public static class Browser
     private static void Load()
     {
         IsLoaded = true;
+
         window.Center();
         Renderer.SetCanvas(window);
         OnLoaded.Invoke();
+
         LoadLogo();
 
+        Console.Clear();
         StartWindow();
     }
+
+    private static readonly Stopwatch frameTimer = new();
+    private static int frameCounter = 0;
+    private static readonly double[] frameTimes = new double[5];
 
     private static void Render(double time)
     {
         Renderer.ResetContext();
+        Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
 
-        Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? new(255, 255, 255, 255));
+        frameTimer.Restart();
+        BrowserApp.PerformRender();
+        frameTimer.Stop();
 
-        BrowserApp.Render();
+        frameTimes[frameCounter] = frameTimer.ElapsedMilliseconds;
+
+        frameCounter++;
+        if (frameCounter == frameTimes.Length)
+            frameCounter = 0;
+
+        double AverageFrame = 0;
+        foreach (double t in frameTimes)
+            AverageFrame += t;
+
+        Console.CursorTop = 0;
+        Console.CursorLeft = 0;
+
+        Console.WriteLine(AverageFrame / frameTimes.Length);
 
         Renderer.Canvas.Flush();
     }

@@ -3,6 +3,7 @@ namespace Blossom.Core.Visual;
 
 public class Transform
 {
+    internal VisualElement ParentElement;
     private Transform _Parent = null;
     public Transform Parent
     {
@@ -60,6 +61,7 @@ public class Transform
             CenterX = X + (Width / 2f);
 
             OnChanged?.Invoke(this);
+            ParentElement?.ScheduleRender();
         }
     }
 
@@ -75,6 +77,7 @@ public class Transform
             CenterY = Y + (Height / 2f);
 
             OnChanged?.Invoke(this);
+            ParentElement?.ScheduleRender();
         }
     }
 
@@ -90,6 +93,7 @@ public class Transform
             CenterX = X + (Width / 2f);
 
             OnChanged?.Invoke(this);
+            ParentElement?.ScheduleRender();
         }
     }
 
@@ -105,6 +109,7 @@ public class Transform
             CenterY = Y + (Height / 2f);
 
             OnChanged?.Invoke(this);
+            ParentElement?.ScheduleRender();
         }
     }
 
@@ -135,6 +140,7 @@ public class Transform
                 SetAnchorValues();
 
             OnChanged?.Invoke(this);
+            ParentElement?.ScheduleRender();
         }
     }
 

@@ -11,7 +11,7 @@ using System;
 
 namespace Blossom.Testing;
 
-public class LoadView : View
+public class DrawingView : View
 {
     VisualElement GraySelector;
     VisualElement BlackSelector;
@@ -36,7 +36,7 @@ public class LoadView : View
 
     private SKColor ColorToDraw = SKColors.DimGray;
 
-    public LoadView() : base("LoadView View")
+    public DrawingView() : base("Drawing View")
     {
         Events.OnKeyType += OnKeyPress;
     }
@@ -117,6 +117,7 @@ public class LoadView : View
         {
             AddElement(element);
         }
+
         DoColorSelectors();
 
         RendersLabel = new()

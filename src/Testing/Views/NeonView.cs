@@ -16,14 +16,14 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            this.BackColor = SKColors.Black;
+            BackColor = SKColors.Black;
 
             var neonButton = new VisualElement()
             {
                 Name = "Button",
                 IsClipping = false,
                 Text = "NEON",
-                Transform = new(250, 250, 220, 55)
+                Transform = new(100, 100, 220, 55)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                 },
@@ -65,6 +65,7 @@ namespace Blossom.Testing
 
             neonButton.Events.OnMouseEnter += (_) =>
             {
+                neonButton.Text = "FIRE";
                 MouseLeft = false;
                 new Thread(() =>
                 {
@@ -122,10 +123,11 @@ namespace Blossom.Testing
 
             neonButton.Events.OnMouseLeave += (_) =>
             {
+                neonButton.Text = "NEON";
                 MouseLeft = true;
                 new Thread(() =>
                 {
-                    neonButton.Style.Border.Color = new(255, 0, 65, 80);
+                    neonButton.Style.Border.Color = new(255, 10, 65, 80);
                     neonButton.Style.Shadow.Color = new(255, 0, 65, 100);
 
                     for (float i = 1f; i >= -0.05f; i -= 0.05f)
@@ -142,13 +144,8 @@ namespace Blossom.Testing
                         Thread.Sleep(2);
                     }
 
-                    RenderChanges(() =>
-                    {
-                        neonButton.Style.Text.PathEffect?.Dispose();
-
-                        neonButton.Style.Text.PathEffect = null;
-                        neonButton.Style.Text.Color = new(255, 0, 65, 35);
-                    });
+                    neonButton.Style.Text.PathEffect?.Dispose();
+                    neonButton.Style.Text.Color = new(255, 0, 65, 35);
                 }).Start();
             };
         }

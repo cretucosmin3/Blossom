@@ -237,11 +237,8 @@ namespace Blossom.Testing
         {
             if (!isDragged) return;
 
-            this.RenderChanges(() =>
-            {
-                Draggable.Transform.X = args.Global.X - dragPoint.X;
-                Draggable.Transform.Y = args.Global.Y - dragPoint.Y;
-            });
+            Draggable.Transform.X = args.Global.X - dragPoint.X;
+            Draggable.Transform.Y = args.Global.Y - dragPoint.Y;
         }
     }
 }
