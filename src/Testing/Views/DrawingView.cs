@@ -1,13 +1,8 @@
-
-using System.Runtime.CompilerServices;
-using System.Globalization;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using SkiaSharp;
 using System.Collections.Generic;
-using System.Numerics;
-using System;
 
 namespace Blossom.Testing;
 
@@ -70,9 +65,9 @@ public class DrawingView : View
     {
         float totalWidth = Browser.window.Size.X;
         float totalHeight = Browser.window.Size.Y - 80;
-        const float columns = 80;
-        const float rows = 42;
-        const float margin = 0.5f;
+        const float columns = 50;
+        const float rows = 25;
+        const float margin = 2f;
 
         totalWidth -= margin * 2f;
         totalHeight -= margin * 2f;
