@@ -67,11 +67,8 @@ public class Draggable : VisualElement
         var parentX = Parent != null ? Parent.Transform.Computed.X : 0;
         var parentY = Parent != null ? Parent.Transform.Computed.Y : 0;
 
-        ParentView.RenderChanges(() =>
-        {
-            Transform.X = args.Relative.X - dragPoint.X - parentX;
-            Transform.Y = args.Relative.Y - dragPoint.Y - parentY;
-        });
+        Transform.X = args.Relative.X - dragPoint.X - parentX;
+        Transform.Y = args.Relative.Y - dragPoint.Y - parentY;
 
         OnDragged?.Invoke(this);
     }

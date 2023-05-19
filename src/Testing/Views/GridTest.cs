@@ -3,6 +3,7 @@ using System;
 using Blossom.Core;
 using Blossom.Core.Visual;
 using Blossom.Testing.CustomElements;
+using SkiaSharp;
 
 namespace Blossom.Testing;
 
@@ -14,6 +15,8 @@ public class GridTest : View
 
     public override void Main()
     {
+        BackColor = SKColors.White;
+
         for (int i = 0; i < 4; i++)
         {
             float x = Random.Shared.Next(240, 950);

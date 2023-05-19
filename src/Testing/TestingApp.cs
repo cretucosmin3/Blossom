@@ -6,11 +6,11 @@ namespace Blossom.Testing
     public class TestingApplication : Application
     {
         private readonly PrettyUi PrettyUi = new();
-        private readonly LoadView LoadView = new();
+        private readonly DrawingView DrawingView = new();
         private readonly AnchorsView AnchorsView = new();
         private readonly ChildrenAxis ChildrenAxis = new();
         private readonly GridTest GridTest = new();
-        private readonly NeonView DatePickerView = new();
+        private readonly NeonView NeonView = new();
 
         private readonly Dictionary<int, View> ViewSelectors;
 
@@ -18,20 +18,20 @@ namespace Blossom.Testing
         {
             AddView(PrettyUi);
             AddView(AnchorsView);
-            AddView(LoadView);
+            AddView(DrawingView);
             AddView(ChildrenAxis);
             AddView(GridTest);
-            AddView(DatePickerView);
+            AddView(NeonView);
 
-            SetActiveView(AnchorsView);
+            SetActiveView(DrawingView);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},
                 {60, AnchorsView},
-                {61, LoadView},
+                {61, DrawingView},
                 {62, ChildrenAxis},
                 {63, GridTest},
-                {64, DatePickerView},
+                {64, NeonView},
             };
 
             Events.OnKeyUp += (int keyPressed) =>
