@@ -89,7 +89,7 @@ public static class Browser
             window.DoEvents();
             window.ContinueEvents();
 
-            if (BrowserApp.ActiveView?.ElementLayers.HasChanges() == true)
+            if (BrowserApp.ActiveView?.RenderRequired == true)
             {
                 window.DoRender();
 
@@ -227,7 +227,7 @@ public static class Browser
         Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
 
         frameTimer.Restart();
-        BrowserApp.PerformRender();
+        BrowserApp.Render();
         frameTimer.Stop();
 
         frameTimes[frameCounter] = frameTimer.ElapsedMilliseconds;

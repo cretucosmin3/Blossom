@@ -1,10 +1,8 @@
-using System.Drawing;
 using System;
 using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
 using SkiaSharp;
-using Blossom.Core.Render;
 
 namespace Blossom.Core
 {
@@ -12,24 +10,12 @@ namespace Blossom.Core
     {
         public EventMap Events = new();
         public ElementTree Elements = new();
-        internal RenderCycle RenderCycle = new();
         public SKColor BackColor = SKColors.White;
 
         public event ForVoid Loop;
 
-        internal bool IsLoaded { get; set; } = false;
-
-        private bool _renderRequired = true;
-        public bool RenderRequired
-        {
-            get
-            {
-                var temp = _renderRequired;
-                _renderRequired = false;
-                return temp;
-            }
-            set => _renderRequired = value;
-        }
+        internal bool IsLoaded { get; set; }
+        public bool RenderRequired { get; internal set; } = true;
 
         private VisualElement hoveredElement;
         private VisualElement mouseDownElement;
@@ -137,13 +123,15 @@ namespace Blossom.Core
 
         internal void Render()
         {
+            RenderRequired = false;
+
             foreach (var element in Elements.Items)
             {
                 lock (element)
                 {
                     using (new SKAutoCanvasRestore(Renderer.Canvas))
                     {
-                        element.Render();
+                        element.Render(Renderer.Canvas);
                     }
                 }
             }
