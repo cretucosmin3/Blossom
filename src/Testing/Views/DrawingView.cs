@@ -4,6 +4,7 @@ using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using SkiaSharp;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Blossom.Testing;
 
@@ -12,6 +13,9 @@ public class DrawingView : View
     List<VisualElement> ColorSelectors = new();
     VisualElement Reset;
     VisualElement Clear;
+
+    private readonly Stopwatch ColorPickerTimer = new();
+    private VisualElement LastColorClicked;
 
     private readonly List<VisualElement> DrawBlocks = new();
     private readonly Dictionary<string, SKColor> ColorsToPick = new() {
@@ -93,6 +97,8 @@ public class DrawingView : View
         }
 
         DoColorSelectors();
+
+        PerformColorSelect(ColorSelectors[1]);
     }
 
     public void DoColorSelectors()
@@ -125,6 +131,27 @@ public class DrawingView : View
             incrementalX += 40 + 10;
 
             newColorPicker.Events.OnMouseClick += OnColorSelectorClick;
+            newColorPicker.Events.OnMouseDown += (el, _) =>
+            {
+                ColorPickerTimer.Restart();
+                LastColorClicked = (VisualElement)el;
+            };
+
+            newColorPicker.Events.OnMouseUp += (el, _) =>
+            {
+                var target = (VisualElement)el;
+                if (LastColorClicked != el) return;
+
+                Console.WriteLine(target.Name + " Left");
+                var color = target.Style.BackColor;
+                ColorPickerTimer.Stop();
+                var elapsedMs = ColorPickerTimer.ElapsedMilliseconds;
+
+                if (elapsedMs > 1500)
+                {
+                    ClearAll(color);
+                }
+            };
 
             AddElement(newColorPicker);
 
@@ -201,13 +228,18 @@ public class DrawingView : View
     public void OnColorSelectorClick(object obj, MouseEventArgs args)
     {
         var target = (VisualElement)obj;
+        PerformColorSelect(target);
+    }
+
+    public void PerformColorSelect(VisualElement target)
+    {
         var NameOfColor = target.Name;
         ColorToDraw = ColorsToPick[NameOfColor];
 
         target.Style.Border.Width = 5;
         target.Style.Border.Color = new(255, 255, 255, 255);
 
-        if (PreviousPicker != null)
+        if (PreviousPicker != null && PreviousPicker != target)
         {
             PreviousPicker.Style.Border.Width = 1;
             PreviousPicker.Style.Border.Color = new(0, 0, 0, 10);
@@ -262,7 +294,7 @@ public class DrawingView : View
     {
         foreach (var cell in DrawBlocks)
         {
-            cell.Style.BackColor = new(255, 255, 255, 255);
+            cell.Style.BackColor = SKColors.White;
             cell.Style.Border.Width = 1;
             cell.Style.Border.Color = new(0, 0, 0, 10);
         }
@@ -273,5 +305,15 @@ public class DrawingView : View
         element.Style.BackColor = ColorToDraw;
         element.Style.Border.Width = 1;
         element.Style.Border.Color = new(0, 0, 0, 10);
+    }
+
+    public void ClearAll(SKColor colorToReset)
+    {
+        foreach (var cell in DrawBlocks)
+        {
+            cell.Style.BackColor = colorToReset;
+            cell.Style.Border.Width = 1;
+            cell.Style.Border.Color = new(0, 0, 0, 10);
+        }
     }
 }
