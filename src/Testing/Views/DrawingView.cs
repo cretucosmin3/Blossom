@@ -36,7 +36,7 @@ public class DrawingView : View
 
     private void PopulateColorsToSelect()
     {
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 18; i++)
         {
             var R = Random.Shared.Next(255);
             var G = Random.Shared.Next(255);
@@ -47,30 +47,30 @@ public class DrawingView : View
 
     public override void Main()
     {
-        float totalWidth = Browser.window.Size.X;
+        float totalWidth = Browser.window.Size.X + 37;
         float totalHeight = Browser.window.Size.Y - 50;
+
         const float columns = 74;
         const float rows = 37;
-        const float margin = .5f;
+        const float gap = 1f;
 
-        totalWidth -= margin * 2f;
-        totalHeight -= margin * 2f;
+        float cellX = 0, cellY = 50;
 
-        float rectWidth = (totalWidth - ((columns - 1) * margin)) / columns;
-        float rectHeight = (totalHeight - ((rows - 1) * margin)) / rows;
+        totalWidth -= gap * columns;
+        totalWidth -= gap * rows;
+
+        float cellWidth = totalWidth / columns;
+        float cellHeight = totalHeight / rows;
 
         for (float row = 0f; row < rows; row++)
         {
             for (float col = 0f; col < columns; col++)
             {
-                float x = col * (rectWidth + margin + margin);
-                float y = (row * (rectHeight + margin + margin)) + 45;
-
                 var NewElement = new VisualElement()
                 {
                     Name = $"element {row}:{col}",
                     IsClipping = false,
-                    Transform = new(x, y, rectWidth, rectHeight),
+                    Transform = new(cellX, cellY, cellWidth, cellHeight),
                     Style = new()
                     {
                         BackColor = new(255, 255, 255, 255),
@@ -88,7 +88,12 @@ public class DrawingView : View
                 NewElement.Events.OnMouseClick += OnMouseClick;
 
                 DrawBlocks.Add(NewElement);
+
+                cellX += cellWidth + gap;
             }
+
+            cellY += cellHeight + gap;
+            cellX = 0;
         }
 
         foreach (var element in DrawBlocks)
@@ -147,7 +152,7 @@ public class DrawingView : View
                 ColorPickerTimer.Stop();
                 var elapsedMs = ColorPickerTimer.ElapsedMilliseconds;
 
-                if (elapsedMs > 1500)
+                if (elapsedMs > 500)
                 {
                     ClearAll(color);
                 }
