@@ -23,6 +23,28 @@ public class VisualElement : IDisposable
 
     public ElementEvents Events { get; } = new();
 
+    #region Render
+
+    internal SKPicture CachedRender;
+    internal bool HasCachedRender { get => CachedRender != null; }
+    internal bool IsDirty { get; set; } = false;
+
+    internal void MarkTreePathDirty(int nestedElements = 0)
+    {
+        if (IsDirty) return;
+
+        // Destroy any cached render
+        CachedRender?.Dispose();
+
+        // Calculate nested elements
+        TotalNestedElements = nestedElements + Children.Length;
+
+        IsDirty = true;
+        Parent?.MarkTreePathDirty(TotalNestedElements);
+    }
+
+    #endregion
+
     private View _ParentView;
     internal View ParentView
     {
@@ -35,7 +57,20 @@ public class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
+    public int TotalNestedElements { get; private set; } = 0;
+
     internal ElementTree ChildElements { get; } = new();
+
+    public VisualElement RootParent
+    {
+        get
+        {
+            if (Parent == null)
+                return this;
+
+            return Parent.RootParent;
+        }
+    }
 
     private VisualElement _Parent;
     private readonly SKPaint paint = new();
@@ -365,6 +400,8 @@ public class VisualElement : IDisposable
 
     internal void ScheduleRender()
     {
+        MarkTreePathDirty();
+
         if (ParentView != null)
             ParentView.RenderRequired = true;
 
