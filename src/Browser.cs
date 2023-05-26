@@ -25,7 +25,7 @@ public static class Browser
 
     internal static IWindow window;
     internal static TestingApplication BrowserApp = new();
-    internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
+    internal static System.Drawing.Rectangle RenderRect = new(0, 0, 0, 0);
     internal static Action OnRenderRequired;
 
     public static event ForVoid OnLoaded;
@@ -60,10 +60,10 @@ public static class Browser
 
     private static void SetWindow()
     {
-        RenderRect = new System.Drawing.RectangleF(0, 0, 1100, 700);
+        RenderRect = new System.Drawing.Rectangle(0, 0, 1100, 700);
 
         var options = WindowOptions.Default;
-        options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
+        options.Size = new Vector2D<int>(RenderRect.Width, RenderRect.Height);
         options.Title = "Blossom";
         options.VSync = false;
         options.TransparentFramebuffer = false;

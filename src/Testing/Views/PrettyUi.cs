@@ -45,7 +45,7 @@ namespace Blossom.Testing
 
         public override void Main()
         {
-            var HalfWidth = 1100 / 2;
+            var HalfWidth = Width / 2;
             var winW = Browser.window.Size.X;
             var winH = Browser.window.Size.Y;
 
