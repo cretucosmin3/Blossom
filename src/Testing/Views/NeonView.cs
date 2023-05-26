@@ -65,7 +65,7 @@ namespace Blossom.Testing
 
             neonButton.Events.OnMouseEnter += (_) =>
             {
-                neonButton.Text = "FIRE";
+                neonButton.Text = "NEON";
                 MouseLeft = false;
                 new Thread(() =>
                 {
@@ -145,7 +145,10 @@ namespace Blossom.Testing
                     }
 
                     neonButton.Style.Text.PathEffect?.Dispose();
-                    neonButton.Style.Text.Color = new(255, 0, 65, 35);
+                    neonButton.Style.Border.PathEffect = null;
+
+                    neonButton.Style.Text.PathEffect = SKPathEffect.CreateTrim(1f, 1);
+                    neonButton.Style.Text.Color = new(255, 0, 65, 50);
                 }).Start();
             };
         }
