@@ -4,6 +4,7 @@ namespace Blossom.Core.Visual;
 public class Transform
 {
     internal VisualElement ParentElement;
+    internal bool HasChanged;
     private Transform _Parent = null;
     public Transform Parent
     {
@@ -293,9 +294,13 @@ public class Transform
         Local.Height = ComputedTransform.Height;
     }
 
-    internal void Evaluate()
+    internal bool Evaluate()
     {
+        Rect previousComputed = new(Computed.X, Computed.Y, Computed.Width, Computed.Height);
+
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
+
+        return previousComputed != Computed;
     }
 }

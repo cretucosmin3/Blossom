@@ -11,6 +11,7 @@ namespace Blossom.Testing
         private readonly ChildrenAxis ChildrenAxis = new();
         private readonly GridTest GridTest = new();
         private readonly NeonView NeonView = new();
+        private readonly RenderCacheView RenderCacheView = new();
 
         private readonly Dictionary<int, View> ViewSelectors;
 
@@ -22,8 +23,9 @@ namespace Blossom.Testing
             AddView(ChildrenAxis);
             AddView(GridTest);
             AddView(NeonView);
+            AddView(RenderCacheView);
 
-            SetActiveView(DrawingView);
+            SetActiveView(RenderCacheView);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},

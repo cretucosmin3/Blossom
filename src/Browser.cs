@@ -16,6 +16,8 @@ using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 using SkiaSharp;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace Blossom;
 
@@ -26,6 +28,8 @@ public static class Browser
     internal static IWindow window;
     internal static TestingApplication BrowserApp = new();
     internal static System.Drawing.RectangleF RenderRect = new(0, 0, 0, 0);
+    internal static bool WasResized;
+
     internal static Action OnRenderRequired;
 
     public static event ForVoid OnLoaded;
@@ -37,6 +41,10 @@ public static class Browser
     public static bool SkipCountingNextRender { get; set; } = false;
 
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
+    private static readonly List<(RectangleF, SKColor, float)> PostMarkers = new();
+
+    internal static void AddVisualMarker(RectangleF marker, SKColor color, float width) =>
+        PostMarkers.Add((marker, color, width));
 
     internal static void Initialize()
     {
@@ -219,7 +227,21 @@ public static class Browser
 
     private static readonly Stopwatch frameTimer = new();
     private static int frameCounter = 0;
-    private static readonly double[] frameTimes = new double[5];
+    private static readonly double[] frameTimes = new double[10];
+    private static readonly SKPaint PostMarkerPaint = new()
+    {
+        StrokeWidth = 5f,
+        Color = SKColors.Red,
+        Style = SKPaintStyle.Stroke
+    };
+
+    private static readonly SKPaint InfoTextPaint = new()
+    {
+        TextSize = 20,
+        FakeBoldText = true,
+        Color = SKColors.IndianRed,
+        Style = SKPaintStyle.Fill
+    };
 
     private static void Render(double time)
     {
@@ -229,6 +251,11 @@ public static class Browser
         frameTimer.Restart();
         BrowserApp.Render();
         frameTimer.Stop();
+
+        if (window.Title != BrowserApp.ActiveView.Name)
+        {
+            window.Title = BrowserApp.ActiveView.Name;
+        }
 
         frameTimes[frameCounter] = frameTimer.ElapsedMilliseconds;
 
@@ -240,10 +267,20 @@ public static class Browser
         foreach (double t in frameTimes)
             AverageFrame += t;
 
-        Console.CursorTop = 0;
-        Console.CursorLeft = 0;
+        // Draw informational markers
+        foreach (var (rect, color, width) in PostMarkers)
+        {
+            PostMarkerPaint.StrokeWidth = width;
+            PostMarkerPaint.Color = color;
 
-        Console.WriteLine(AverageFrame / frameTimes.Length);
+            Renderer.Canvas.DrawRect(rect.X, rect.Y, rect.Width, rect.Height, PostMarkerPaint);
+        }
+
+        Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.0} ms", 5, 20, InfoTextPaint);
+
+        // Clean-up
+        PostMarkers.Clear();
+        WasResized = false;
 
         Renderer.Canvas.Flush();
     }

@@ -127,11 +127,14 @@ namespace Blossom.Core
 
             foreach (var element in Elements.Items)
             {
+                if (element.Layer > 0) continue;
+
                 lock (element)
                 {
                     using (new SKAutoCanvasRestore(Renderer.Canvas))
                     {
                         element.Render(Renderer.Canvas);
+                        element.IsDirty = false;
                     }
                 }
             }
