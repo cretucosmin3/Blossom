@@ -79,7 +79,6 @@ public class RenderCacheView : View
         AddElement(GroupParent1);
         AddElement(GroupParent2);
 
-
         GroupParent1.AddChild(button1Group1);
         GroupParent1.AddChild(button2Group1);
         GroupParent1.AddChild(button3Group1);
