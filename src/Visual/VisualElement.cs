@@ -23,6 +23,35 @@ public class VisualElement : IDisposable
 
     public ElementEvents Events { get; } = new();
 
+    #region Render
+
+    internal int CachedNestedElementCount = 0;
+    internal SKBitmap CachedRender;
+    internal bool HasCachedRender { get => CachedRender != null; }
+
+    private bool _IsDirty = false;
+    internal bool IsDirty
+    {
+        get => Parent == null ? _IsDirty : RootParent.IsDirty;
+        set
+        {
+            if (Parent == null)
+            {
+                _IsDirty = value;
+                return;
+            }
+
+            RootParent.IsDirty = value;
+        }
+    }
+
+    internal void MarkRenderPathDirty()
+    {
+        IsDirty = true;
+    }
+
+    #endregion
+
     private View _ParentView;
     internal View ParentView
     {
@@ -36,8 +65,15 @@ public class VisualElement : IDisposable
     }
 
     internal ElementTree ChildElements { get; } = new();
-
     private VisualElement _Parent;
+
+    private VisualElement _RootParent;
+    public VisualElement RootParent
+    {
+        get => _RootParent ?? this;
+        private set => _RootParent = value;
+    }
+
     private readonly SKPaint paint = new();
     public Visibility ComputedVisibility { get; private set; }
     public SKRoundRect ComputedClipping { get; private set; }
@@ -51,8 +87,11 @@ public class VisualElement : IDisposable
                 _Parent.TransformChanged -= ParentTransformChanged;
 
             _Parent = value;
+
             Transform.Parent = value.Transform;
-            value.TransformChanged += ParentTransformChanged;
+            _Parent.TransformChanged += ParentTransformChanged;
+
+            RootParent = value != null ? _Parent.RootParent : null;
 
             ScheduleRender();
         }
@@ -62,6 +101,7 @@ public class VisualElement : IDisposable
 
     internal event ForDispose OnDisposing;
     internal event Action<VisualElement, Transform> TransformChanged;
+    internal bool TransformIsChanged = false;
     internal SKPoint TextPosition;
 
     private Transform _Transform = new();
@@ -71,11 +111,12 @@ public class VisualElement : IDisposable
         set
         {
             // Detach old
-            _Transform.OnChanged -= ChangedTransform;
+            if (_Transform != null)
+                _Transform.OnChanged -= OnTransformChanged;
 
             // Attach new
             _Transform = value;
-            _Transform.OnChanged += ChangedTransform;
+            _Transform.OnChanged += OnTransformChanged;
 
             _Transform.ParentElement = this;
         }
@@ -159,9 +200,126 @@ public class VisualElement : IDisposable
         }
     }
 
-    internal void Render(SKCanvas targetCanvas)
+    internal int Render(SKCanvas renderTarget)
     {
-        Transform.Evaluate();
+        if (Children.Length == 0)
+        {
+            RenderSingle(renderTarget);
+            return 0;
+        }
+
+        if ((IsDirty || Browser.WasResized) && CachedNestedElementCount > 50)
+        {
+            var counter = DeepRender();
+
+            renderTarget.DrawBitmap(CachedRender, 0, 0);
+
+            // Too many nested elements, cache for next time.
+            if (counter > 50)
+            {
+                CachedNestedElementCount = counter;
+            }
+
+            TransformIsChanged = false;
+            return counter;
+        }
+
+        if (HasCachedRender && CachedNestedElementCount > 50)
+        {
+            // return DeepRender(renderTarget);
+            RenderFromCache(renderTarget);
+
+            Browser.AddVisualMarker(Transform.Computed.RectF, SKColors.Blue, 4f);
+
+            TransformIsChanged = false;
+            return CachedNestedElementCount;
+        }
+
+        TransformIsChanged = false;
+        CachedNestedElementCount = DeepRender(renderTarget);
+
+        return CachedNestedElementCount;
+    }
+
+    internal int DeepRender()
+    {
+        if (Browser.WasResized || CachedRender == null)
+        {
+            CachedRender?.Dispose();
+            CachedRender = new(
+                (int)Browser.RenderRect.Width,
+                (int)Browser.RenderRect.Height,
+                SKColorType.Rgba8888,
+                SKAlphaType.Premul
+            );
+        }
+
+        int totalNestedChildren = 0;
+
+        using (SKCanvas canvas = new(CachedRender))
+        {
+            canvas.Clear();
+            RenderElement(canvas);
+
+            // Select children from scroll and area of the element
+            // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
+            if (Children.Length > 0)
+            {
+                foreach (VisualElement child in Children)
+                {
+                    totalNestedChildren++;
+
+                    // Get element image and render
+                    int counter = child.Render(canvas);
+
+                    totalNestedChildren += counter;
+                }
+            }
+        }
+
+        return totalNestedChildren;
+    }
+
+    internal int DeepRender(SKCanvas renderTarget)
+    {
+        RenderElement(renderTarget);
+
+        int totalNestedChildren = 0;
+
+        // Select children from scroll and area of the element
+        // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
+        foreach (VisualElement child in Children)
+        {
+            totalNestedChildren++;
+
+            // Get element image and render
+            int counter = child.Render(renderTarget);
+
+            totalNestedChildren += counter;
+        }
+
+        return totalNestedChildren;
+    }
+
+    private void RenderFromCache(SKCanvas renderTarget)
+    {
+        renderTarget.DrawBitmap(CachedRender, 0, 0);
+    }
+
+    internal void RenderSingle(SKCanvas targetCanvas)
+    {
+        RenderElement(targetCanvas);
+    }
+
+    private void RenderElement(SKCanvas targetCanvas)
+    {
+        if (Layer == 0 && Transform.Evaluate())
+        {
+            TransformIsChanged = true;
+        }
+
+        if (Parent?.TransformIsChanged == true && Transform.Evaluate())
+            TransformIsChanged = true;
 
         ComputedVisibility = Visibility.Visible;
         bool isWithinParent = true;
@@ -347,7 +505,7 @@ public class VisualElement : IDisposable
         };
     }
 
-    private void ChangedTransform(Transform transform)
+    private void OnTransformChanged(Transform transform)
     {
         Transform.Evaluate();
         CalculateText();
@@ -360,21 +518,16 @@ public class VisualElement : IDisposable
     {
         Transform.Evaluate();
         CalculateText();
+
         ScheduleRender();
     }
 
     internal void ScheduleRender()
     {
+        MarkRenderPathDirty();
+
         if (ParentView != null)
             ParentView.RenderRequired = true;
-
-        if (Children.Length > 0)
-        {
-            foreach (var child in Children)
-            {
-                child.ScheduleRender();
-            }
-        }
     }
 
     public void GetFocus()
