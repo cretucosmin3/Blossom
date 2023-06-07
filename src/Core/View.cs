@@ -12,6 +12,9 @@ namespace Blossom.Core
         public ElementTree Elements = new();
         public SKColor BackColor = SKColors.White;
 
+        public int Width => Browser.RenderRect.Width;
+        public int Height => Browser.RenderRect.Height;
+
         public event ForVoid Loop;
 
         internal bool IsLoaded { get; set; }
