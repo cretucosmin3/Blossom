@@ -76,13 +76,23 @@ public class ElementTree : IDisposable
         return default!;
     }
 
-    public VisualElement FirstFromQuad(RectangleF quad)
+    public VisualElement? FirstFromQuad(RectangleF quad)
     {
         var components = QuadTree.GetObjects(quad);
         if (!components.Any()) return null;
 
         int maxLayer = components.Max(t => t.Element.Layer);
         return components.Find(t => t.Element.Layer == maxLayer).Element;
+    }
+
+    public VisualElement[] ElementsFromRect(RectangleF rect)
+    {
+        var components = QuadTree.GetObjects(rect);
+
+        if (components?.Count > 0)
+            return components.Select(e => e.Element).ToArray();
+
+        return Array.Empty<VisualElement>();
     }
 
     public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)

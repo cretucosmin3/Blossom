@@ -52,6 +52,9 @@ internal static class Renderer
         window.FramebufferResize += newSize =>
         {
             RenewCanvas(newSize.X, newSize.Y);
+            Browser.RenderRect = new(0, 0, newSize.X, newSize.Y);
+            Browser.WasResized = true;
+
             window.DoRender();
         };
     }
