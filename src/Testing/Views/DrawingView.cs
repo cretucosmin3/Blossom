@@ -1,30 +1,26 @@
+using System;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using SkiaSharp;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Blossom.Testing;
 
 public class DrawingView : View
 {
-    VisualElement GraySelector;
-    VisualElement BlackSelector;
-    VisualElement PinkSelector;
-    VisualElement RedSelector;
-    VisualElement YellowSelector;
-    VisualElement BlueSelector;
+    List<VisualElement> ColorSelectors = new();
+    VisualElement Reset;
     VisualElement Clear;
-    VisualElement RendersLabel;
+
+    private readonly Stopwatch ColorPickerTimer = new();
+    private VisualElement LastColorClicked;
 
     private readonly List<VisualElement> DrawBlocks = new();
     private readonly Dictionary<string, SKColor> ColorsToPick = new() {
-            {"Gray", SKColors.DimGray},
-            {"Black", new(20, 20, 20, 255)},
-            {"Pink", SKColors.HotPink},
-            {"Red", SKColors.Red},
-            {"Yellow", SKColors.Yellow},
-            {"Blue", SKColors.Blue},
+            {"White", SKColors.White},
+            {"Black", SKColors.Black},
         };
 
     private VisualElement PreviousPicker;
@@ -33,64 +29,51 @@ public class DrawingView : View
 
     public DrawingView() : base("Drawing View")
     {
-        Events.OnKeyType += OnKeyPress;
+        BackColor = new(35, 35, 35, 255);
+
+        PopulateColorsToSelect();
     }
 
-    public void OnKeyPress(char key)
+    private void PopulateColorsToSelect()
     {
-        switch (key)
+        for (int i = 0; i < 18; i++)
         {
-            case '1':
-                OnColorSelectorClick(GraySelector, default);
-                break;
-            case '2':
-                OnColorSelectorClick(BlackSelector, default);
-                break;
-            case '3':
-                OnColorSelectorClick(PinkSelector, default);
-                break;
-            case '4':
-                OnColorSelectorClick(RedSelector, default);
-                break;
-            case '5':
-                OnColorSelectorClick(YellowSelector, default);
-                break;
-            case '6':
-                OnColorSelectorClick(BlueSelector, default);
-                break;
+            var R = Random.Shared.Next(255);
+            var G = Random.Shared.Next(255);
+            var B = Random.Shared.Next(255);
+            ColorsToPick.Add($"{R} {G} {B}", new SKColor((byte)R, (byte)G, (byte)B));
         }
     }
 
     public override void Main()
     {
-        float totalWidth = Browser.window.Size.X;
-        float totalHeight = Browser.window.Size.Y - 80;
-        const float columns = 50;
-        const float rows = 25;
-        const float margin = 2f;
+        float totalWidth = Browser.window.Size.X + 37;
+        float totalHeight = Browser.window.Size.Y - 50;
 
-        totalWidth -= margin * 2f;
-        totalHeight -= margin * 2f;
+        const float columns = 74;
+        const float rows = 37;
+        const float gap = 1f;
 
-        float rectWidth = (totalWidth - ((columns - 1) * margin)) / columns;
-        float rectHeight = (totalHeight - ((rows - 1) * margin)) / rows;
+        float cellX = 0, cellY = 50;
+
+        totalWidth -= gap * columns;
+        totalWidth -= gap * rows;
+
+        float cellWidth = totalWidth / columns;
+        float cellHeight = totalHeight / rows;
 
         for (float row = 0f; row < rows; row++)
         {
             for (float col = 0f; col < columns; col++)
             {
-                float x = col * (rectWidth + margin + margin);
-                float y = (row * (rectHeight + margin + margin)) + 60;
-
                 var NewElement = new VisualElement()
                 {
                     Name = $"element {row}:{col}",
                     IsClipping = false,
-                    Transform = new(x, y, rectWidth, rectHeight),
+                    Transform = new(cellX, cellY, cellWidth, cellHeight),
                     Style = new()
                     {
-                        // BackColor = new(22, 22, 22, 45),
-                        BackColor = new(0, 0, 0, 0),
+                        BackColor = new(255, 255, 255, 255),
                         Border = new()
                         {
                             Roundness = 0,
@@ -105,7 +88,12 @@ public class DrawingView : View
                 NewElement.Events.OnMouseClick += OnMouseClick;
 
                 DrawBlocks.Add(NewElement);
+
+                cellX += cellWidth + gap;
             }
+
+            cellY += cellHeight + gap;
+            cellX = 0;
         }
 
         foreach (var element in DrawBlocks)
@@ -115,176 +103,103 @@ public class DrawingView : View
 
         DoColorSelectors();
 
-        RendersLabel = new()
-        {
-            Name = "Renders",
-            IsClipping = false,
-            Transform = new(900, 10, 40, 40)
-            {
-                Anchor = Anchor.Right,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                Text = new()
-                {
-                    Size = 18,
-                    Color = SKColors.Black,
-                    Alignment = TextAlign.Center
-                }
-            },
-        };
-
-        AddElement(RendersLabel);
-
-        Browser.OnRenderRequired += () =>
-        {
-            Browser.SkipCountingNextRender = true;
-            RendersLabel.Text = $"Renders: {Browser.TotalRenders}";
-        };
+        PerformColorSelect(ColorSelectors[1]);
     }
 
     public void DoColorSelectors()
     {
-        GraySelector = new VisualElement()
+        float incrementalX = 225;
+        foreach (var (name, color) in ColorsToPick)
         {
-            Name = "Gray",
-            IsClipping = false,
-            Transform = new(100, 10, 40, 40)
+            var newColorPicker = new VisualElement()
             {
-                Anchor = Anchor.Left,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                BackColor = new(100, 100, 100, 255),
-                Border = new()
+                Name = name,
+                IsClipping = false,
+                Transform = new(incrementalX, 15, 40, 40)
                 {
-                    Roundness = 5,
-                    Width = 3,
-                    Color = new(0, 0, 0, 100)
+                    Anchor = Anchor.Left | Anchor.Top,
+                    FixedWidth = true,
+                    FixedHeight = true
                 },
-            },
-        };
+                Style = new()
+                {
+                    BackColor = color,
+                    Border = new()
+                    {
+                        Roundness = 2,
+                        Width = 4,
+                        Color = new(0, 0, 0, 0)
+                    },
+                },
+            };
 
-        BlackSelector = new VisualElement()
-        {
-            Name = "Black",
-            IsClipping = false,
-            Transform = new(100 + 40 + 10, 10, 40, 40)
-            {
-                Anchor = Anchor.Left,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                BackColor = new(20, 20, 20, 255),
-                Border = new()
-                {
-                    Roundness = 2,
-                    Width = 2f,
-                    Color = new(0, 0, 0, 50)
-                },
-            },
-        };
+            incrementalX += 40 + 10;
 
-        PinkSelector = new VisualElement()
-        {
-            Name = "Pink",
-            IsClipping = false,
-            Transform = new(100 + 80 + 20, 10, 40, 40)
+            newColorPicker.Events.OnMouseClick += OnColorSelectorClick;
+            newColorPicker.Events.OnMouseDown += (el, _) =>
             {
-                Anchor = Anchor.Left,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                BackColor = SKColors.HotPink,
-                Border = new()
-                {
-                    Roundness = 2,
-                    Width = 2f,
-                    Color = new(0, 0, 0, 50)
-                },
-            },
-        };
-        RedSelector = new VisualElement()
-        {
-            Name = "Red",
-            IsClipping = false,
-            Transform = new(100 + 120 + 30, 10, 40, 40)
-            {
-                Anchor = Anchor.Left,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                BackColor = SKColors.Red,
-                Border = new()
-                {
-                    Roundness = 2,
-                    Width = 2f,
-                    Color = new(0, 0, 0, 50)
-                },
-            },
-        };
+                ColorPickerTimer.Restart();
+                LastColorClicked = (VisualElement)el;
+            };
 
-        YellowSelector = new VisualElement()
-        {
-            Name = "Yellow",
-            IsClipping = false,
-            Transform = new(100 + 160 + 40, 10, 40, 40)
+            newColorPicker.Events.OnMouseUp += (el, _) =>
             {
-                Anchor = Anchor.Left,
-                FixedWidth = true,
-                FixedHeight = true
-            },
-            Style = new()
-            {
-                BackColor = SKColors.Yellow,
-                Border = new()
-                {
-                    Roundness = 2,
-                    Width = 2f,
-                    Color = new(0, 0, 0, 50)
-                },
-            },
-        };
+                var target = (VisualElement)el;
+                if (LastColorClicked != el) return;
 
-        BlueSelector = new VisualElement()
+                Console.WriteLine(target.Name + " Left");
+                var color = target.Style.BackColor;
+                ColorPickerTimer.Stop();
+                var elapsedMs = ColorPickerTimer.ElapsedMilliseconds;
+
+                if (elapsedMs > 500)
+                {
+                    ClearAll(color);
+                }
+            };
+
+            AddElement(newColorPicker);
+
+            ColorSelectors.Add(newColorPicker);
+        }
+
+        Reset = new VisualElement()
         {
-            Name = "Blue",
+            Name = "Reset",
             IsClipping = false,
-            Transform = new(100 + 200 + 50, 10, 40, 40)
+            Transform = new(120, 15, 40, 40)
             {
-                Anchor = Anchor.Left,
+                Anchor = Anchor.Left | Anchor.Top,
                 FixedWidth = true,
                 FixedHeight = true
             },
             Style = new()
             {
-                BackColor = SKColors.Blue,
+                BackColor = SKColors.IndianRed,
                 Border = new()
                 {
                     Roundness = 2,
                     Width = 2f,
-                    Color = new(0, 0, 0, 50)
+                    Color = new(0, 0, 0, 70)
                 },
+                Text = new()
+                {
+                    Size = 16,
+                    Alignment = TextAlign.Center,
+                    Weight = 700,
+                    Color = SKColors.White
+                }
             },
+            Text = "R"
         };
 
         Clear = new VisualElement()
         {
             Name = "Clear",
             IsClipping = false,
-            Transform = new(100 + 240 + 60, 10, 120, 40)
+            Transform = new(10, 15, 100, 40)
             {
-                Anchor = Anchor.Left,
+                Anchor = Anchor.Left | Anchor.Top,
                 FixedWidth = true,
                 FixedHeight = true
             },
@@ -308,33 +223,28 @@ public class DrawingView : View
             Text = "Clear"
         };
 
-        GraySelector.Events.OnMouseClick += OnColorSelectorClick;
-        BlackSelector.Events.OnMouseClick += OnColorSelectorClick;
-        PinkSelector.Events.OnMouseClick += OnColorSelectorClick;
-        RedSelector.Events.OnMouseClick += OnColorSelectorClick;
-        YellowSelector.Events.OnMouseClick += OnColorSelectorClick;
-        BlueSelector.Events.OnMouseClick += OnColorSelectorClick;
+        Reset.Events.OnMouseClick += OnResetClicked;
         Clear.Events.OnMouseClick += OnClearClicked;
 
-        AddElement(GraySelector);
-        AddElement(BlackSelector);
-        AddElement(PinkSelector);
-        AddElement(RedSelector);
-        AddElement(YellowSelector);
-        AddElement(BlueSelector);
+        AddElement(Reset);
         AddElement(Clear);
     }
 
     public void OnColorSelectorClick(object obj, MouseEventArgs args)
     {
         var target = (VisualElement)obj;
+        PerformColorSelect(target);
+    }
+
+    public void PerformColorSelect(VisualElement target)
+    {
         var NameOfColor = target.Name;
         ColorToDraw = ColorsToPick[NameOfColor];
 
-        target.Style.Border.Width = 3;
-        target.Style.Border.Color = new(0, 0, 0, 100);
+        target.Style.Border.Width = 5;
+        target.Style.Border.Color = new(255, 255, 255, 255);
 
-        if (PreviousPicker != null)
+        if (PreviousPicker != null && PreviousPicker != target)
         {
             PreviousPicker.Style.Border.Width = 1;
             PreviousPicker.Style.Border.Color = new(0, 0, 0, 10);
@@ -364,17 +274,34 @@ public class DrawingView : View
     {
         var element = (VisualElement)target;
 
-        if (element.Style.BackColor.Alpha == 0)
-            MarkAsDrawn(element);
-        else
-            MarkAsClear(element);
+        MarkAsDrawn(element);
+    }
+
+    public void OnResetClicked(object obj, MouseEventArgs args)
+    {
+        ColorsToPick.Clear();
+
+        ColorsToPick.Add("White", SKColors.White);
+        ColorsToPick.Add("Black", SKColors.Black);
+
+        PopulateColorsToSelect();
+
+        int x = 0;
+        foreach (var (name, color) in ColorsToPick)
+        {
+            ColorSelectors[x].Name = name;
+            ColorSelectors[x].Style.BackColor = color;
+            x++;
+        }
     }
 
     public void OnClearClicked(object obj, MouseEventArgs args)
     {
         foreach (var cell in DrawBlocks)
         {
-            MarkAsClear(cell);
+            cell.Style.BackColor = SKColors.White;
+            cell.Style.Border.Width = 1;
+            cell.Style.Border.Color = new(0, 0, 0, 10);
         }
     }
 
@@ -385,10 +312,13 @@ public class DrawingView : View
         element.Style.Border.Color = new(0, 0, 0, 10);
     }
 
-    private void MarkAsClear(VisualElement element)
+    public void ClearAll(SKColor colorToReset)
     {
-        element.Style.BackColor = new(0, 0, 0, 0);
-        element.Style.Border.Width = 1;
-        element.Style.Border.Color = new(0, 0, 0, 10);
+        foreach (var cell in DrawBlocks)
+        {
+            cell.Style.BackColor = colorToReset;
+            cell.Style.Border.Width = 1;
+            cell.Style.Border.Color = new(0, 0, 0, 10);
+        }
     }
 }

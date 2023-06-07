@@ -46,7 +46,7 @@ public class ElementTree : IDisposable
     {
         var hitPoint = new RectangleF(x, y, 1, 1);
         var components = QuadTree.GetObjects(hitPoint);
-        if (!components.Any()) return null;
+        if (!components.Any()) return default!;
 
         for (int i = components.Count - 1; i >= 0; i--)
         {
@@ -73,7 +73,7 @@ public class ElementTree : IDisposable
                 return elementFromPoint;
         }
 
-        return null;
+        return default!;
     }
 
     public VisualElement? FirstFromQuad(RectangleF quad)
