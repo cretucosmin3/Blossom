@@ -71,7 +71,7 @@ public static class Browser
         RenderRect = new System.Drawing.Rectangle(0, 0, 1100, 700);
 
         var options = WindowOptions.Default;
-        options.Size = new Vector2D<int>(RenderRect.Width, RenderRect.Height);
+        options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
         options.Title = "Blossom";
         options.VSync = false;
         options.TransparentFramebuffer = false;
