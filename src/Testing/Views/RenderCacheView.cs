@@ -17,7 +17,7 @@ public class RenderCacheView : View
         var GroupParent1 = new VisualElement()
         {
             Name = "Group parent 1",
-            Transform = new(700, 35, 300, 300),
+            Transform = new(700, 100, 300, 300),
             Style = new()
             {
                 BackColor = SKColors.LightGray,
@@ -39,7 +39,7 @@ public class RenderCacheView : View
         var GroupParent2 = new VisualElement()
         {
             Name = "Group parent 2",
-            Transform = new(15, 15, 650, 600),
+            Transform = new(15, 60, 650, 600),
             Style = new()
             {
                 BackColor = SKColors.LightGray,
