@@ -340,7 +340,7 @@ public class VisualElement : IDisposable
 
         using (new SKAutoCanvasRestore(targetCanvas))
         {
-            if (isClipped || Parent?.ComputedVisibility == Visibility.Clipped)
+            if ((isClipped || Parent?.ComputedVisibility == Visibility.Clipped) && Parent != null)
             {
                 ComputedVisibility = Visibility.Clipped;
                 ApplyClipping(targetCanvas);
@@ -367,7 +367,7 @@ public class VisualElement : IDisposable
 
         var compClippingRect = new SKRoundRect(
                 clippingRect,
-                Parent.Style.Border.Roundness, Parent.Style.Border.Roundness
+                Parent?.Style?.Border?.Roundness ?? 0, Parent?.Style?.Border?.Roundness ?? 0
             );
 
         // compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
@@ -391,7 +391,7 @@ public class VisualElement : IDisposable
             Transform.Computed.Y + Transform.Computed.Height
         );
 
-        SKRoundRect roundRect = new();
+        SKRoundRect roundRect = new(rect);
 
         if (Style.Border != null)
         {
@@ -552,7 +552,14 @@ public class VisualElement : IDisposable
         if (Parent != null)
             return Parent.GetPreviousClippingRect();
 
-        return null;
+        var rect = new SKRect(
+            Transform.Computed.X,
+            Transform.Computed.Y,
+            Transform.Computed.Width,
+            Transform.Computed.Height
+        );
+
+        return new(rect, Style?.Border?.Roundness ?? 0);
     }
 
     public void Dispose()
