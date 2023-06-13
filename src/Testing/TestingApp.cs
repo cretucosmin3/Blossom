@@ -12,11 +12,13 @@ namespace Blossom.Testing
         private readonly GridTest GridTest = new();
         private readonly NeonView NeonView = new();
         private readonly RenderCacheView RenderCacheView = new();
+        private readonly AppNavigation AppNav = new();
 
         private readonly Dictionary<int, View> ViewSelectors;
 
         public TestingApplication()
         {
+            AddView(AppNav);
             AddView(PrettyUi);
             AddView(AnchorsView);
             AddView(DrawingView);
@@ -25,7 +27,7 @@ namespace Blossom.Testing
             AddView(NeonView);
             AddView(RenderCacheView);
 
-            SetActiveView(RenderCacheView);
+            SetActiveView(AppNav);
 
             ViewSelectors = new Dictionary<int, View>(){
                 {59, PrettyUi},
