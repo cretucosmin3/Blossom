@@ -139,18 +139,21 @@ public static class Browser
                 if (i == 0) return;
                 var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
                 var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
+                BrowserApp.ActiveView?.FocusedElement?.Events?.HandleKeyDown(key, i);
             };
 
             keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
             {
                 BrowserApp.Events.HandleKeyUp(key, i);
                 BrowserApp.ActiveView?.Events.HandleKeyUp(key, i);
+                BrowserApp.ActiveView?.FocusedElement?.Events.HandleKeyUp(key, i);
             };
 
             keyboard.KeyChar += (IKeyboard _, char ch) =>
             {
                 BrowserApp.Events.HandleKeyChar(ch);
                 BrowserApp.ActiveView?.Events.HandleKeyChar(ch);
+                BrowserApp.ActiveView?.FocusedElement?.Events.HandleKeyChar(ch);
             };
         }
 
