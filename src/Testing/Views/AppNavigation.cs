@@ -4,6 +4,8 @@ using Blossom.Core;
 using Blossom.Core.Visual;
 using Blossom.Testing.CustomElements;
 using SkiaSharp;
+using Blossom.Core.Input;
+using System.Text;
 
 namespace Blossom.Testing;
 
@@ -11,19 +13,21 @@ public class AppNavigation : View
 {
     private VisualElement TopPanel;
     private VisualElement SearchBox;
+    private VisualElement SearchLabel;
     private VisualElement SearchButton;
     private VisualElement OptionsButton;
+    private StringBuilder searchText = new StringBuilder("");
 
     public AppNavigation() : base("Search") { }
 
     public override void Main()
     {
-        BackColor = new(100, 100, 100, 255);
+        BackColor = new(100, 120, 165, 255);
         TopPanel = new VisualElement()
         {
             Name = "Top Panel",
             IsClipping = true,
-            Transform = new(0, 0, Width, 45)
+            Transform = new(0, 0, Width, 10)
             {
                 Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
                 FixedHeight = true,
@@ -37,90 +41,98 @@ public class AppNavigation : View
         SearchBox = new VisualElement()
         {
             Name = "Search box",
-            Text = "www:...",
-            Transform = new(25, 5, Width * 0.5f, 35)
+            Text = "Name or site",
+            Transform = new((Width / 2f) - 175f, 150f, 350, 35)
             {
-                Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
+                Anchor = Anchor.Top,
                 FixedHeight = true,
-                FixedWidth = false,
+                FixedWidth = true,
             },
             Style = new()
             {
                 BackColor = SKColors.White,
                 Border = new()
                 {
-                    Roundness = 15
+                    Roundness = 15,
+                    Color = SKColors.Black,
+                    Width = 0
                 },
                 Text = new()
                 {
                     Color = SKColors.Black,
                     Size = 20f,
                     Alignment = TextAlign.Left,
-                    Padding = 25
-                }
+                    Padding = 25,
+                },
+                Shadow = new()
+                {
+                    OffsetX = 0,
+                    OffsetY = 2,
+                    SpreadX = 6,
+                    SpreadY = 4,
+                    Color = new(0, 0, 50, 100),
+                },
             }
         };
 
-        SearchButton = new VisualElement()
+        SearchLabel = new VisualElement()
         {
-            Name = "Search button",
-            Text = ">",
-            Transform = new(((Width * 0.5f) + 25) - 25, 5, 40, 35)
+            Name = "Search label",
+            Text = "Search an application or site",
+            Transform = new((Width / 2f) - 175f, 100f, 350, 35)
             {
-                Anchor = Anchor.Top | Anchor.Right,
+                Anchor = Anchor.Top,
                 FixedHeight = true,
                 FixedWidth = true,
             },
             Style = new()
             {
-                BackColor = new(100, 170, 100, 255),
-                Border = new()
-                {
-                    Roundness = 8,
-                },
                 Text = new()
                 {
                     Color = SKColors.White,
-                    Size = 35,
-                    Weight = 500,
+                    Size = 25f,
                     Alignment = TextAlign.Center,
-                    PathEffect = SKPathEffect.CreateDiscrete(5, 1.5f)
+                    Weight = 600,
+                    PathEffect = SKPathEffect.CreateCompose(SKPathEffect.CreateCorner(10), SKPathEffect.CreateDiscrete(4, 0.4f)),
+                    Shadow = new()
+                    {
+                        OffsetX = 0,
+                        OffsetY = 2,
+                        SpreadX = 6,
+                        SpreadY = 4,
+                        Color = new(0, 0, 0, 80)
+                    }
                 }
             }
         };
 
-        OptionsButton = new VisualElement()
+        SearchLabel.Visible = false;
+
+        SearchBox.Events.OnMouseClick += (object target, MouseEventArgs args) =>
         {
-            Name = "Options button",
-            Text = "...",
-            Transform = new(Width - 65, 5, 45, 35)
+            SearchBox.GetFocus();
+            SearchBox.Style.Border.Width = 1.5f;
+            SearchBox.Text = "|";
+        };
+
+        SearchBox.Events.OnKeyType += (char ch) =>
+        {
+            searchText.Append(ch);
+            SearchBox.Text = searchText.ToString();
+        };
+
+        SearchBox.Events.OnKeyDown += (int key) =>
+        {
+            // Backspace
+            if (key == 14 && searchText.Length > 0)
             {
-                Anchor = Anchor.Top | Anchor.Right,
-                FixedHeight = true,
-                FixedWidth = true,
-            },
-            Style = new()
-            {
-                BackColor = new(100, 100, 100, 255),
-                Border = new()
-                {
-                    Roundness = 5,
-                },
-                Text = new()
-                {
-                    Color = SKColors.White,
-                    Size = 20f,
-                    Weight = 500,
-                    Alignment = TextAlign.Center,
-                    PathEffect = SKPathEffect.CreateDiscrete(5, 1.5f)
-                }
+                searchText.Remove(searchText.Length - 1, 1);
+                SearchBox.Text = searchText.ToString();
             }
         };
 
         AddElement(TopPanel);
-
-        TopPanel.AddChild(SearchBox);
-        TopPanel.AddChild(SearchButton);
-        TopPanel.AddChild(OptionsButton);
+        AddElement(SearchBox);
+        AddElement(SearchLabel);
     }
 }
