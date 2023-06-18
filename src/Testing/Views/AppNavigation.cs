@@ -42,6 +42,7 @@ public class AppNavigation : View
         {
             Name = "Search box",
             Text = "Name or site",
+            Focusable = true,
             Transform = new((Width / 2f) - 175f, 150f, 350, 35)
             {
                 Anchor = Anchor.Top,
@@ -105,23 +106,18 @@ public class AppNavigation : View
             }
         };
 
-        SearchLabel.Visible = false;
-
-        SearchBox.Events.OnMouseClick += (object target, MouseEventArgs args) =>
-        {
-            SearchBox.GetFocus();
-            SearchBox.Style.Border.Width = 1.5f;
-            SearchBox.Text = "|";
-        };
-
         SearchBox.Events.OnKeyType += (char ch) =>
         {
+            if (!SearchBox.HasFocus) return;
+
             searchText.Append(ch);
             SearchBox.Text = searchText.ToString();
         };
 
         SearchBox.Events.OnKeyDown += (int key) =>
         {
+            if (!SearchBox.HasFocus) return;
+
             // Backspace
             if (key == 14 && searchText.Length > 0)
             {
@@ -129,6 +125,9 @@ public class AppNavigation : View
                 SearchBox.Text = searchText.ToString();
             }
         };
+
+        SearchBox.OnFocused += (_) => SearchBox.Style.Border.Width = 3f;
+        SearchBox.OnFocusLost += (_) => SearchBox.Style.Border.Width = 0f;
 
         AddElement(TopPanel);
         AddElement(SearchBox);

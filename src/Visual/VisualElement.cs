@@ -20,6 +20,7 @@ public class VisualElement : IDisposable
     #region Events
     public ElementEvents Events { get; } = new();
     public Action<VisualElement> OnFocused = null!;
+    public Action<VisualElement> OnFocusLost = null!;
     internal event ForDispose OnDisposing = null!;
     internal event Action<VisualElement, Transform> TransformChanged = null!;
     #endregion
@@ -49,7 +50,16 @@ public class VisualElement : IDisposable
         }
     }
 
-    public bool Visible { get; set; } = true;
+    private bool _Visible = true;
+    public bool Visible
+    {
+        get => _Visible;
+        set
+        {
+            _Visible = value;
+            ScheduleRender();
+        }
+    }
 
     public bool CanRender
     {
@@ -259,6 +269,8 @@ public class VisualElement : IDisposable
             {
                 foreach (VisualElement child in Children)
                 {
+                    if (!child.Visible) continue;
+
                     totalNestedChildren++;
 
                     // Get element image and render
