@@ -99,8 +99,8 @@ public class ElementTree : IDisposable
     {
         var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
 
-        foreach (var Tracker in Intersected)
-            if (Tracker.Element == elm2) return true;
+        for (int i = 0; i < Intersected?.Count; i++)
+            if (Intersected[i].Element == elm2) return true;
 
         return false;
     }

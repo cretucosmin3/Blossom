@@ -5,29 +5,33 @@ using SkiaSharp;
 
 namespace Blossom.Core.Visual;
 
-public enum Visibility
-{
-    Visible,
-    Clipped,
-    Hidden
-}
-
 public class VisualElement : IDisposable
 {
     public virtual void AddedToView() { }
 
     public string Name { get; set; }
+
+    #region User Interactions
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
+    public bool Focusable { get; set; }
+    public bool IsClickthrough { get; set; }
+    #endregion
 
-    public bool IsClickthrough { get; set; } = false;
-
+    #region Events
     public ElementEvents Events { get; } = new();
+    public Action<VisualElement> OnFocused = null!;
+    internal event ForDispose OnDisposing = null!;
+    internal event Action<VisualElement, Transform> TransformChanged = null!;
+    #endregion
 
-    #region Render
+    #region Rendering Related
+    private readonly SKPaint paint = new();
+    public Visibility ComputedVisibility { get; private set; }
+    public SKRoundRect ComputedClipping { get; private set; } = null!;
 
-    internal int CachedNestedElementCount = 0;
-    internal SKBitmap CachedRender;
+    internal SKBitmap CachedRender = null!;
     internal bool HasCachedRender { get => CachedRender != null; }
+    internal int CachedNestedElementCount = 0;
 
     private bool _IsDirty = false;
     internal bool IsDirty
@@ -45,14 +49,22 @@ public class VisualElement : IDisposable
         }
     }
 
-    internal void MarkRenderPathDirty()
+    public bool Visible { get; set; } = true;
+
+    public bool CanRender
     {
-        IsDirty = true;
+        get
+        {
+            if (Parent != null)
+                return Visible && ParentView.Elements.ComponentsIntersect(this, Parent);
+
+            return Visible;
+        }
     }
 
     #endregion
 
-    private View _ParentView;
+    private View _ParentView = null!;
     internal View ParentView
     {
         get => Parent != null ? Parent.ParentView : _ParentView;
@@ -65,18 +77,14 @@ public class VisualElement : IDisposable
     }
 
     internal ElementTree ChildElements { get; } = new();
-    private VisualElement _Parent;
+    private VisualElement _Parent = null!;
 
-    private VisualElement _RootParent;
+    private VisualElement _RootParent = null!;
     public VisualElement RootParent
     {
         get => _RootParent ?? this;
         private set => _RootParent = value;
     }
-
-    private readonly SKPaint paint = new();
-    public Visibility ComputedVisibility { get; private set; }
-    public SKRoundRect ComputedClipping { get; private set; }
 
     public VisualElement Parent
     {
@@ -99,8 +107,6 @@ public class VisualElement : IDisposable
 
     internal VisualElement[] Children { get => ChildElements.Items; }
 
-    internal event ForDispose OnDisposing;
-    internal event Action<VisualElement, Transform> TransformChanged;
     internal bool TransformIsChanged = false;
     internal SKPoint TextPosition;
 
@@ -153,22 +159,9 @@ public class VisualElement : IDisposable
 
     public void RemoveChild(VisualElement child)
     {
-        child.Parent = null;
+        child.Parent = null!;
         ChildElements.RemoveElement(child);
         ParentView.UntrackElement(ref child);
-    }
-
-    public bool Visible { get; set; } = true;
-
-    public bool CanRender
-    {
-        get
-        {
-            if (Parent != null)
-                return Visible && ParentView.Elements.ComponentsIntersect(this, Parent);
-
-            return Visible;
-        }
     }
 
     public Rect BoundingRect
@@ -208,14 +201,14 @@ public class VisualElement : IDisposable
             return 0;
         }
 
-        if ((IsDirty || Browser.WasResized) && CachedNestedElementCount > 50)
+        if ((IsDirty || Browser.WasResized) && CachedNestedElementCount > 200)
         {
             var counter = DeepRender();
 
             renderTarget.DrawBitmap(CachedRender, 0, 0);
 
             // Too many nested elements, cache for next time.
-            if (counter > 50)
+            if (counter > 200)
             {
                 CachedNestedElementCount = counter;
             }
@@ -224,9 +217,8 @@ public class VisualElement : IDisposable
             return counter;
         }
 
-        if (HasCachedRender && CachedNestedElementCount > 50)
+        if (HasCachedRender && CachedNestedElementCount > 200)
         {
-            // return DeepRender(renderTarget);
             RenderFromCache(renderTarget);
 
             Browser.AddVisualMarker(Transform.Computed.RectF, SKColors.Blue, 4f);
@@ -261,7 +253,7 @@ public class VisualElement : IDisposable
             canvas.Clear();
             RenderElement(canvas);
 
-            // Select children from scroll and area of the element
+            // TODO: Select children from scroll and area of the element
             // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
             if (Children.Length > 0)
             {
@@ -286,7 +278,7 @@ public class VisualElement : IDisposable
 
         int totalNestedChildren = 0;
 
-        // Select children from scroll and area of the element
+        // TODO: Select children from scroll and area of the element
         // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
         foreach (VisualElement child in Children)
         {
@@ -313,12 +305,14 @@ public class VisualElement : IDisposable
 
     private void RenderElement(SKCanvas targetCanvas)
     {
-        if (Layer == 0 && Transform.Evaluate())
+        bool localTransformChanged = Transform.Evaluate();
+
+        if (Layer == 0 && localTransformChanged)
         {
             TransformIsChanged = true;
         }
 
-        if (Parent?.TransformIsChanged == true && Transform.Evaluate())
+        if (Parent?.TransformIsChanged == true && localTransformChanged)
             TransformIsChanged = true;
 
         ComputedVisibility = Visibility.Visible;
@@ -370,6 +364,7 @@ public class VisualElement : IDisposable
                 Parent?.Style?.Border?.Roundness ?? 0, Parent?.Style?.Border?.Roundness ?? 0
             );
 
+        // TODO: Border could have each corner of different roundness
         // compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
         //     new(15,5),
         //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
@@ -426,16 +421,9 @@ public class VisualElement : IDisposable
             paint.StrokeWidth = Style.Border.Width;
             paint.Color = Style.Border.Color;
 
-            // paint.Shader = SKShader.CreateRadialGradient(
-            //     new SKPoint(rect.MidX, rect.MidY), rect.Width / 1.7f,
-            //     new SKColor[] { SKColors.Transparent, new(0, 0, 0, 70) },
-            //     SKShaderTileMode.Clamp);
-
             roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
             targetCanvas.DrawRoundRect(roundRect, paint);
 
-            // paint.Shader?.Dispose();
-            // paint.Shader = null;
         }
 
         roundRect.Dispose();
@@ -524,9 +512,9 @@ public class VisualElement : IDisposable
 
     internal void ScheduleRender()
     {
-        MarkRenderPathDirty();
+        IsDirty = true;
 
-        if (ParentView != null)
+        if (ParentView is not null)
             ParentView.RenderRequired = true;
     }
 
@@ -539,8 +527,8 @@ public class VisualElement : IDisposable
     public Vector2 PointToClient(float x, float y)
     {
         return new Vector2(
-            x - Transform.Computed.X,
-            y - Transform.Computed.Y
+            Transform.Computed.X - x,
+            Transform.Computed.Y - y
         );
     }
 
@@ -576,4 +564,11 @@ public class VisualElement : IDisposable
 
         Parent?.ChildElements.RemoveElement(this);
     }
+}
+
+public enum Visibility
+{
+    Visible,
+    Clipped,
+    Hidden
 }

@@ -93,7 +93,6 @@ public class AppNavigation : View
                     Size = 25f,
                     Alignment = TextAlign.Center,
                     Weight = 600,
-                    PathEffect = SKPathEffect.CreateCompose(SKPathEffect.CreateCorner(10), SKPathEffect.CreateDiscrete(4, 0.4f)),
                     Shadow = new()
                     {
                         OffsetX = 0,
