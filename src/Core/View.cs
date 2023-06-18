@@ -53,45 +53,71 @@ namespace Blossom.Core
         {
             Name = name;
 
-            Events.OnMouseDown += (_, args) =>
-            {
-                var element = Elements.FirstFromPoint(
-                    new(args.Global.X, args.Global.Y));
+            Events.OnMouseDown += OnMouseDown;
+            Events.OnMouseUp += OnMouseUp;
+            Events.OnMouseMove += OnMouseMove;
+        }
 
-                element?.Events.HandleMouseDown(args.Button, args.Global, element);
-                mouseDownElement = element;
-            };
+        private void OnMouseDown(object _, MouseEventArgs args)
+        {
+            VisualElement element = Elements.FirstFromPoint(
+                new(args.Global.X, args.Global.Y));
 
-            Events.OnMouseUp += (_, args) =>
+            if (element != null)
             {
-                if (mouseDownElement != null)
+                element.Events.HandleMouseDown(args.Button, args.Global, element);
+
+                if (FocusedElement != null && FocusedElement != element)
                 {
-                    mouseDownElement.Events.HandleMouseUp(args.Button, args.Global, mouseDownElement);
-                    mouseDownElement = null;
-                    return;
+                    FocusedElement.OnFocusLost?.Invoke(FocusedElement);
                 }
 
-                var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-                element?.Events.HandleMouseUp(args.Button, args.Global, element);
-            };
-
-            Events.OnMouseMove += (_, args) =>
+                if (element.Focusable)
+                {
+                    element.GetFocus();
+                    element.OnFocused?.Invoke(element);
+                }
+            }
+            else
             {
-                var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-                element?.Events.HandleMouseMove(args.Global, element);
+                if (FocusedElement != null)
+                    FocusedElement.OnFocusLost?.Invoke(FocusedElement);
 
-                if (hoveredElement != element)
-                {
-                    hoveredElement?.Events.HandleMouseLeave(hoveredElement);
-                    element?.Events.HandleMouseEnter(element);
-                }
-                else if (element == hoveredElement)
-                {
-                    element?.Events.HandleMouseHover(element, args.Global);
-                }
+                FocusedElement = null!;
+            }
 
-                hoveredElement = element;
-            };
+            mouseDownElement = element ?? null!;
+        }
+
+        private void OnMouseUp(object _, MouseEventArgs args)
+        {
+            if (mouseDownElement != null)
+            {
+                mouseDownElement.Events.HandleMouseUp(args.Button, args.Global, mouseDownElement);
+                mouseDownElement = null;
+                return;
+            }
+
+            var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            element?.Events.HandleMouseUp(args.Button, args.Global, element);
+        }
+
+        private void OnMouseMove(object _, MouseEventArgs args)
+        {
+            var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            element?.Events.HandleMouseMove(args.Global, element);
+
+            if (hoveredElement != element)
+            {
+                hoveredElement?.Events.HandleMouseLeave(hoveredElement);
+                element?.Events.HandleMouseEnter(element);
+            }
+            else if (element == hoveredElement)
+            {
+                element?.Events.HandleMouseHover(element, args.Global);
+            }
+
+            hoveredElement = element;
         }
 
         internal void TriggerLoop() => Loop?.Invoke();
@@ -130,7 +156,7 @@ namespace Blossom.Core
 
             foreach (var element in Elements.Items)
             {
-                if (element.Layer > 0) continue;
+                if (element.Layer > 0 || !element.Visible) continue;
 
                 lock (element)
                 {
