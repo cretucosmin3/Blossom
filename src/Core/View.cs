@@ -80,9 +80,7 @@ namespace Blossom.Core
             }
             else
             {
-                if (FocusedElement != null)
-                    FocusedElement.OnFocusLost?.Invoke(FocusedElement);
-
+                FocusedElement?.OnFocusLost?.Invoke(FocusedElement);
                 FocusedElement = null!;
             }
 
