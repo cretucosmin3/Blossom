@@ -13,7 +13,7 @@ public class GridTest : View
 
     public GridTest() : base("Grid Test") { }
 
-    public override void Main()
+    public override void Init()
     {
         BackColor = SKColors.White;
 

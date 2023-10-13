@@ -42,6 +42,7 @@ public static class Browser
 
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
     private static readonly List<(RectangleF, SKColor, float)> PostMarkers = new();
+    private static bool DrawDebugMarkers = false;
 
     internal static void AddVisualMarker(RectangleF marker, SKColor color, float width) =>
         PostMarkers.Add((marker, color, width));
@@ -54,7 +55,7 @@ public static class Browser
 
             if (BrowserApp.ActiveView != null)
             {
-                BrowserApp.ActiveView.Main();
+                BrowserApp.ActiveView.Init();
                 BrowserApp.ActiveView.IsLoaded = true;
             }
             else
@@ -240,10 +241,11 @@ public static class Browser
 
     private static readonly SKPaint InfoTextPaint = new()
     {
-        TextSize = 20,
+        TextSize = 15,
         FakeBoldText = true,
         Color = SKColors.IndianRed,
-        Style = SKPaintStyle.Fill
+        Style = SKPaintStyle.Fill,
+        Typeface = SKTypeface.FromFamilyName("Calibri", 100, 2, SKFontStyleSlant.Upright),
     };
 
     private static void Render(double time)
@@ -270,19 +272,22 @@ public static class Browser
         foreach (double t in frameTimes)
             AverageFrame += t;
 
-        // Draw informational markers
-        foreach (var (rect, color, width) in PostMarkers)
+        if (DrawDebugMarkers)
         {
-            PostMarkerPaint.StrokeWidth = width;
-            PostMarkerPaint.Color = color;
+            // Draw informational markers
+            foreach (var (rect, color, width) in PostMarkers)
+            {
+                PostMarkerPaint.StrokeWidth = width;
+                PostMarkerPaint.Color = color;
 
-            Renderer.Canvas.DrawRect(rect.X, rect.Y, rect.Width, rect.Height, PostMarkerPaint);
+                Renderer.Canvas.DrawRect(rect.X, rect.Y, rect.Width, rect.Height, PostMarkerPaint);
+            }
+
+            Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.0} ms", 5, 20, InfoTextPaint);
+
+            // Clean-up
+            PostMarkers.Clear();
         }
-
-        Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.0} ms", 5, 20, InfoTextPaint);
-
-        // Clean-up
-        PostMarkers.Clear();
         WasResized = false;
 
         Renderer.Canvas.Flush();

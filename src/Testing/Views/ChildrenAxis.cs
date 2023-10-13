@@ -15,7 +15,7 @@ public class ChildrenAxis : View
 
     public ChildrenAxis() : base("Children axis Test") { }
 
-    public override void Main()
+    public override void Init()
     {
         DraggableParent = new Draggable()
         {

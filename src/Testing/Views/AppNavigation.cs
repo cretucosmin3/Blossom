@@ -20,7 +20,7 @@ public class AppNavigation : View
 
     public AppNavigation() : base("Search") { }
 
-    public override void Main()
+    public override void Init()
     {
         BackColor = new(100, 120, 165, 255);
         TopPanel = new VisualElement()

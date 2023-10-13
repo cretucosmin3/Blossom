@@ -16,7 +16,7 @@ public class TextStyle : StyleProperty, IDisposable
     private SKPathEffect _PathEffect = null;
     private TextAlign _Alignment = TextAlign.Center;
     private SKColor _Color;
-    private string _FontName = "DejaVu Sans Mono";
+    private string _FontName = "Calibri";
 
     public ShadowStyle _Shadow;
 
