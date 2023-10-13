@@ -12,7 +12,7 @@ public class RenderCacheView : View
 {
     public RenderCacheView() : base("Render Cache View") { }
 
-    public override void Main()
+    public override void Init()
     {
         var GroupParent1 = new VisualElement()
         {

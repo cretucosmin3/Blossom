@@ -1,0 +1,38 @@
+{
+  "palette": [
+    {
+      "id": "A3jlBzh0arWRhEsKTW3fY",
+      "name": "Hot Potato",
+      "value": "#ff8080"
+    },
+    {
+      "id": "20TwKrX4F31UdECZizBEF",
+      "name": "Warm Potato",
+      "value": "#feb058"
+    },
+    {
+      "id": "ONQ932iY4C_TAL6dBrCRS",
+      "name": "Completed",
+      "value": "#56cd23"
+    },
+    {
+      "id": "URkbGJFSpOw6an1AExVRB",
+      "name": "In Progress",
+      "value": "#47e1c2"
+    }
+  ],
+  "fileColors": [
+    {
+      "path": "Blossom/2 Fix fonts sizes and position.md",
+      "color": "A3jlBzh0arWRhEsKTW3fY"
+    },
+    {
+      "path": "Blossom/3 Scrolling.md",
+      "color": "A3jlBzh0arWRhEsKTW3fY"
+    },
+    {
+      "path": "Blossom/1 Visual Testing.md",
+      "color": "URkbGJFSpOw6an1AExVRB"
+    }
+  ]
+}

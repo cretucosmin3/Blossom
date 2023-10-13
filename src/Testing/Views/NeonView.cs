@@ -14,7 +14,7 @@ namespace Blossom.Testing
 
         public NeonView() : base("NeonView View") { }
 
-        public override void Main()
+        public override void Init()
         {
             BackColor = SKColors.Black;
 

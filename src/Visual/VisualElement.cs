@@ -539,8 +539,8 @@ public class VisualElement : IDisposable
     public Vector2 PointToClient(float x, float y)
     {
         return new Vector2(
-            Transform.Computed.X - x,
-            Transform.Computed.Y - y
+            x - Transform.Computed.X,
+            y - Transform.Computed.Y
         );
     }
 

@@ -45,7 +45,7 @@ public class DrawingView : View
         }
     }
 
-    public override void Main()
+    public override void Init()
     {
         float totalWidth = Browser.window.Size.X + 37;
         float totalHeight = Browser.window.Size.Y - 50;

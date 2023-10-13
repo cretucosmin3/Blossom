@@ -2,6 +2,7 @@ using System.Numerics;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
+using Blossom.Testing.CustomElements;
 using SkiaSharp;
 
 namespace Blossom.Testing
@@ -10,12 +11,12 @@ namespace Blossom.Testing
     {
         private bool isDragged;
         private Vector2 dragPoint;
-        VisualElement Draggable;
+        public VisualElement Draggable;
 
-        VisualElement AnchorTop;
-        VisualElement AnchorBottom;
-        VisualElement AnchorLeft;
-        VisualElement AnchorRight;
+        public VisualElement AnchorTop;
+        public VisualElement AnchorBottom;
+        public VisualElement AnchorLeft;
+        public VisualElement AnchorRight;
 
         public AnchorsView() : base("Anchors View")
         {
@@ -40,13 +41,13 @@ namespace Blossom.Testing
             };
         }
 
-        public override void Main()
+        public override void Init()
         {
             Draggable = new VisualElement()
             {
                 Name = "Draggable",
                 IsClipping = false,
-                Transform = new(200, 200, 450, 60)
+                Transform = new(200, 200, 450, 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
                     FixedWidth = false,
@@ -56,23 +57,18 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
-                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(20, 1, 0),
                     Border = new()
                     {
                         Color = new(0, 0, 0, 70),
                         Width = 1f,
                         Roundness = 3,
-                        PathEffect = SKPathEffect.CreateDiscrete(20, 1, 0)
                     },
                     Text = new()
                     {
                         Alignment = TextAlign.Center,
                         Color = new(25, 25, 25, 255),
-                        Size = 24,
-                        Spacing = 20,
-                        Padding = 20,
-                        Weight = 450,
-                        PathEffect = SKPathEffect.CreateDiscrete(3, 0.5f, 0)
+                        Size = 18,
+                        Weight = 200,
                     },
                 },
                 Text = "Hold to Move"
@@ -81,7 +77,7 @@ namespace Blossom.Testing
             AnchorTop = new VisualElement()
             {
                 Name = "Anchor Top",
-                Transform = new((450 / 2) - 20, -8, 40, 16)
+                Transform = new((450 / 2) - 20, -24, 40, 16)
                 {
                     Anchor = Anchor.Top,
                     FixedSize = true,
@@ -89,13 +85,11 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = SKColors.Gray,
-                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
                         Color = new(150, 150, 150),
                         Width = 1,
                         Roundness = 2,
-                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
                 },
             };
@@ -103,7 +97,7 @@ namespace Blossom.Testing
             AnchorBottom = new VisualElement()
             {
                 Name = "Anchor Bottom",
-                Transform = new((450 / 2) - 20, 52, 40, 16)
+                Transform = new((450 / 2) - 20, 88, 40, 16)
                 {
                     Anchor = Anchor.Bottom,
                     FixedSize = true,
@@ -111,13 +105,11 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
-                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
                         Color = new(150, 150, 150),
                         Width = 1,
                         Roundness = 2,
-                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
                 },
             };
@@ -125,7 +117,7 @@ namespace Blossom.Testing
             AnchorLeft = new VisualElement()
             {
                 Name = "Anchor Left",
-                Transform = new(-8, 10, 16, 40)
+                Transform = new(-24, 40 - 20, 16, 40)
                 {
                     Anchor = Anchor.Left,
                     FixedSize = true,
@@ -133,13 +125,11 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = SKColors.Gray,
-                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
                         Color = new(150, 150, 150),
                         Width = 1,
                         Roundness = 2,
-                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
                 },
             };
@@ -147,7 +137,7 @@ namespace Blossom.Testing
             AnchorRight = new VisualElement()
             {
                 Name = "Anchor Right",
-                Transform = new(442, 10, 16, 40)
+                Transform = new(450 + 8, 40 - 20, 16, 40)
                 {
                     Anchor = Anchor.Right,
                     FixedSize = true,
@@ -155,13 +145,11 @@ namespace Blossom.Testing
                 Style = new()
                 {
                     BackColor = new(255, 255, 255, 255),
-                    BackgroundPathEffect = SKPathEffect.CreateDiscrete(5, 1, 0),
                     Border = new()
                     {
                         Color = new(150, 150, 150),
                         Width = 1,
                         Roundness = 2,
-                        PathEffect = SKPathEffect.CreateDiscrete(5, 1, 0)
                     },
                 },
             };

@@ -47,7 +47,7 @@ namespace Blossom.Core
         public Application Application { get; internal set; }
         public VisualElement FocusedElement { get; set; }
 
-        public abstract void Main();
+        public abstract void Init();
 
         internal View(string name)
         {

@@ -39,7 +39,7 @@ public abstract class Application : IDisposable
 
         if (Browser.IsLoaded && !ActiveView.IsLoaded)
         {
-            ActiveView.Main();
+            ActiveView.Init();
             ActiveView.IsLoaded = true;
         }
 
