@@ -12,8 +12,10 @@
     <Target Name="CopyAssets" AfterTargets="AfterBuild">
         <ItemGroup>
             <_AssetFiles Include="$(MSBuildProjectDirectory)\assets\**" />
+            <_GlfwFiles Include="$(MSBuildProjectDirectory)\glfw\**" />
         </ItemGroup>
         <Copy SourceFiles="@(_AssetFiles)" DestinationFolder="$(OutDir)assets\%(RecursiveDir)" />
+        <Copy SourceFiles="@(_GlfwFiles)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
     </Target>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
