@@ -42,7 +42,7 @@ public static class Browser
 
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
     private static readonly List<(RectangleF, SKColor, float)> PostMarkers = new();
-    private static bool DrawDebugMarkers = false;
+    private static bool DrawDebugMarkers = true;
 
     internal static void AddVisualMarker(RectangleF marker, SKColor color, float width) =>
         PostMarkers.Add((marker, color, width));
@@ -245,7 +245,7 @@ public static class Browser
         FakeBoldText = true,
         Color = SKColors.IndianRed,
         Style = SKPaintStyle.Fill,
-        Typeface = SKTypeface.FromFamilyName("Calibri", 100, 2, SKFontStyleSlant.Upright),
+        Typeface = SKTypeface.FromFamilyName("Arimo", 100, 2, SKFontStyleSlant.Upright),
     };
 
     private static void Render(double time)
@@ -283,7 +283,7 @@ public static class Browser
                 Renderer.Canvas.DrawRect(rect.X, rect.Y, rect.Width, rect.Height, PostMarkerPaint);
             }
 
-            Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.0} ms", 5, 20, InfoTextPaint);
+            Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.00} ms", 5, 20, InfoTextPaint);
 
             // Clean-up
             PostMarkers.Clear();
