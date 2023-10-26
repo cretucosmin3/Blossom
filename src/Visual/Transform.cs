@@ -30,6 +30,7 @@ public class Transform
     internal float RelativeBottom;
 
     private readonly Rect ComputedTransform = new(0, 0, 0, 0);
+    // TODO: Change into SKRect for simplicity and to avoid casting
     public Rect Computed => ComputedTransform;
     public Rect Local { get; } = new Rect(0, 0, 0, 0);
 

@@ -30,7 +30,7 @@ namespace Blossom
         private static readonly string _appDataPathScreenshot = Path.Combine(_appDataPath, "screenshot.png");
 
         static void Main()
-        {
+        {   
             Log.Info(_appName);
             Log.Info(_appPath);
             Log.Info(_appDataPath);
@@ -42,6 +42,25 @@ namespace Blossom
 
             Browser.Initialize();
             Environment.Exit(0);
+        }
+
+        private static void PrintTimeWithMarta()
+        {
+            DateTime startTime = new DateTime(2019, 7, 13);
+            DateTime endTime = DateTime.Now;
+
+            TimeSpan difference = endTime - startTime;
+            var years = difference.Days / 365d;
+            var restYears = years - Math.Truncate(years);
+            var months = restYears * 12;
+            var restMonths = months - Math.Truncate(months);
+            var days = restMonths * 30;
+            var restDays = days - Math.Truncate(days);
+            var hours = restDays * 24;
+            var restHours = hours - Math.Truncate(hours);
+            var minutes = restHours * 60;
+
+            Console.WriteLine($"{(int)years} years, {(int)months} months, {(int)days} days, {(int)hours} hours, {(int)minutes} minutes");
         }
     }
 }
