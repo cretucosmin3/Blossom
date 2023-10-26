@@ -7,11 +7,11 @@ namespace Blossom.Testing
     {
         // private readonly PrettyUi PrettyUi = new();
         // private readonly DrawingView DrawingView = new();
-        private readonly AnchorsView AnchorsView = new();
-        // private readonly ChildrenAxis ChildrenAxis = new();
-        // private readonly GridTest GridTest = new();
-        // private readonly NeonView NeonView = new();
-        // private readonly RenderCacheView RenderCacheView = new();
+        // private readonly AnchorsView AnchorsView = new();
+        private readonly ChildrenAxis ChildrenAxis = new();
+        private readonly GridTest GridTest = new();
+        private readonly NeonView NeonView = new();
+        private readonly RenderCacheView RenderCacheView = new();
         private readonly AppNavigation AppNav = new();
 
         private readonly Dictionary<int, View> ViewSelectors;
@@ -20,14 +20,14 @@ namespace Blossom.Testing
         {
             // AddView(AppNav);
             // AddView(PrettyUi);
-            AddView(AnchorsView);
+            // AddView(AnchorsView);
             // AddView(DrawingView);
-            // AddView(ChildrenAxis);
+            AddView(ChildrenAxis);
             // AddView(GridTest);
             // AddView(NeonView);
             // AddView(RenderCacheView);
 
-            SetActiveView(AnchorsView);
+            SetActiveView(ChildrenAxis);
 
             // ViewSelectors = new Dictionary<int, View>(){
             //     {59, PrettyUi},

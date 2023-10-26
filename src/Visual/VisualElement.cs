@@ -231,7 +231,7 @@ public class VisualElement : IDisposable
         {
             RenderFromCache(renderTarget);
 
-            Browser.AddVisualMarker(Transform.Computed.RectF, SKColors.Blue, 4f);
+            Browser.AddVisualMarker(SKRect.Create(Transform.Computed.X, Transform.Computed.Y, Transform.Computed.Width, Transform.Computed.Height), SKColors.Blue);
 
             TransformIsChanged = false;
             return CachedNestedElementCount;
@@ -372,9 +372,11 @@ public class VisualElement : IDisposable
             clippingRect = SKRect.Intersect(clippingRect, prevClipping.Rect);
 
         var compClippingRect = new SKRoundRect(
-                clippingRect,
-                Parent?.Style?.Border?.Roundness ?? 0, Parent?.Style?.Border?.Roundness ?? 0
-            );
+            clippingRect,
+            Parent?.Style?.Border?.Roundness ?? 0, Parent?.Style?.Border?.Roundness ?? 0
+        );
+
+        // Browser.AddVisualMarker(compClippingRect.Rect, SKColors.Red);
 
         // TODO: Border could have each corner of different roundness
         // compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
@@ -391,6 +393,7 @@ public class VisualElement : IDisposable
 
     internal void DrawBase(SKCanvas targetCanvas)
     {
+        // TODO: - Performance - check if this or root transform changed, if not, reuse the rect.
         SKRect rect = new(
             Transform.Computed.X,
             Transform.Computed.Y,
@@ -403,10 +406,10 @@ public class VisualElement : IDisposable
         if (Style.Border != null)
         {
             roundRect.SetRectRadii(rect, new SKPoint[] {
-                new SKPoint(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
-                new SKPoint(Style.Border.RoundnessTopRight, Style.Border.RoundnessTopRight),
-                new SKPoint(Style.Border.RoundnessBottomRight, Style.Border.RoundnessBottomRight),
-                new SKPoint(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
+                new(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
+                new(Style.Border.RoundnessTopRight, Style.Border.RoundnessTopRight),
+                new(Style.Border.RoundnessBottomRight, Style.Border.RoundnessBottomRight),
+                new(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
             });
         }
 
@@ -435,9 +438,9 @@ public class VisualElement : IDisposable
 
             roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
             targetCanvas.DrawRoundRect(roundRect, paint);
-
         }
 
+        // TODO: reuse roundRect for next render
         roundRect.Dispose();
     }
 
@@ -555,8 +558,8 @@ public class VisualElement : IDisposable
         var rect = new SKRect(
             Transform.Computed.X,
             Transform.Computed.Y,
-            Transform.Computed.Width,
-            Transform.Computed.Height
+            Transform.Computed.RectF.Right,
+            Transform.Computed.RectF.Bottom
         );
 
         return new(rect, Style?.Border?.Roundness ?? 0);

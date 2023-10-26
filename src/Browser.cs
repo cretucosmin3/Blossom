@@ -18,6 +18,7 @@ using System.Runtime.InteropServices;
 using SkiaSharp;
 using System.Collections.Generic;
 using System.Drawing;
+using Silk.NET.Windowing.Sdl;
 
 namespace Blossom;
 
@@ -41,11 +42,15 @@ public static class Browser
     public static bool SkipCountingNextRender { get; set; } = false;
 
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
-    private static readonly List<(RectangleF, SKColor, float)> PostMarkers = new();
+    private static readonly List<(SKRect, SKColor)> PostMarkers = new();
     private static bool DrawDebugMarkers = true;
 
-    internal static void AddVisualMarker(RectangleF marker, SKColor color, float width) =>
-        PostMarkers.Add((marker, color, width));
+    internal static void AddVisualMarker(SKRect marker, SKColor color) {
+        if(!DrawDebugMarkers) return;
+
+        marker.Inflate(3, 3);
+        PostMarkers.Add((marker, color));
+    }
 
     internal static void Initialize()
     {
@@ -80,6 +85,7 @@ public static class Browser
         options.IsEventDriven = true;
 
         GlfwWindowing.Use();
+        // SdlWindowing.Use();
 
         window = Window.Create(options);
 
@@ -232,16 +238,17 @@ public static class Browser
     private static readonly Stopwatch frameTimer = new();
     private static int frameCounter = 0;
     private static readonly double[] frameTimes = new double[10];
+
     private static readonly SKPaint PostMarkerPaint = new()
     {
-        StrokeWidth = 5f,
+        StrokeWidth = 3f,
         Color = SKColors.Red,
-        Style = SKPaintStyle.Stroke
+        Style = SKPaintStyle.Stroke,
     };
 
     private static readonly SKPaint InfoTextPaint = new()
     {
-        TextSize = 15,
+        TextSize = 18,
         FakeBoldText = true,
         Color = SKColors.IndianRed,
         Style = SKPaintStyle.Fill,
@@ -275,12 +282,13 @@ public static class Browser
         if (DrawDebugMarkers)
         {
             // Draw informational markers
-            foreach (var (rect, color, width) in PostMarkers)
+            foreach (var (rect, color) in PostMarkers)
             {
-                PostMarkerPaint.StrokeWidth = width;
                 PostMarkerPaint.Color = color;
+                PostMarkerPaint.PathEffect?.Dispose();
+                PostMarkerPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 3, 10 }, Random.Shared.Next(0, 1000));
 
-                Renderer.Canvas.DrawRect(rect.X, rect.Y, rect.Width, rect.Height, PostMarkerPaint);
+                Renderer.Canvas.DrawRect(rect, PostMarkerPaint);
             }
 
             Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.00} ms", 5, 20, InfoTextPaint);
@@ -288,6 +296,7 @@ public static class Browser
             // Clean-up
             PostMarkers.Clear();
         }
+
         WasResized = false;
 
         Renderer.Canvas.Flush();
