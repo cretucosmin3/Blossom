@@ -19,6 +19,7 @@ using SkiaSharp;
 using System.Collections.Generic;
 using System.Drawing;
 using Silk.NET.Windowing.Sdl;
+using Silk.NET.GLFW;
 
 namespace Blossom;
 
@@ -45,8 +46,11 @@ public static class Browser
     private static readonly List<(SKRect, SKColor)> PostMarkers = new();
     private static bool DrawDebugMarkers = true;
 
-    internal static void AddVisualMarker(SKRect marker, SKColor color) {
-        if(!DrawDebugMarkers) return;
+    private static Glfw _glfw = null!;
+
+    internal static void AddVisualMarker(SKRect marker, SKColor color)
+    {
+        if (!DrawDebugMarkers) return;
 
         marker.Inflate(3, 3);
         PostMarkers.Add((marker, color));
@@ -83,9 +87,20 @@ public static class Browser
         options.TransparentFramebuffer = false;
         options.WindowBorder = WindowBorder.Resizable;
         options.IsEventDriven = true;
+        options.PreferredDepthBufferBits = null;
+
+        options.API = new GraphicsAPI(
+           ContextAPI.OpenGL,
+           ContextProfile.Core,
+           ContextFlags.ForwardCompatible,
+           new APIVersion(3, 2)
+        );
 
         GlfwWindowing.Use();
         // SdlWindowing.Use();
+
+        _glfw = Glfw.GetApi();
+        _glfw = GlfwProvider.GLFW.Value;
 
         window = Window.Create(options);
 
@@ -94,6 +109,42 @@ public static class Browser
         window.Closing += Closing;
 
         window.Run();
+    }
+
+    private static void SetGlfwWindowHints()
+    {
+        _glfw.DefaultWindowHints();
+
+        if (true)
+        {
+            _glfw.WindowHint(WindowHintContextApi.ContextCreationApi, ContextApi.NativeContextApi); // ContextApi.EglContextApi
+            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.OpenGL);
+            _glfw.WindowHint(WindowHintOpenGlProfile.OpenGlProfile, OpenGlProfile.Core);
+
+            _glfw.WindowHint(WindowHintInt.ContextVersionMajor, 3);
+            _glfw.WindowHint(WindowHintInt.ContextVersionMinor, 2);
+        }
+        // else
+        // {
+        //     _glfw.WindowHint(WindowHintContextApi.ContextCreationApi,
+        //       _automaticFallback || _useEgl ? ContextApi.EglContextApi : ContextApi.NativeContextApi);
+        //     _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.OpenGLES);
+
+        //     _glfw.WindowHint(WindowHintInt.ContextVersionMajor, _majOES);
+        //     _glfw.WindowHint(WindowHintInt.ContextVersionMinor, 0);
+        // }
+
+        _glfw.WindowHint(WindowHintInt.RedBits, 8);
+        _glfw.WindowHint(WindowHintInt.GreenBits, 8);
+        _glfw.WindowHint(WindowHintInt.BlueBits, 8);
+        _glfw.WindowHint(WindowHintInt.DepthBits, 24);
+        _glfw.WindowHint(WindowHintInt.StencilBits, 8);
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            // osx graphics switching
+            _glfw.WindowHint((WindowHintBool)0x00023003, true);
+        }
     }
 
     internal static void StartWindow()
@@ -180,14 +231,14 @@ public static class Browser
                 BrowserApp.ActiveView?.Events.HandleMouseScroll(pos);
             };
 
-            mouse.MouseDown += (IMouse m, MouseButton btn) =>
+            mouse.MouseDown += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
                 BrowserApp.Events.HandleMouseDown(mouseButton, m.Position);
                 BrowserApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
             };
 
-            mouse.MouseUp += (IMouse m, MouseButton btn) =>
+            mouse.MouseUp += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
                 BrowserApp.Events.HandleMouseUp(mouseButton, m.Position);
@@ -259,7 +310,7 @@ public static class Browser
     {
         Renderer.ResetContext();
         Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
-
+        
         frameTimer.Restart();
         BrowserApp.Render();
         frameTimer.Stop();
