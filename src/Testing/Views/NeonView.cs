@@ -103,7 +103,7 @@ namespace Blossom.Testing
                         if (Random.Shared.NextSingle() > 0.6f)
                             flashBorder();
 
-                        Thread.Sleep(2);
+                        Thread.Sleep(15);
                     }
 
                     neonButton.Style.Border.Color = new(255, 0, 65, 255);
@@ -141,7 +141,7 @@ namespace Blossom.Testing
 
                         byte alpha = (byte)(255 * i < 180 ? 180 : 255 * i);
 
-                        Thread.Sleep(2);
+                        Thread.Sleep(45);
                     }
 
                     neonButton.Style.Text.PathEffect?.Dispose();

@@ -5,9 +5,9 @@ namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {
-        // private readonly PrettyUi PrettyUi = new();
-        // private readonly DrawingView DrawingView = new();
-        // private readonly AnchorsView AnchorsView = new();
+        private readonly PrettyUi PrettyUi = new();
+        private readonly DrawingView DrawingView = new();
+        private readonly AnchorsView AnchorsView = new();
         private readonly ChildrenAxis ChildrenAxis = new();
         private readonly GridTest GridTest = new();
         private readonly NeonView NeonView = new();
@@ -18,16 +18,16 @@ namespace Blossom.Testing
 
         public TestingApplication()
         {
-            // AddView(AppNav);
-            // AddView(PrettyUi);
-            // AddView(AnchorsView);
-            // AddView(DrawingView);
+            AddView(AppNav);
+            AddView(PrettyUi);
+            AddView(AnchorsView);
+            AddView(DrawingView);
             AddView(ChildrenAxis);
-            // AddView(GridTest);
-            // AddView(NeonView);
-            // AddView(RenderCacheView);
+            AddView(GridTest);
+            AddView(NeonView);
+            AddView(RenderCacheView);
 
-            SetActiveView(ChildrenAxis);
+            SetActiveView(RenderCacheView);
 
             // ViewSelectors = new Dictionary<int, View>(){
             //     {59, PrettyUi},

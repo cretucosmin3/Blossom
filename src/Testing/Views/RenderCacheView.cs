@@ -77,11 +77,11 @@ public class RenderCacheView : View
         // GroupParent2.AddChild(bottomRight);
 
         // Fixed number of buttons in the grid.
-        float rows = 5;
-        float cols = 5;
+        float rows = 25;
+        float cols = 25;
 
         // Spacing between buttons and also from parent's edges.
-        float spacing = 15f;
+        float spacing = 2f;
 
         // Adjusted width and height calculation considering the spacing.
         float buttonWidth = (650f - spacing * (cols + 1)) / cols; // Subtracting total spacing and dividing by number of columns

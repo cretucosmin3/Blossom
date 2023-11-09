@@ -25,14 +25,14 @@ public class Button : VisualElement
             {
                 Roundness = 3f
             },
-            Shadow = new()
-            {
-                Color = new(0, 0, 0, 75),
-                SpreadX = 4,
-                SpreadY = 4,
-                OffsetY = 4,
-                OffsetX = 0
-            },
+            // Shadow = new()
+            // {
+            //     Color = new(0, 0, 0, 75),
+            //     SpreadX = 4,
+            //     SpreadY = 4,
+            //     OffsetY = 4,
+            //     OffsetX = 0
+            // },
             Text = new()
             {
                 Size = 24,

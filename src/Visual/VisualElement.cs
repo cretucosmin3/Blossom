@@ -420,8 +420,8 @@ public class VisualElement : IDisposable
         }
 
         paint.Style = SKPaintStyle.Fill;
-        paint.Color = Style.BackColor;
         paint.IsAntialias = true;
+        paint.Color = Style.BackColor;
         paint.PathEffect = Style.BackgroundPathEffect;
 
         targetCanvas.DrawRoundRect(roundRect, paint);
