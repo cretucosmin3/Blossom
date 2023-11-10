@@ -1,15 +1,14 @@
 # Blossom
+A rich .Net browser.<br>
 
 Blossom is a framework / browser and app distribuitor for .Net C# applications with rich web like controls.
 
 # Licence
-## Blossom<br>
-A rich .Net browser.<br>
 
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
- Copyright (C) 2023 Cosmin Crețu
+Copyright (C) 2023 Cosmin Crețu <br>
  Everyone is permitted to copy and distribute verbatim copies
  of this license document, but changing it is not allowed.
 
