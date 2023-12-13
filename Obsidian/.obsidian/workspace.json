@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Blossom/1 Visual Testing.md",
+                "file": "Blossom/Work In Progress/Visual Testing.md",
                 "mode": "source",
                 "source": false
               }
@@ -69,7 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 279.5
   },
   "right": {
     "id": "a3ac9f37881b81fb",
@@ -85,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Blossom/1 Visual Testing.md",
+                "file": "Blossom/Work In Progress/Visual Testing.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Blossom/1 Visual Testing.md",
+                "file": "Blossom/Work In Progress/Visual Testing.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +125,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Blossom/1 Visual Testing.md"
+                "file": "Blossom/Work In Progress/Visual Testing.md"
               }
             }
           },
@@ -152,12 +152,19 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "obsidian-excalidraw-plugin:Create new drawing": false,
-      "obsidian-markdown-formatting-assistant-plugin:Open Markdown Formatting Assistant": false
+      "obsidian-markdown-formatting-assistant-plugin:Open Markdown Formatting Assistant": false,
+      "obsidian-excalidraw-plugin:Create new drawing": false
     }
   },
   "active": "771d1fdbaa987654",
   "lastOpenFiles": [
+    "Blossom/Work In Progress/Render Cases.md",
+    "Blossom/Work In Progress/Visual Testing.md",
+    "Blossom/Work In Progress/Quick Render Diagram.md",
+    "Blossom/Work In Progress/Quick Render.md",
+    "Blossom/Work In Progress/Fix fonts sizes and position.md",
+    "Blossom/Work In Progress/3 Scrolling.md",
+    "Blossom/Roadmap.md",
     "Blossom/2 Fix fonts sizes and position.md",
     "Blossom/1 Visual Testing.md",
     "Blossom/0 TODO List.md",

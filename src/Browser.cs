@@ -84,6 +84,8 @@ public static class Browser
         options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
         options.Title = "Blossom";
         options.VSync = false;
+        options.FramesPerSecond = 300;
+
         options.TransparentFramebuffer = false;
         options.WindowBorder = WindowBorder.Resizable;
         options.IsEventDriven = true;

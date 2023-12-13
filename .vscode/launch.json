@@ -9,7 +9,7 @@
             "program": "${workspaceFolder}\\bin\\Debug\\net7.0\\Blossom.dll",
             "args": [],
             "cwd": "${workspaceFolder}\\bin\\Debug\\net7.0\\",
-            "console": "externalTerminal",
+            "console": "internalConsole",
             "stopAtEntry": false
         }
     ]
