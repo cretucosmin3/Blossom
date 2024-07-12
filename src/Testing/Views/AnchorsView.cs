@@ -50,7 +50,7 @@ namespace Blossom.Testing
                 Transform = new(200, 200, 450, 80)
                 {
                     Anchor = Anchor.Top | Anchor.Left,
-                    FixedWidth = false,
+                    FixedWidth = true,
                     FixedHeight = true,
                     ValidateOnAnchor = true,
                 },
@@ -59,9 +59,9 @@ namespace Blossom.Testing
                     BackColor = new(255, 255, 255, 255),
                     Border = new()
                     {
-                        Color = new(0, 0, 0, 70),
-                        Width = 1f,
-                        Roundness = 3,
+                        Color = new(0, 0, 70, 70),
+                        Width = 2.5f,
+                        Roundness = 5,
                     },
                     Text = new()
                     {

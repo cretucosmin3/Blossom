@@ -46,6 +46,7 @@ public class ElementTree : IDisposable
     {
         var hitPoint = new RectangleF(x, y, 1, 1);
         var components = QuadTree.GetObjects(hitPoint);
+
         if (!components.Any()) return default!;
 
         for (int i = components.Count - 1; i >= 0; i--)
@@ -79,9 +80,11 @@ public class ElementTree : IDisposable
     public VisualElement? FirstFromQuad(RectangleF quad)
     {
         var components = QuadTree.GetObjects(quad);
+
         if (!components.Any()) return null;
 
         int maxLayer = components.Max(t => t.Element.Layer);
+
         return components.Find(t => t.Element.Layer == maxLayer).Element;
     }
 
@@ -108,6 +111,7 @@ public class ElementTree : IDisposable
     private ElementTracker AddTracker(ref VisualElement element)
     {
         var NewTracker = new ElementTracker(ref element);
+
         QuadTree.Add(NewTracker);
 
         return NewTracker;
@@ -116,6 +120,7 @@ public class ElementTree : IDisposable
     private void RemoveTracker(VisualElement Element)
     {
         var (_, tracker) = Map[Element.Name];
+
         QuadTree.Remove(tracker);
     }
 

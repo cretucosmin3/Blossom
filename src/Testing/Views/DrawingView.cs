@@ -50,8 +50,8 @@ public class DrawingView : View
         float totalWidth = Browser.window.Size.X + 37;
         float totalHeight = Browser.window.Size.Y - 50;
 
-        const float columns = 74;
-        const float rows = 37;
+        const float columns = 32;
+        const float rows = 24;
         const float gap = 1f;
 
         float cellX = 0, cellY = 50;
