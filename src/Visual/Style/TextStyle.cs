@@ -1,8 +1,8 @@
 using System;
 using System.Security.Cryptography;
-namespace Blossom.Core.Visual;
-
 using SkiaSharp;
+
+namespace Blossom.Core.Visual;
 
 public class TextStyle : StyleProperty, IDisposable
 {

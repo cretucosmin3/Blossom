@@ -27,7 +27,7 @@ namespace Blossom.Testing
             AddView(NeonView);
             AddView(RenderCacheView);
 
-            SetActiveView(RenderCacheView);
+            SetActiveView(GridTest);
 
             // ViewSelectors = new Dictionary<int, View>(){
             //     {59, PrettyUi},

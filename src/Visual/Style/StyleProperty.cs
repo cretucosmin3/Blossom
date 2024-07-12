@@ -1,5 +1,6 @@
 using System;
 using System.Reflection.Metadata;
+
 namespace Blossom.Core.Visual;
 
 public class StyleProperty
