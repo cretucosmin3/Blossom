@@ -12,6 +12,7 @@ namespace Blossom.Testing
         private readonly NeonShowcaseView _neonShowcaseView;
         private readonly PaintAppView _paintAppView;
         private readonly KanbanBoardView _kanbanBoardView;
+        private readonly Transform3DView _transform3DView;
 
         private readonly BenchmarkStaticView? _benchStaticView;
         private readonly BenchmarkDynamicView? _benchDynamicView;
@@ -42,11 +43,13 @@ namespace Blossom.Testing
             _neonShowcaseView = new NeonShowcaseView();
             _paintAppView = new PaintAppView();
             _kanbanBoardView = new KanbanBoardView();
+            _transform3DView = new Transform3DView();
 
             AddView(_dashboardView);
             AddView(_neonShowcaseView);
             AddView(_paintAppView);
             AddView(_kanbanBoardView);
+            AddView(_transform3DView);
 
             // Hook up view transition callback events
             _dashboardView.OnSwitchView += () =>
@@ -64,6 +67,10 @@ namespace Blossom.Testing
             _dashboardView.OnSwitchToKanban += () =>
             {
                 SetActiveView(_kanbanBoardView);
+            };
+            _dashboardView.OnSwitchTo3D += () =>
+            {
+                SetActiveView(_transform3DView);
             };
 
             _neonShowcaseView.OnSwitchView += () =>
@@ -105,6 +112,11 @@ namespace Blossom.Testing
                 SetActiveView(_paintAppView);
             };
 
+            _transform3DView.OnSwitchToDashboard += () =>
+            {
+                SetActiveView(_dashboardView);
+            };
+
             // Set the dashboard as the starting view
             SetActiveView(_dashboardView);
 
@@ -114,6 +126,7 @@ namespace Blossom.Testing
             // Key.Number2 = 50, Key.N = 78 -> Neon
             // Key.Number3 = 51, Key.P = 80 -> Paint Canvas
             // Key.Number4 = 52, Key.K = 75 -> Kanban Task Board
+            // Key.Number5 = 53, Key.T = 84 -> 3D Showcase
             Events.OnKeyUp += (int keyPressed) =>
             {
                 if (keyPressed == 49 || keyPressed == 68) // '1' or 'D'
@@ -135,6 +148,11 @@ namespace Blossom.Testing
                 {
                     Console.WriteLine("Hotkey: Switching to Kanban View");
                     SetActiveView(_kanbanBoardView);
+                }
+                else if (keyPressed == 53 || keyPressed == 84) // '5' or 'T'
+                {
+                    Console.WriteLine("Hotkey: Switching to 3D Showcase View");
+                    SetActiveView(_transform3DView);
                 }
             };
         }

@@ -78,7 +78,7 @@ public static class Browser
 
     private static void SetWindow()
     {
-        RenderRect = new System.Drawing.Rectangle(0, 0, 1100, 700);
+        RenderRect = new System.Drawing.Rectangle(0, 0, 1280, 800);
 
         var options = WindowOptions.Default;
         options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);

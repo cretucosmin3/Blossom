@@ -108,41 +108,85 @@ public class VisualElement : IDisposable
         }
     }
 
-    private SKRect GetRenderBounds()
+    private static SKPoint3 MapPoint3D(SKMatrix44 matrix, float x, float y, float z)
     {
-        var rect = SKRect.Create(
-            Transform.Computed.X, 
-            Transform.Computed.Y, 
-            Transform.Computed.Width, 
-            Transform.Computed.Height);
-
-        // Account for Border (drawn partially outside)
-        if (Style?.Border?.Width > 0)
+        float[] result = matrix.MapScalars(x, y, z, 1f);
+        float w = result[3];
+        if (Math.Abs(w) > 1e-6f)
         {
-            // Border is drawn inflated by Width/2, and stroke is Width.
-            // Total outside extent is Width.
-            // Add extra padding (1.5f) for anti-aliasing/sub-pixel rendering
-            var borderInflate = Style.Border.Width + 1.5f;
-            rect.Inflate(borderInflate, borderInflate);
+            return new SKPoint3(result[0] / w, result[1] / w, result[2] / w);
+        }
+        return new SKPoint3(result[0], result[1], result[2]);
+    }
+
+    private SKRect GetLocalCombinedBounds()
+    {
+        var localRect = new SKRect(0, 0, Transform.Width, Transform.Height);
+
+        // Include text bounds if text is rendered
+        if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+        {
+            CalculateText(); // Ensure local TextPosition is updated
+            var textRect = SKRect.Create(
+                TextPosition.X + TextBounds.Left,
+                TextPosition.Y + TextBounds.Top,
+                TextBounds.Width,
+                TextBounds.Height
+            );
+            localRect.Union(textRect);
         }
 
-        // Account for Shadow
+        // Include shadow bounds if shadow is valid
         if (Style?.Shadow?.HasValidValues() == true)
         {
             var s = Style.Shadow;
-            // 3*Sigma covers >99% of the blur
-            var blur = Math.Max(Math.Abs(s.SpreadX), Math.Abs(s.SpreadY)) * 3;
+            var blurX = Math.Abs(s.SpreadX) * 3f;
+            var blurY = Math.Abs(s.SpreadY) * 3f;
             
-            // Union the shadow rect with the main rect
-            var shadowRect = SKRect.Create(
-                Transform.Computed.X + s.OffsetX,
-                Transform.Computed.Y + s.OffsetY,
-                Transform.Computed.Width,
-                Transform.Computed.Height);
-            
-            shadowRect.Inflate(blur, blur);
-            
-            rect.Union(shadowRect);
+            var shadowRect = new SKRect(
+                s.OffsetX - blurX,
+                s.OffsetY - blurY,
+                Transform.Width + s.OffsetX + blurX,
+                Transform.Height + s.OffsetY + blurY
+            );
+            localRect.Union(shadowRect);
+        }
+
+        // Include border width inflation
+        if (Style?.Border?.Width > 0)
+        {
+            var borderInflate = Style.Border.Width + 1.5f;
+            localRect.Inflate(borderInflate, borderInflate);
+        }
+
+        return localRect;
+    }
+
+    private SKRect GetRenderBounds()
+    {
+        var localBounds = GetLocalCombinedBounds();
+        
+        SKRect rect;
+        if (Transform.RotationX != 0 || Transform.RotationY != 0 || Transform.RotationZ != 0 ||
+            Transform.ScaleX != 1 || Transform.ScaleY != 1 || Transform.ScaleZ != 1)
+        {
+            var globalMatrix = Transform.GetGlobalM44();
+            var p1 = MapPoint3D(globalMatrix, localBounds.Left, localBounds.Top, 0);
+            var p2 = MapPoint3D(globalMatrix, localBounds.Right, localBounds.Top, 0);
+            var p3 = MapPoint3D(globalMatrix, localBounds.Left, localBounds.Bottom, 0);
+            var p4 = MapPoint3D(globalMatrix, localBounds.Right, localBounds.Bottom, 0);
+
+            float minX = Math.Min(Math.Min(p1.X, p2.X), Math.Min(p3.X, p4.X));
+            float maxX = Math.Max(Math.Max(p1.X, p2.X), Math.Max(p3.X, p4.X));
+            float minY = Math.Min(Math.Min(p1.Y, p2.Y), Math.Min(p3.Y, p4.Y));
+            float maxY = Math.Max(Math.Max(p1.Y, p2.Y), Math.Max(p3.Y, p4.Y));
+
+            rect = new SKRect(minX, minY, maxX, maxY);
+        }
+        else
+        {
+            rect = localBounds;
+            rect.Offset(Transform.Computed.X, Transform.Computed.Y);
         }
 
         return rect;
@@ -375,27 +419,21 @@ public class VisualElement : IDisposable
         var cmds = ParentView.Ledger.GetCommands(Name);
         if (cmds == null) return;
 
-        if (_hasClippingAncestors)
+        using (new SKAutoCanvasRestore(targetCanvas))
         {
-            using (new SKAutoCanvasRestore(targetCanvas))
+            if (_hasClippingAncestors)
             {
                 ApplyClippingHierarchy(targetCanvas);
-                targetCanvas.Translate(Transform.Computed.X, Transform.Computed.Y);
-
-                for (int i = 0; i < cmds.Count; i++)
-                {
-                    cmds[i].Execute(targetCanvas);
-                }
             }
-        }
-        else
-        {
-            targetCanvas.Translate(Transform.Computed.X, Transform.Computed.Y);
+
+            var globalMatrix3D = Transform.GetGlobalM44();
+            var globalMatrix2D = globalMatrix3D.Matrix;
+            targetCanvas.Concat(ref globalMatrix2D);
+
             for (int i = 0; i < cmds.Count; i++)
             {
                 cmds[i].Execute(targetCanvas);
             }
-            targetCanvas.Translate(-Transform.Computed.X, -Transform.Computed.Y);
         }
     }
 
@@ -441,6 +479,28 @@ public class VisualElement : IDisposable
         return _cachedRoundRect;
     }
 
+    internal SKRoundRect GetLocalRoundRect()
+    {
+        var rect = new SKRect(
+            0,
+            0,
+            Transform.Width,
+            Transform.Height
+        );
+        float r1 = Style?.Border?.RoundnessTopLeft ?? 0;
+        float r2 = Style?.Border?.RoundnessTopRight ?? 0;
+        float r3 = Style?.Border?.RoundnessBottomRight ?? 0;
+        float r4 = Style?.Border?.RoundnessBottomLeft ?? 0;
+        var roundRect = new SKRoundRect(rect);
+        roundRect.SetRectRadii(rect, new SKPoint[] {
+            new(r1, r1),
+            new(r2, r2),
+            new(r3, r3),
+            new(r4, r4)
+        });
+        return roundRect;
+    }
+
     private void ApplyClippingHierarchy(SKCanvas canvas)
     {
         if (!_hasClippingAncestors) return;
@@ -449,7 +509,15 @@ public class VisualElement : IDisposable
         {
             if (ancestor.IsClipping)
             {
-                canvas.ClipRoundRect(ancestor.GetOrCreateRoundRect(), SKClipOperation.Intersect, true);
+                using var localRoundRect = ancestor.GetLocalRoundRect();
+                using var path = new SKPath();
+                path.AddRoundRect(localRoundRect);
+                
+                var globalMatrix3D = ancestor.Transform.GetGlobalM44();
+                var matrix2D = globalMatrix3D.Matrix;
+                path.Transform(matrix2D);
+                
+                canvas.ClipPath(path, SKClipOperation.Intersect, true);
             }
             ancestor = ancestor.Parent;
         }
