@@ -29,6 +29,9 @@ namespace Blossom.Testing.Views
         public Transform3DView() : base("3D Transforms Showcase")
         {
             BackColor = new SKColor(11, 15, 26, 255); // Premium dark slate background
+            UseReferenceResolution = false;
+            ReferenceWidth = 1280;
+            ReferenceHeight = 800;
         }
 
         public override void Init()
@@ -278,16 +281,25 @@ namespace Blossom.Testing.Views
                 Transform = { X = (Width / 2f) - 160f, Y = centerYOffset + 490f, Anchor = Anchor.Top },
                 OnClick = () => 
                 {
-                    StopAnimation();
                     OnSwitchToDashboard?.Invoke();
                 }
             };
             AddElement(backBtn);
+        }
 
-            // Start Animation Loop
-            _running = true;
-            _animationThread = new Thread(AnimateLoop) { IsBackground = true };
-            _animationThread.Start();
+        public override void OnActivated()
+        {
+            if (!_running)
+            {
+                _running = true;
+                _animationThread = new Thread(AnimateLoop) { IsBackground = true };
+                _animationThread.Start();
+            }
+        }
+
+        public override void OnDeactivated()
+        {
+            StopAnimation();
         }
 
         private void AnimateLoop()

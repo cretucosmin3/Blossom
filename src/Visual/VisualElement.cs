@@ -167,8 +167,11 @@ public class VisualElement : IDisposable
         var localBounds = GetLocalCombinedBounds();
         
         SKRect rect;
-        if (Transform.RotationX != 0 || Transform.RotationY != 0 || Transform.RotationZ != 0 ||
-            Transform.ScaleX != 1 || Transform.ScaleY != 1 || Transform.ScaleZ != 1)
+        bool useGlobalMapping = Transform.RotationX != 0 || Transform.RotationY != 0 || Transform.RotationZ != 0 ||
+                                Transform.ScaleX != 1 || Transform.ScaleY != 1 || Transform.ScaleZ != 1 ||
+                                (ParentView != null && ParentView.UseReferenceResolution);
+
+        if (useGlobalMapping)
         {
             var globalMatrix = Transform.GetGlobalM44();
             var p1 = MapPoint3D(globalMatrix, localBounds.Left, localBounds.Top, 0);
@@ -754,6 +757,36 @@ public class VisualElement : IDisposable
 
     public Vector2 PointToClient(float x, float y)
     {
+        var globalMatrix = Transform.GetGlobalM44();
+
+        float m00 = globalMatrix[0, 0];
+        float m01 = globalMatrix[0, 1];
+        float m03 = globalMatrix[0, 3];
+
+        float m10 = globalMatrix[1, 0];
+        float m11 = globalMatrix[1, 1];
+        float m13 = globalMatrix[1, 3];
+
+        float m30 = globalMatrix[3, 0];
+        float m31 = globalMatrix[3, 1];
+        float m33 = globalMatrix[3, 3];
+
+        float A1 = x * m30 - m00;
+        float B1 = x * m31 - m01;
+        float C1 = m03 - x * m33;
+
+        float A2 = y * m30 - m10;
+        float B2 = y * m31 - m11;
+        float C2 = m13 - y * m33;
+
+        float D = A1 * B2 - B1 * A2;
+        if (Math.Abs(D) > 1e-6f)
+        {
+            float localX = (C1 * B2 - B1 * C2) / D;
+            float localY = (A1 * C2 - C1 * A2) / D;
+            return new Vector2(localX, localY);
+        }
+
         return new Vector2(
             x - Transform.Computed.X,
             y - Transform.Computed.Y

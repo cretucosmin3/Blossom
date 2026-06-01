@@ -15,8 +15,12 @@ namespace Blossom.Core
         public SKColor BackColor = SKColors.White;
         public readonly CommandLedger Ledger = new();
 
-        public int Width => (int)Browser.RenderRect.Width;
-        public int Height => (int)Browser.RenderRect.Height;
+        public bool UseReferenceResolution { get; set; } = false;
+        public int ReferenceWidth { get; set; } = 1280;
+        public int ReferenceHeight { get; set; } = 800;
+
+        public int Width => UseReferenceResolution ? ReferenceWidth : (int)Browser.RenderRect.Width;
+        public int Height => UseReferenceResolution ? ReferenceHeight : (int)Browser.RenderRect.Height;
 
         public event ForVoid Loop;
 
@@ -68,6 +72,8 @@ namespace Blossom.Core
         public VisualElement FocusedElement { get; set; }
 
         public abstract void Init();
+        public virtual void OnActivated() { }
+        public virtual void OnDeactivated() { }
 
         internal View(string name)
         {
@@ -209,12 +215,12 @@ namespace Blossom.Core
                 {
                     // Full redraw required (e.g. view switch or resize)
                     DirtyRects.Clear();
-                    DirtyRects.Add(new SKRect(0, 0, Width, Height));
+                    DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
                     FullRenderRequired = false;
                 }
                 else if (RenderRequired && DirtyRects.Count == 0)
                 {
-                    DirtyRects.Add(new SKRect(0, 0, Width, Height));
+                    DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
                 }
 
                 localDirtyRects = new List<SKRect>(DirtyRects);
@@ -310,6 +316,22 @@ namespace Blossom.Core
             // update state
             // render from previous state or new
             RenderRequired = true;
+        }
+
+        public void ForceLayoutEvaluation()
+        {
+            _hierarchyDirty = true;
+            FullRenderRequired = true;
+            RenderRequired = true;
+
+            foreach (var element in Elements.Items)
+            {
+                if (element?.Transform != null)
+                {
+                    element.Transform._transformDirty = true;
+                    element.MarkVisibilityClippingDirty();
+                }
+            }
         }
 
         public void Dispose()

@@ -126,6 +126,27 @@ public class Transform
             global.PreConcat(local);
             return global;
         }
+
+        // Apply viewport reference resolution scaling to root elements
+        if (ParentElement?.ParentView != null && ParentElement.ParentView.UseReferenceResolution)
+        {
+            var view = ParentElement.ParentView;
+            float scaleX = (float)Browser.RenderRect.Width / view.Width;
+            float scaleY = (float)Browser.RenderRect.Height / view.Height;
+            float scale = Math.Min(scaleX, scaleY);
+            float offsetX = (Browser.RenderRect.Width - view.Width * scale) / 2f;
+            float offsetY = (Browser.RenderRect.Height - view.Height * scale) / 2f;
+
+            var viewportMat = SKMatrix44.CreateIdentity();
+            viewportMat.PreTranslate(offsetX, offsetY, 0);
+            viewportMat.PreScale(scale, scale, 1);
+
+            var global = SKMatrix44.CreateIdentity();
+            global.PreConcat(viewportMat);
+            global.PreConcat(local);
+            return global;
+        }
+
         return local;
     }
 
@@ -146,8 +167,8 @@ public class Transform
         }
     }
 
-    private float ParentWidth => Parent != null ? Parent.Width : Browser.window.Size.X;
-    private float ParentHeight => Parent != null ? Parent.Height : Browser.window.Size.Y;
+    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : Browser.window.Size.X);
+    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : Browser.window.Size.Y);
 
     internal float FixedLeft;
     internal float FixedRight;
@@ -353,7 +374,7 @@ public class Transform
 
     private void ComputeHorizontalTransform()
     {
-        float ParentWidth = Browser.window.Size.X;
+        float ParentWidth = ParentElement?.ParentView != null ? ParentElement.ParentView.Width : Browser.window.Size.X;
 
         if (Parent is not null)
             ParentWidth = Parent.ComputedTransform.Width;
@@ -402,7 +423,7 @@ public class Transform
 
     private void ComputeVerticalTransform()
     {
-        float ParentHeight = Browser.window.Size.Y;
+        float ParentHeight = ParentElement?.ParentView != null ? ParentElement.ParentView.Height : Browser.window.Size.Y;
 
         if (Parent != null)
             ParentHeight = Parent.Computed.Height;

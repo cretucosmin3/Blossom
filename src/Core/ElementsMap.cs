@@ -57,6 +57,7 @@ public class ElementTree : IDisposable
     public VisualElement FirstFromPoint(float x, float y)
     {
         var elements = Map.Values.Select(x => x.Item1)
+            .Reverse()
             .OrderByDescending(e => e.ZIndex)
             .ThenByDescending(e => e.Layer)
             .ToList();
