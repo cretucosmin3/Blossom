@@ -54,13 +54,28 @@ public class ElementTree : IDisposable
         return new SKPoint3(result[0], result[1], result[2]);
     }
 
+    private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
+    {
+        var sortedChildren = root.Children.Where(c => c != null).OrderByDescending(c => c.ZIndex).ToList();
+        foreach (var child in sortedChildren)
+        {
+            CollectElementsForHitTest(child, list);
+        }
+        list.Add(root);
+    }
+
     public VisualElement FirstFromPoint(float x, float y)
     {
-        var elements = Map.Values.Select(x => x.Item1)
-            .Reverse()
+        var rootElements = Map.Values.Select(x => x.Item1)
+            .Where(e => e.Parent == null)
             .OrderByDescending(e => e.ZIndex)
-            .ThenByDescending(e => e.Layer)
             .ToList();
+
+        var elements = new List<VisualElement>();
+        foreach (var root in rootElements)
+        {
+            CollectElementsForHitTest(root, elements);
+        }
 
         foreach (var elementFromPoint in elements)
         {
@@ -109,13 +124,12 @@ public class ElementTree : IDisposable
             if (w <= 1e-6f)
                 continue;
 
-            if (localX < 0 || localX > elementFromPoint.Transform.Width ||
-                localY < 0 || localY > elementFromPoint.Transform.Height)
+            if (!elementFromPoint.IsPointInside(localX, localY))
             {
                 continue;
             }
 
-            if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
+            if (elementFromPoint.ComputedVisibility == Visibility.Clipped || elementFromPoint.HasClippingAncestors)
             {
                 bool insideClipping = true;
                 var ancestor = elementFromPoint.Parent;
@@ -129,8 +143,7 @@ public class ElementTree : IDisposable
                         if (ancestorGlobal.Invert(invAncestorGlobal))
                         {
                             var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
-                            if (ancestorLocalPt.X < 0 || ancestorLocalPt.X > ancestor.Transform.Width ||
-                                ancestorLocalPt.Y < 0 || ancestorLocalPt.Y > ancestor.Transform.Height)
+                            if (!ancestor.IsPointInside(ancestorLocalPt.X, ancestorLocalPt.Y))
                             {
                                 insideClipping = false;
                                 break;

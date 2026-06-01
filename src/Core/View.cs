@@ -196,7 +196,8 @@ namespace Blossom.Core
         private void CollectElements(VisualElement root, List<VisualElement> list)
         {
             list.Add(root);
-            foreach (var child in root.Children)
+            var sortedChildren = root.Children.Where(c => c != null).OrderBy(c => c.ZIndex).ToList();
+            foreach (var child in sortedChildren)
             {
                 CollectElements(child, list);
             }
@@ -238,14 +239,18 @@ namespace Blossom.Core
             if (_hierarchyDirty)
             {
                 CachedRenderQueue.Clear();
-                foreach (var element in Elements.Items)
+                var rootElements = Elements.Items
+                    .Where(e => e.Parent == null)
+                    .OrderBy(e => e.ZIndex)
+                    .ToList();
+                
+                foreach (var element in rootElements)
                 {
-                    if (element.Parent == null) 
-                        CollectElements(element, CachedRenderQueue);
+                    CollectElements(element, CachedRenderQueue);
                 }
 
                 CachedSortedElements.Clear();
-                CachedSortedElements.AddRange(CachedRenderQueue.OrderBy(e => e.ZIndex));
+                CachedSortedElements.AddRange(CachedRenderQueue);
 
                 foreach (var element in CachedRenderQueue)
                 {
