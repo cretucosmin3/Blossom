@@ -376,14 +376,21 @@ public static class Browser
                 Renderer.Canvas.DrawRect(rect, PostMarkerPaint);
             }
 
-            string msText = $"{AverageFrame / frameTimes.Length:0.00} ms";
-            float textWidth = InfoTextPaint.MeasureText(msText);
-            SKRect bgRect = new SKRect(2, 2, 2 + textWidth + 10, 25);
+            double avgMs = AverageFrame / frameTimes.Length;
+            string msText = $"FT {avgMs:0.00} ms";
             
-            Renderer.Canvas.DrawRoundRect(bgRect, 4, 4, InfoBackgroundPaint);
-            Renderer.Canvas.DrawRoundRect(bgRect, 4, 4, InfoBorderPaint);
-            Renderer.Canvas.DrawText(msText, 7, 19, InfoTextPaint);
-
+            float boxWidth = 130f; // Fixed width to prevent size jittering and smears
+            float boxHeight = 36f;
+            SKRect bgRect = new SKRect(10, 10, 10 + boxWidth, 10 + boxHeight);
+            
+            Renderer.Canvas.DrawRoundRect(bgRect, 6, 6, InfoBackgroundPaint);
+            Renderer.Canvas.DrawRoundRect(bgRect, 6, 6, InfoBorderPaint);
+            
+            float textWidth = InfoTextPaint.MeasureText(msText);
+            float textX = 10f + (boxWidth - textWidth) / 2f;
+            float textY = 10f + 25f; // Baseline aligned inside the 36px box
+            Renderer.Canvas.DrawText(msText, textX, textY, InfoTextPaint);
+            
             // Clean-up
             PostMarkers.Clear();
         }

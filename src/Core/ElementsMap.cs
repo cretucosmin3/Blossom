@@ -68,6 +68,7 @@ public class ElementTree : IDisposable
     {
         var rootElements = Map.Values.Select(x => x.Item1)
             .Where(e => e.Parent == null)
+            .Reverse()
             .OrderByDescending(e => e.ZIndex)
             .ToList();
 

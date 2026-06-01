@@ -11,29 +11,35 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToDashboard;
         public Action? OnSwitchToNeonShowcase;
         public Action? OnSwitchToKanban;
+        public Action? OnSwitchTo3D;
 
         private DrawingCanvas? _drawingCanvas;
+        
+        // Classic High-Fidelity Palette Colors (Non-neon, solid colors)
         private readonly SKColor[] _paletteColors = new[]
         {
-            new SKColor(255, 0, 110),   // Neon Pink
-            new SKColor(0, 240, 255),   // Cyber Blue
-            new SKColor(57, 255, 20),   // Lime Glow
-            new SKColor(255, 170, 0),   // Amber Orange
-            new SKColor(255, 0, 255),   // Purple Neon
-            new SKColor(255, 255, 0),   // Bright Yellow
+            new SKColor(239, 68, 68),   // Ruby Red
+            new SKColor(59, 130, 246),  // Royal Blue
+            new SKColor(34, 197, 94),   // Forest Green
+            new SKColor(249, 115, 22),  // Amber Orange
+            new SKColor(139, 92, 246),  // Violet Purple
+            new SKColor(234, 179, 8),   // Chrome Yellow
             new SKColor(255, 255, 255), // Pure White
             new SKColor(30, 41, 59)     // Slate 800 (Eraser)
         };
+        
         private readonly string[] _paletteNames = new[]
         {
-            "Neon Pink", "Cyber Blue", "Lime Glow", "Amber Orange", "Purple Neon", "Bright Yellow", "Pure White", "Eraser"
+            "Ruby Red", "Royal Blue", "Forest Green", "Amber Orange", "Violet Purple", "Chrome Yellow", "Pure White", "Eraser"
         };
+        
         private readonly VisualElement[] _colorIndicators = new VisualElement[8];
         private VisualElement? _selectedColorText;
 
         public PaintAppView() : base("Neon Paint")
         {
-            BackColor = new SKColor(9, 13, 22); // Deep space background
+            // Consistent slate background color
+            BackColor = new SKColor(11, 14, 22);
         }
 
         public override void Init()
@@ -46,9 +52,9 @@ namespace Blossom.Testing.Views
                 Name = "PaintSidebar",
                 Style = new ElementStyle
                 {
-                    BackColor = new SKColor(17, 24, 39), // Slate 900
+                    BackColor = new SKColor(16, 20, 30, 240), // Same slate sidebar color
                     Border = new BorderStyle { Width = 0, Color = SKColors.Transparent },
-                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(120), SpreadX = 8, SpreadY = 0 }
+                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(100), SpreadX = 8, SpreadY = 0, OffsetX = 2 }
                 },
                 Transform = new Transform(0, 0, sidebarWidth, Height)
                 {
@@ -59,29 +65,16 @@ namespace Blossom.Testing.Views
             };
             AddElement(sidebar);
 
-            // Glowing Sidebar Brand
+            // Brand Label (shifted down to prevent stats box overlap)
             var brand = new VisualElement
             {
                 Name = "PaintSidebar_Brand",
-                Text = "⚡ NEON ART",
+                Text = "⚡ PAINT CANVAS",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle 
-                    { 
-                        Color = new SKColor(255, 0, 110), 
-                        Size = 26, 
-                        Weight = 800, 
-                        Alignment = TextAlign.Center, 
-                        Padding = 25,
-                        Shadow = new ShadowStyle
-                        {
-                            Color = new SKColor(255, 0, 110, 150),
-                            SpreadX = 8,
-                            SpreadY = 8
-                        }
-                    }
+                    Text = new TextStyle { Color = new SKColor(56, 189, 248), Size = 22, Weight = 800, Alignment = TextAlign.Center, Padding = 15 }
                 },
-                Transform = new Transform(0, 0, sidebarWidth, 80)
+                Transform = new Transform(0, 50, sidebarWidth, 60) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
             };
             sidebar.AddChild(brand);
 
@@ -92,28 +85,28 @@ namespace Blossom.Testing.Views
                 Text = "SELECT PALETTE",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle { Color = SKColors.Gray, Size = 11, Weight = 700, Alignment = TextAlign.Left, Padding = 25 }
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 10, Weight = 700, Alignment = TextAlign.Left, Padding = 25 }
                 },
-                Transform = new Transform(0, 80, sidebarWidth, 25)
+                Transform = new Transform(0, 130, sidebarWidth, 25)
             };
             sidebar.AddChild(paletteHeader);
 
-            // Add Selected Color Indicator Label
+            // Selected Color Indicator Label
             _selectedColorText = new VisualElement
             {
                 Name = "SelectedColorText",
-                Text = "Color: Neon Pink",
+                Text = "Color: Ruby Red",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle { Color = new SKColor(255, 0, 110), Size = 12, Weight = 600, Alignment = TextAlign.Left, Padding = 25 }
+                    Text = new TextStyle { Color = _paletteColors[0], Size = 12, Weight = 600, Alignment = TextAlign.Left, Padding = 25 }
                 },
-                Transform = new Transform(0, 105, sidebarWidth, 25)
+                Transform = new Transform(0, 155, sidebarWidth, 25)
             };
             sidebar.AddChild(_selectedColorText);
 
-            // Color Palette Selector Grid
+            // Color Palette Selector Grid (starts at startY = 185f)
             float startX = 25f;
-            float startY = 135f;
+            float startY = 185f;
             float buttonSize = 40f;
             float gapX = 12f;
             float gapY = 12f;
@@ -126,7 +119,6 @@ namespace Blossom.Testing.Views
                 float y = startY + row * (buttonSize + gapY);
 
                 var color = _paletteColors[i];
-                var name = _paletteNames[i];
 
                 var colorBtn = new VisualElement
                 {
@@ -142,9 +134,10 @@ namespace Blossom.Testing.Views
                         },
                         Shadow = new ShadowStyle
                         {
-                            Color = color.WithAlpha(100),
-                            SpreadX = i == 0 ? 5 : 0,
-                            SpreadY = i == 0 ? 5 : 0
+                            Color = SKColors.Black.WithAlpha(40),
+                            SpreadX = 0,
+                            SpreadY = i == 0 ? 3 : 0,
+                            OffsetY = i == 0 ? 2 : 0
                         }
                     },
                     Transform = new Transform(x, y, buttonSize, buttonSize)
@@ -164,43 +157,45 @@ namespace Blossom.Testing.Views
                 _colorIndicators[i] = colorBtn;
             }
 
-            // Tools Navigation Section
-            float navY = startY + (buttonSize + gapY) * 2 + 30f;
+            // Tools & Action buttons
+            float navY = startY + (buttonSize + gapY) * 2 + 25f;
             
-            var clearBtn = new NeonButton("CLEAR CANVAS", new SKColor(244, 63, 94), sidebarWidth - 40f, 45f)
+            var clearBtn = new Button("CLEAR CANVAS", new SKColor(239, 68, 68))
             {
                 Name = "Btn_ClearCanvas",
-                Transform = { X = 20, Y = navY, Anchor = Anchor.Top }
+                Transform = new Transform(20, navY, sidebarWidth - 40f, 42) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
             };
+            clearBtn.Style.Text.Color = SKColors.White;
+            clearBtn.Style.Border.Roundness = 8;
             clearBtn.OnClick = () =>
             {
                 _drawingCanvas?.Clear(new SKColor(30, 41, 59));
             };
             sidebar.AddChild(clearBtn);
 
-            var dashboardBtn = new NeonButton("DASHBOARD ➜", new SKColor(56, 189, 248), sidebarWidth - 40f, 45f)
+            // Unified Sidebar Navigation Items
+            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase" };
+            float sidebarMenuY = navY + 60f;
+            for (int i = 0; i < menuItems.Length; i++)
             {
-                Name = "Btn_GoToDashboard",
-                Transform = { X = 20, Y = navY + 55f, Anchor = Anchor.Top }
-            };
-            dashboardBtn.OnClick = () => OnSwitchToDashboard?.Invoke();
-            sidebar.AddChild(dashboardBtn);
+                var item = menuItems[i];
+                var btn = new SidebarButton(item, i == 2) // Paint is active (i == 2)
+                {
+                    Transform = { X = 20, Y = sidebarMenuY, Width = sidebarWidth - 40 }
+                };
 
-            var showcaseBtn = new NeonButton("NEON SHOWCASE ➜", new SKColor(139, 92, 246), sidebarWidth - 40f, 45f)
-            {
-                Name = "Btn_GoToShowcase",
-                Transform = { X = 20, Y = navY + 110f, Anchor = Anchor.Top }
-            };
-            showcaseBtn.OnClick = () => OnSwitchToNeonShowcase?.Invoke();
-            sidebar.AddChild(showcaseBtn);
+                int idx = i;
+                btn.OnClick = () =>
+                {
+                    if (idx == 0) OnSwitchToDashboard?.Invoke();
+                    else if (idx == 1) OnSwitchToNeonShowcase?.Invoke();
+                    else if (idx == 3) OnSwitchToKanban?.Invoke();
+                    else if (idx == 4) OnSwitchTo3D?.Invoke();
+                };
 
-            var kanbanBtn = new NeonButton("TASK BOARD ➜", new SKColor(16, 185, 129), sidebarWidth - 40f, 45f)
-            {
-                Name = "Btn_GoToKanban",
-                Transform = { X = 20, Y = navY + 165f, Anchor = Anchor.Top }
-            };
-            kanbanBtn.OnClick = () => OnSwitchToKanban?.Invoke();
-            sidebar.AddChild(kanbanBtn);
+                sidebar.AddChild(btn);
+                sidebarMenuY += 55f;
+            }
 
 
             // --- 2. MAIN CONTENT AREA ---
@@ -215,28 +210,34 @@ namespace Blossom.Testing.Views
             };
             AddElement(mainContent);
 
-            // Title block
+            // Unified Header breadcrumb title block (shifted down to match Dashboard)
             var titleBlock = new VisualElement
             {
                 Name = "PaintTitle",
-                Text = "⚡ CYBERPUNK PAINT GRID",
-                Style = new ElementStyle
+                Style = new ElementStyle { BackColor = SKColors.Transparent },
+                Transform = new Transform(30, 18, Width - sidebarWidth - 60f, 44)
                 {
-                    Text = new TextStyle
-                    {
-                        Color = new SKColor(0, 240, 255),
-                        Size = 24,
-                        Weight = 800,
-                        Padding = 30,
-                        Shadow = new ShadowStyle { Color = new SKColor(0, 240, 255, 100), SpreadX = 5, SpreadY = 5 }
-                    }
-                },
-                Transform = new Transform(0, 0, Width - sidebarWidth, 75)
-                {
-                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
+                    FixedHeight = true
                 }
             };
             mainContent.AddChild(titleBlock);
+
+            titleBlock.AddChild(new VisualElement
+            {
+                Name = "Paint_HeaderTitle",
+                Text = "PAINT CANVAS",
+                Style = new ElementStyle { Text = new TextStyle { Color = SKColors.White, Size = 20, Weight = 800, Alignment = TextAlign.Left } },
+                Transform = new Transform(0, 0, 400, 24) { Anchor = Anchor.Top | Anchor.Left }
+            });
+
+            titleBlock.AddChild(new VisualElement
+            {
+                Name = "Paint_HeaderSub",
+                Text = "FREEHAND DRAWING & DESIGN HUB",
+                Style = new ElementStyle { Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 9, Weight = 600, Alignment = TextAlign.Left } },
+                Transform = new Transform(0, 24, 400, 20) { Anchor = Anchor.Top | Anchor.Left }
+            });
 
             // Grid Canvas Container (Glassmorphic frame)
             var canvasFrame = new VisualElement
@@ -244,9 +245,9 @@ namespace Blossom.Testing.Views
                 Name = "CanvasFrame",
                 Style = new ElementStyle
                 {
-                    BackColor = new SKColor(30, 41, 59, 80), // Transparent frame
-                    Border = new BorderStyle { Roundness = 16, Width = 2, Color = new SKColor(255, 255, 255, 20) },
-                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(80), SpreadX = 0, SpreadY = 10, OffsetY = 8 }
+                    BackColor = new SKColor(22, 28, 41, 180), // Sleek glass card background
+                    Border = new BorderStyle { Roundness = 16, Width = 1, Color = new SKColor(255, 255, 255, 12) },
+                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(50), SpreadY = 5, OffsetY = 5 }
                 },
                 Transform = new Transform(30, 80, Width - sidebarWidth - 60, Height - 110)
                 {
@@ -291,15 +292,15 @@ namespace Blossom.Testing.Views
                 {
                     ind.Style.Border.Width = 3;
                     ind.Style.Border.Color = SKColors.White;
-                    ind.Style.Shadow.SpreadX = 5;
-                    ind.Style.Shadow.SpreadY = 5;
+                    ind.Style.Shadow.SpreadY = 3;
+                    ind.Style.Shadow.OffsetY = 2;
                 }
                 else
                 {
                     ind.Style.Border.Width = 1;
                     ind.Style.Border.Color = new SKColor(255, 255, 255, 60);
-                    ind.Style.Shadow.SpreadX = 0;
                     ind.Style.Shadow.SpreadY = 0;
+                    ind.Style.Shadow.OffsetY = 0;
                 }
                 ind.ScheduleRender();
             }
