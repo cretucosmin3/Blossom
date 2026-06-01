@@ -46,6 +46,7 @@ public class VisualElement : IDisposable
     public Visibility ComputedVisibility { get; private set; }
     public SKRoundRect ComputedClipping { get; private set; } = null!;
     private bool _hasClippingAncestors = false;
+    public bool HasClippingAncestors => _hasClippingAncestors;
 
     internal bool _visibilityClippingDirty = true;
     internal void MarkVisibilityClippingDirty()
@@ -167,9 +168,22 @@ public class VisualElement : IDisposable
         var localBounds = GetLocalCombinedBounds();
         
         SKRect rect;
-        bool useGlobalMapping = Transform.RotationX != 0 || Transform.RotationY != 0 || Transform.RotationZ != 0 ||
-                                Transform.ScaleX != 1 || Transform.ScaleY != 1 || Transform.ScaleZ != 1 ||
-                                (ParentView != null && ParentView.UseReferenceResolution);
+        bool useGlobalMapping = ParentView != null && ParentView.UseReferenceResolution;
+        if (!useGlobalMapping)
+        {
+            var curr = this;
+            while (curr != null)
+            {
+                var t = curr.Transform;
+                if (t.RotationX != 0 || t.RotationY != 0 || t.RotationZ != 0 ||
+                    t.ScaleX != 1 || t.ScaleY != 1 || t.ScaleZ != 1)
+                {
+                    useGlobalMapping = true;
+                    break;
+                }
+                curr = curr.Parent;
+            }
+        }
 
         if (useGlobalMapping)
         {
@@ -504,9 +518,55 @@ public class VisualElement : IDisposable
         return roundRect;
     }
 
+    public bool IsPointInside(float x, float y)
+    {
+        float w = Transform.Width;
+        float h = Transform.Height;
+        
+        if (x < 0 || x > w || y < 0 || y > h)
+            return false;
+
+        float r1 = Style?.Border?.RoundnessTopLeft ?? 0;
+        float r2 = Style?.Border?.RoundnessTopRight ?? 0;
+        float r3 = Style?.Border?.RoundnessBottomRight ?? 0;
+        float r4 = Style?.Border?.RoundnessBottomLeft ?? 0;
+
+        // Top-Left corner
+        if (x < r1 && y < r1)
+        {
+            float dx = x - r1;
+            float dy = y - r1;
+            return (dx * dx + dy * dy) <= r1 * r1;
+        }
+        // Top-Right corner
+        if (x > w - r2 && y < r2)
+        {
+            float dx = x - (w - r2);
+            float dy = y - r2;
+            return (dx * dx + dy * dy) <= r2 * r2;
+        }
+        // Bottom-Right corner
+        if (x > w - r3 && y > h - r3)
+        {
+            float dx = x - (w - r3);
+            float dy = y - (h - r3);
+            return (dx * dx + dy * dy) <= r3 * r3;
+        }
+        // Bottom-Left corner
+        if (x < r4 && y > h - r4)
+        {
+            float dx = x - r4;
+            float dy = y - (h - r4);
+            return (dx * dx + dy * dy) <= r4 * r4;
+        }
+
+        return true;
+    }
+
     private void ApplyClippingHierarchy(SKCanvas canvas)
     {
         if (!_hasClippingAncestors) return;
+        var originalMatrix = canvas.TotalMatrix;
         var ancestor = Parent;
         while (ancestor != null)
         {
@@ -518,12 +578,13 @@ public class VisualElement : IDisposable
                 
                 var globalMatrix3D = ancestor.Transform.GetGlobalM44();
                 var matrix2D = globalMatrix3D.Matrix;
-                path.Transform(matrix2D);
                 
+                canvas.SetMatrix(matrix2D);
                 canvas.ClipPath(path, SKClipOperation.Intersect, true);
             }
             ancestor = ancestor.Parent;
         }
+        canvas.SetMatrix(originalMatrix);
     }
 
     public virtual void RecordDrawCommands(CommandLedger ledger)

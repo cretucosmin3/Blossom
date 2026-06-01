@@ -25,6 +25,8 @@ namespace Blossom.Testing.Views
         private VisualElement? _draggedCard;
         private float _dragOffsetX;
         private float _dragOffsetY;
+        
+        private VisualElement? _nestedChildY;
 
         public Transform3DView() : base("3D Transforms Showcase")
         {
@@ -99,11 +101,11 @@ namespace Blossom.Testing.Views
             // Center column X: Width / 2 - 130 = 510
             // Gaps are exactly 150px.
 
-            // 1. TOP-LEFT: Rotation Y (3D Tilt Spin)
             _cardRotY = new VisualElement
             {
                 Name = "CardRotY",
                 Text = "3D ROTATE Y\nSpinning...",
+                IsClipping = true,
                 Style = new ElementStyle
                 {
                     BackColor = new SKColor(30, 41, 59, 255),
@@ -122,6 +124,28 @@ namespace Blossom.Testing.Views
                 }
             };
             AddElement(_cardRotY);
+
+            // Add a nested child component to demonstrate nested 3D transforms & parent clipping
+            _nestedChildY = new VisualElement
+            {
+                Name = "NestedChildY",
+                Text = "NESTED\nCLIP",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(244, 63, 94, 200), // Semitransparent rose background
+                    Border = new BorderStyle { Color = new SKColor(255, 255, 255), Width = 2, Roundness = 8 },
+                    Text = new TextStyle { Color = SKColors.White, Size = 13, Weight = 800, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(0, 0, 130, 130)
+                {
+                    X = 50f,
+                    Y = 35f,
+                    Anchor = Anchor.Top | Anchor.Left,
+                    TransformOriginX = 0.5f,
+                    TransformOriginY = 0.5f
+                }
+            };
+            _cardRotY.AddChild(_nestedChildY);
 
             // 2. TOP-RIGHT: Rotation X (3D Tilt Spin)
             _cardRotX = new VisualElement
@@ -308,12 +332,23 @@ namespace Blossom.Testing.Views
             {
                 _time += 0.03f;
 
-                // 1. Continuous 3D spin Y
+                // 1. Continuous 3D spin Y and Nested Child animation
                 if (_cardRotY != null)
                 {
                     float angleY = (_time * 50f) % 360f;
                     _cardRotY.Transform.RotationY = angleY;
                     _cardRotY.Text = $"3D SPIN Y\nAngle: {angleY:F0}°";
+
+                    if (_nestedChildY != null)
+                    {
+                        // Spin Z on child continuously (faster for visual contrast)
+                        float childAngleZ = (_time * 120f) % 360f;
+                        _nestedChildY.Transform.RotationZ = childAngleZ;
+
+                        // Slide side-to-side to trigger parent clipping bounds
+                        float childX = 50f + 65f * (float)Math.Sin(_time * 2.5f);
+                        _nestedChildY.Transform.X = _cardRotY.Transform.X + childX;
+                    }
                 }
 
                 // 2. Continuous 3D spin X
