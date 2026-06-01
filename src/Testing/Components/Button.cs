@@ -63,24 +63,32 @@ namespace Blossom.Testing.Components
             Events.OnMouseEnter += (s) => 
             {
                 Style.BackColor = _hoverColor;
+                Transform.ScaleX = 1.05f;
+                Transform.ScaleY = 1.05f;
             };
 
             // OnMouseLeave is Action<VisualElement> -> 1 arg
             Events.OnMouseLeave += (s) => 
             {
                 Style.BackColor = _normalColor;
+                Transform.ScaleX = 1.0f;
+                Transform.ScaleY = 1.0f;
             };
             
             // OnMouseDown is Action<object, MouseEventArgs> -> 2 args
             Events.OnMouseDown += (s, e) =>
             {
                 Style.BackColor = _pressColor;
+                Transform.ScaleX = 0.98f;
+                Transform.ScaleY = 0.98f;
             };
             
             // OnMouseUp is Action<object, MouseEventArgs> -> 2 args
             Events.OnMouseUp += (s, e) =>
             {
                 Style.BackColor = _hoverColor;
+                Transform.ScaleX = 1.05f;
+                Transform.ScaleY = 1.05f;
                 OnClick?.Invoke();
             };
         }

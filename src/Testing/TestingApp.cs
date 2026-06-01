@@ -98,6 +98,10 @@ namespace Blossom.Testing
             {
                 SetActiveView(_kanbanBoardView);
             };
+            _paintAppView.OnSwitchTo3D += () =>
+            {
+                SetActiveView(_transform3DView);
+            };
 
             _kanbanBoardView.OnSwitchToDashboard += () =>
             {

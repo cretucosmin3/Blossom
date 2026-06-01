@@ -219,6 +219,7 @@ public class VisualElement : IDisposable
         
         Transform.Evaluate();
         CalculateText();
+        MarkVisibilityClippingDirty();
         TransformChanged?.Invoke(this, transform);
 
         // This triggers IsDirty setter, which will mark the NEW position
@@ -566,7 +567,6 @@ public class VisualElement : IDisposable
     private void ApplyClippingHierarchy(SKCanvas canvas)
     {
         if (!_hasClippingAncestors) return;
-        var originalMatrix = canvas.TotalMatrix;
         var ancestor = Parent;
         while (ancestor != null)
         {
@@ -579,12 +579,11 @@ public class VisualElement : IDisposable
                 var globalMatrix3D = ancestor.Transform.GetGlobalM44();
                 var matrix2D = globalMatrix3D.Matrix;
                 
-                canvas.SetMatrix(matrix2D);
+                path.Transform(matrix2D);
                 canvas.ClipPath(path, SKClipOperation.Intersect, true);
             }
             ancestor = ancestor.Parent;
         }
-        canvas.SetMatrix(originalMatrix);
     }
 
     public virtual void RecordDrawCommands(CommandLedger ledger)
@@ -798,6 +797,7 @@ public class VisualElement : IDisposable
     {
         Transform.Evaluate();
         CalculateText();
+        MarkVisibilityClippingDirty();
 
         ScheduleRender();
     }
@@ -807,7 +807,10 @@ public class VisualElement : IDisposable
         IsDirty = true;
 
         if (ParentView is not null)
+        {
             ParentView.RenderRequired = true;
+            Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent();
+        }
     }
 
     public void GetFocus()

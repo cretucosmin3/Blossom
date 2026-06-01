@@ -33,17 +33,17 @@ namespace Blossom.Testing.Components
                 BackColor = new SKColor(10, 10, 15, 255), // Very dark background
                 Text = new TextStyle
                 {
-                    Color = new SKColor(accentColor.Red, accentColor.Green, accentColor.Blue, 100), // Start dimmed
+                    Color = new SKColor(120, 120, 120, 150), // Start dim grey
                     Size = 24,
                     Weight = 700,
                     Alignment = TextAlign.Center,
                     Shadow = new ShadowStyle
                     {
-                        Color = new SKColor(accentColor.Red, accentColor.Green, accentColor.Blue, 150),
+                        Color = new SKColor(120, 120, 120, 50), // Dim grey shadow
                         OffsetX = 0,
                         OffsetY = 2,
-                        SpreadX = 5,
-                        SpreadY = 5
+                        SpreadX = 2,
+                        SpreadY = 2
                     }
                 },
                 Border = new BorderStyle
@@ -67,51 +67,49 @@ namespace Blossom.Testing.Components
             // Register Mouse Events
             Events.OnMouseEnter += (s) =>
             {
+                Transform.ScaleX = 1.05f;
+                Transform.ScaleY = 1.05f;
                 StartHoverInAnimation();
             };
 
             Events.OnMouseLeave += (s) =>
             {
+                Transform.ScaleX = 1.0f;
+                Transform.ScaleY = 1.0f;
                 StartHoverOutAnimation();
+            };
+
+            Events.OnMouseDown += (s, e) =>
+            {
+                Transform.ScaleX = 0.98f;
+                Transform.ScaleY = 0.98f;
             };
 
             Events.OnMouseUp += (s, e) =>
             {
+                Transform.ScaleX = 1.05f;
+                Transform.ScaleY = 1.05f;
                 OnClick?.Invoke();
             };
-        }
-
-        private string GetHackedText(string original, float progress)
-        {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&?*-=+[]";
-            var sb = new System.Text.StringBuilder(original.Length);
-            int revealCount = (int)(original.Length * progress);
-
-            for (int i = 0; i < original.Length; i++)
-            {
-                if (original[i] == ' ')
-                {
-                    sb.Append(' ');
-                }
-                else if (i < revealCount)
-                {
-                    sb.Append(original[i]);
-                }
-                else
-                {
-                    sb.Append(chars[Random.Shared.Next(chars.Length)]);
-                }
-            }
-            return sb.ToString();
         }
 
         private void StartHoverInAnimation()
         {
             int session = Interlocked.Increment(ref _animationSession);
 
+            // Generate random settle times for each character index
+            int len = _targetText.Length;
+            float[] settleThresholds = new float[len];
+            for (int i = 0; i < len; i++)
+            {
+                // Each character settles at a random progress threshold between 0.15f and 0.95f
+                settleThresholds[i] = 0.15f + 0.8f * Random.Shared.NextSingle();
+            }
+
             _animationThread = new Thread(() =>
             {
                 Style.Border.Color = new SKColor(_accentColor.Red, _accentColor.Green, _accentColor.Blue, 150);
+                Style.Text.Shadow.Color = new SKColor(_accentColor.Red, _accentColor.Green, _accentColor.Blue, 150);
 
                 Action flashBorder = () =>
                 {
@@ -135,17 +133,38 @@ namespace Blossom.Testing.Components
                     Style.Text.Shadow.SpreadY = 15 * randomEnd;
                 };
 
-                int steps = 20;
+                int steps = 100;
                 for (int step = 0; step <= steps; step++)
                 {
                     if (session != _animationSession) return;
 
                     float progress = (float)step / steps;
 
-                    Style.Text.PathEffect?.Dispose();
-                    Style.Text.PathEffect = SKPathEffect.CreateTrim(0f, progress);
+                    // Outline finishes drawing faster (completes in ~0.6 seconds, 20% of duration, faster than letters setting in)
+                    float pathProgress = Math.Min(1.0f, progress * 5.0f);
 
-                    Text = GetHackedText(_targetText, progress);
+                    Style.Text.PathEffect?.Dispose();
+                    Style.Text.PathEffect = SKPathEffect.CreateTrim(0f, pathProgress);
+
+                    // Build decrypting text based on individual progress thresholds
+                    var sb = new System.Text.StringBuilder(len);
+                    const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&?*-=+[]";
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (_targetText[i] == ' ')
+                        {
+                            sb.Append(' ');
+                        }
+                        else if (progress >= settleThresholds[i])
+                        {
+                            sb.Append(_targetText[i]);
+                        }
+                        else
+                        {
+                            sb.Append(chars[Random.Shared.Next(chars.Length)]);
+                        }
+                    }
+                    Text = sb.ToString();
 
                     byte alpha = (byte)(255 * progress < 180 ? 180 : 255 * progress);
                     Style.Text.Color = new SKColor(_accentColor.Red, _accentColor.Green, _accentColor.Blue, alpha);
@@ -154,7 +173,7 @@ namespace Blossom.Testing.Components
                     if (Random.Shared.NextSingle() > 0.5f)
                         flashBorder();
 
-                    Thread.Sleep(12);
+                    Thread.Sleep(20); // 20ms * 100 steps = 2000ms (2 seconds)
                 }
 
                 if (session != _animationSession) return;
@@ -209,7 +228,10 @@ namespace Blossom.Testing.Components
                 Style.Border.PathEffect?.Dispose();
                 Style.Border.PathEffect = null;
 
-                Style.Text.Color = new SKColor(_accentColor.Red, _accentColor.Green, _accentColor.Blue, 100);
+                Style.Text.Color = new SKColor(120, 120, 120, 150); // Dim grey
+                Style.Text.Shadow.Color = new SKColor(120, 120, 120, 50); // Dim grey shadow
+                Style.Text.Shadow.SpreadX = 2;
+                Style.Text.Shadow.SpreadY = 2;
 
                 Style.Shadow.SpreadX = _normalShadowSpread;
                 Style.Shadow.SpreadY = _normalShadowSpread;
