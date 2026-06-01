@@ -35,6 +35,8 @@ public abstract class Application : IDisposable
         if (!Views.ContainsKey(name))
             Log.Error($"View {name} does not exist");
 
+        ActiveView?.OnDeactivated();
+
         _ActiveView = name;
 
         if (Browser.IsLoaded && !ActiveView.IsLoaded)
@@ -43,8 +45,8 @@ public abstract class Application : IDisposable
             ActiveView.IsLoaded = true;
         }
 
-        ActiveView.FullRenderRequired = true;
-        ActiveView.RenderRequired = true;
+        ActiveView.OnActivated();
+        ActiveView.ForceLayoutEvaluation();
     }
 
     public void SetActiveView(View view) => SetActiveView(view.Name);
