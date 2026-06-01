@@ -108,6 +108,16 @@ public static class Browser
         window.Render += Render;
         window.Closing += Closing;
 
+        window.StateChanged += (state) =>
+        {
+            if (state != WindowState.Minimized && BrowserApp.ActiveView != null)
+            {
+                Browser.WasResized = true;
+                BrowserApp.ActiveView.FullRenderRequired = true;
+                BrowserApp.ActiveView.RenderRequired = true;
+            }
+        };
+
         window.Run();
     }
 
@@ -282,6 +292,7 @@ public static class Browser
 
         LoadLogo();
 
+        Browser.WasResized = true; // Ensure full render on startup
         Console.Clear();
         StartWindow();
     }
@@ -306,14 +317,37 @@ public static class Browser
         Typeface = SKTypeface.FromFamilyName("Arimo", 100, 2, SKFontStyleSlant.Upright),
     };
 
+    private static readonly SKPaint InfoBackgroundPaint = new()
+    {
+        Color = new SKColor(15, 15, 20, 255), // Solid dark cyberpunk background
+        Style = SKPaintStyle.Fill,
+    };
+
+    private static readonly SKPaint InfoBorderPaint = new()
+    {
+        StrokeWidth = 1f,
+        Color = new SKColor(205, 92, 92, 180), // IndianRed matching border
+        Style = SKPaintStyle.Stroke,
+    };
+
     private static void Render(double time)
     {
         Renderer.ResetContext();
-        Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
+        // Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
         
+        if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
+        {
+            Blossom.Core.BenchmarkManager.StartFrame(BrowserApp.ActiveView?.Name ?? "Unknown");
+        }
+
         frameTimer.Restart();
         BrowserApp.Render();
         frameTimer.Stop();
+
+        if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
+        {
+            Blossom.Core.BenchmarkManager.EndFrame();
+        }
 
         if (window.Title != BrowserApp.ActiveView.Name)
         {
@@ -342,14 +376,21 @@ public static class Browser
                 Renderer.Canvas.DrawRect(rect, PostMarkerPaint);
             }
 
-            Renderer.Canvas.DrawText($"{AverageFrame / frameTimes.Length:0.00} ms", 5, 20, InfoTextPaint);
+            string msText = $"{AverageFrame / frameTimes.Length:0.00} ms";
+            float textWidth = InfoTextPaint.MeasureText(msText);
+            SKRect bgRect = new SKRect(2, 2, 2 + textWidth + 10, 25);
+            
+            Renderer.Canvas.DrawRoundRect(bgRect, 4, 4, InfoBackgroundPaint);
+            Renderer.Canvas.DrawRoundRect(bgRect, 4, 4, InfoBorderPaint);
+            Renderer.Canvas.DrawText(msText, 7, 19, InfoTextPaint);
 
             // Clean-up
             PostMarkers.Clear();
         }
 
         WasResized = false;
-
-        Renderer.Canvas.Flush();
+        
+        // Final blit to screen
+        Renderer.FlushToScreen();
     }
 }

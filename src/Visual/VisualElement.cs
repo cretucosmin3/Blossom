@@ -1,7 +1,9 @@
 using System.Numerics;
 using System.Text;
 using System;
+using System.Collections.Generic;
 using SkiaSharp;
+using Blossom.Core;
 
 namespace Blossom.Core.Visual;
 
@@ -15,6 +17,20 @@ public class VisualElement : IDisposable
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
     public bool Focusable { get; set; }
     public bool IsClickthrough { get; set; }
+    private int _zIndex = 0;
+    public int ZIndex
+    {
+        get => _zIndex;
+        set
+        {
+            if (_zIndex != value)
+            {
+                _zIndex = value;
+                ParentView?.MarkHierarchyDirty();
+                ScheduleRender();
+            }
+        }
+    }
     #endregion
 
     #region Events
@@ -29,25 +45,123 @@ public class VisualElement : IDisposable
     private readonly SKPaint paint = new();
     public Visibility ComputedVisibility { get; private set; }
     public SKRoundRect ComputedClipping { get; private set; } = null!;
+    private bool _hasClippingAncestors = false;
+
+    internal bool _visibilityClippingDirty = true;
+    internal void MarkVisibilityClippingDirty()
+    {
+        if (_visibilityClippingDirty) return;
+        _visibilityClippingDirty = true;
+        foreach (var child in Children)
+        {
+            child?.MarkVisibilityClippingDirty();
+        }
+    }
 
     internal SKBitmap CachedRender = null!;
     internal bool HasCachedRender { get => CachedRender != null; }
     internal int CachedNestedElementCount = 0;
 
     private bool _IsDirty = false;
+    private SKRect _lastRenderBounds = SKRect.Empty;
+    private SKRect _cachedRenderBounds;
+    internal bool _renderBoundsDirty = true;
+
+    public SKRect RenderBounds
+    {
+        get
+        {
+            if (_renderBoundsDirty)
+            {
+                _cachedRenderBounds = GetRenderBounds();
+                _renderBoundsDirty = false;
+            }
+            return _cachedRenderBounds;
+        }
+    }
+
     internal bool IsDirty
     {
-        get => Parent == null ? _IsDirty : RootParent.IsDirty;
+        get => _IsDirty;
         set
         {
-            if (Parent == null)
+            _IsDirty = value;
+            if (value && ParentView != null)
             {
-                _IsDirty = value;
-                return;
-            }
+                Transform.Evaluate(); // Ensure it's up to date
+                
+                _renderBoundsDirty = true;
+                var currentRect = RenderBounds;
+                
+                ParentView.AddDirtyRect(currentRect);
+                
+                // If we have a previous render position that differs (e.g. from a move style change), mark that too
+                if (!_lastRenderBounds.IsEmpty && _lastRenderBounds != currentRect)
+                {
+                     ParentView.AddDirtyRect(_lastRenderBounds);
+                }
+                
+                _lastRenderBounds = currentRect;
 
-            RootParent.IsDirty = value;
+                ParentView.RenderRequired = true;
+            }
         }
+    }
+
+    private SKRect GetRenderBounds()
+    {
+        var rect = SKRect.Create(
+            Transform.Computed.X, 
+            Transform.Computed.Y, 
+            Transform.Computed.Width, 
+            Transform.Computed.Height);
+
+        // Account for Border (drawn partially outside)
+        if (Style?.Border?.Width > 0)
+        {
+            // Border is drawn inflated by Width/2, and stroke is Width.
+            // Total outside extent is Width.
+            // Add extra padding (1.5f) for anti-aliasing/sub-pixel rendering
+            var borderInflate = Style.Border.Width + 1.5f;
+            rect.Inflate(borderInflate, borderInflate);
+        }
+
+        // Account for Shadow
+        if (Style?.Shadow?.HasValidValues() == true)
+        {
+            var s = Style.Shadow;
+            // 3*Sigma covers >99% of the blur
+            var blur = Math.Max(Math.Abs(s.SpreadX), Math.Abs(s.SpreadY)) * 3;
+            
+            // Union the shadow rect with the main rect
+            var shadowRect = SKRect.Create(
+                Transform.Computed.X + s.OffsetX,
+                Transform.Computed.Y + s.OffsetY,
+                Transform.Computed.Width,
+                Transform.Computed.Height);
+            
+            shadowRect.Inflate(blur, blur);
+            
+            rect.Union(shadowRect);
+        }
+
+        return rect;
+    }
+
+    // ... (Visible/CanRender properties unchanged)
+
+    // ...
+
+    private void OnTransformChanged(Transform transform)
+    {
+        // IsDirty setter will handle invalidation of the old _lastRenderBounds
+        
+        Transform.Evaluate();
+        CalculateText();
+        TransformChanged?.Invoke(this, transform);
+
+        // This triggers IsDirty setter, which will mark the NEW position
+        ScheduleRender();
     }
 
     private bool _Visible = true;
@@ -56,8 +170,12 @@ public class VisualElement : IDisposable
         get => _Visible;
         set
         {
-            _Visible = value;
-            ScheduleRender();
+            if (_Visible != value)
+            {
+                _Visible = value;
+                MarkVisibilityClippingDirty();
+                ScheduleRender();
+            }
         }
     }
 
@@ -141,7 +259,15 @@ public class VisualElement : IDisposable
     private ElementStyle _Style;
     public ElementStyle Style
     {
-        get => _Style;
+        get
+        {
+            if (_Style == null)
+            {
+                _Style = new ElementStyle();
+                _Style.AssignElement(this);
+            }
+            return _Style;
+        }
         set
         {
             _Style = value;
@@ -149,14 +275,18 @@ public class VisualElement : IDisposable
         }
     }
 
-    private bool _IsClipping = true;
+    private bool _IsClipping = false;
     public bool IsClipping
     {
         get => _IsClipping;
         set
         {
-            _IsClipping = value;
-            ScheduleRender();
+            if (_IsClipping != value)
+            {
+                _IsClipping = value;
+                MarkVisibilityClippingDirty();
+                ScheduleRender();
+            }
         }
     }
 
@@ -164,7 +294,28 @@ public class VisualElement : IDisposable
     {
         child.Parent = this;
         ChildElements.AddElement(ref child);
-        ParentView.TrackElement(ref child);
+        
+        if (ParentView != null)
+        {
+            RegisterSubtree(child, ParentView);
+            ParentView.MarkHierarchyDirty();
+        }
+    }
+
+    private void RegisterSubtree(VisualElement element, View view)
+    {
+        view.TrackElement(ref element);
+        
+        // Recursively track children
+        var children = element.Children;
+        for (int i = 0; i < children.Length; i++)
+        {
+            var c = children[i];
+            if (c != null)
+            {
+                RegisterSubtree(c, view);
+            }
+        }
     }
 
     public void RemoveChild(VisualElement child)
@@ -172,6 +323,7 @@ public class VisualElement : IDisposable
         child.Parent = null!;
         ChildElements.RemoveElement(child);
         ParentView.UntrackElement(ref child);
+        ParentView.MarkHierarchyDirty();
     }
 
     public Rect BoundingRect
@@ -205,273 +357,197 @@ public class VisualElement : IDisposable
 
     internal int Render(SKCanvas renderTarget)
     {
-        if (Children.Length == 0)
-        {
-            RenderSingle(renderTarget);
-            return 0;
-        }
-
-        if ((IsDirty || Browser.WasResized) && CachedNestedElementCount > 200)
-        {
-            var counter = DeepRender();
-
-            renderTarget.DrawBitmap(CachedRender, 0, 0);
-
-            // Too many nested elements, cache for next time.
-            if (counter > 200)
-            {
-                CachedNestedElementCount = counter;
-            }
-
-            TransformIsChanged = false;
-            return counter;
-        }
-
-        if (HasCachedRender && CachedNestedElementCount > 200)
-        {
-            RenderFromCache(renderTarget);
-
-            Browser.AddVisualMarker(SKRect.Create(Transform.Computed.X, Transform.Computed.Y, Transform.Computed.Width, Transform.Computed.Height), SKColors.Blue);
-
-            TransformIsChanged = false;
-            return CachedNestedElementCount;
-        }
-
-        TransformIsChanged = false;
-        CachedNestedElementCount = DeepRender(renderTarget);
-
-        return CachedNestedElementCount;
-    }
-
-    internal int DeepRender()
-    {
-        if (Browser.WasResized || CachedRender == null)
-        {
-            CachedRender?.Dispose();
-            CachedRender = new(
-                (int)Browser.RenderRect.Width,
-                (int)Browser.RenderRect.Height,
-                SKColorType.Rgba8888,
-                SKAlphaType.Premul
-            );
-        }
-
-        int totalNestedChildren = 0;
-
-        using (SKCanvas canvas = new(CachedRender))
-        {
-            canvas.Clear();
-            RenderElement(canvas);
-
-            // TODO: Select children from scroll and area of the element
-            // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
-            if (Children.Length > 0)
-            {
-                foreach (VisualElement child in Children)
-                {
-                    if (!child.Visible) continue;
-
-                    totalNestedChildren++;
-
-                    // Get element image and render
-                    int counter = child.Render(canvas);
-
-                    totalNestedChildren += counter;
-                }
-            }
-        }
-
-        return totalNestedChildren;
-    }
-
-    internal int DeepRender(SKCanvas renderTarget)
-    {
-        RenderElement(renderTarget);
-
-        int totalNestedChildren = 0;
-
-        // TODO: Select children from scroll and area of the element
-        // foreach (VisualElement child in ChildElements.ElementsFromRect(Browser.RenderRect))
-        foreach (VisualElement child in Children)
-        {
-            totalNestedChildren++;
-
-            // Get element image and render
-            int counter = child.Render(renderTarget);
-
-            totalNestedChildren += counter;
-        }
-
-        return totalNestedChildren;
-    }
-
-    private void RenderFromCache(SKCanvas renderTarget)
-    {
-        renderTarget.DrawBitmap(CachedRender, 0, 0);
+        RenderSingle(renderTarget);
+        return 0;
     }
 
     internal void RenderSingle(SKCanvas targetCanvas)
     {
-        RenderElement(targetCanvas);
-    }
+        if (ParentView == null) return;
 
-    private void RenderElement(SKCanvas targetCanvas)
-    {
-        bool localTransformChanged = Transform.Evaluate();
-
-        if (Layer == 0 && localTransformChanged)
+        // Ensure commands are recorded in the ledger
+        if (IsDirty || ParentView.Ledger.GetCommands(Name) == null)
         {
-            TransformIsChanged = true;
+            RecordDrawCommands(ParentView.Ledger);
+            _IsDirty = false;
         }
 
-        if (Parent?.TransformIsChanged == true && localTransformChanged)
-            TransformIsChanged = true;
+        var cmds = ParentView.Ledger.GetCommands(Name);
+        if (cmds == null) return;
 
-        ComputedVisibility = Visibility.Visible;
-        bool isWithinParent = true;
-        bool isClipped = false;
-
-        if (Parent != null)
+        if (_hasClippingAncestors)
         {
-            isClipped = Parent.IsClipping;
-            bool isInsideParent = Parent.Transform.Computed.RectF.Contains(Transform.Computed.RectF);
-            isWithinParent = isInsideParent || Transform.Computed.RectF.IntersectsWith(Parent.Transform.Computed.RectF);
-        }
-
-        if (Parent?.ComputedVisibility == Visibility.Hidden || (isClipped && !isWithinParent))
-        {
-            ComputedVisibility = Visibility.Hidden;
-            return;
-        }
-
-        using (new SKAutoCanvasRestore(targetCanvas))
-        {
-            if ((isClipped || Parent?.ComputedVisibility == Visibility.Clipped) && Parent != null)
+            using (new SKAutoCanvasRestore(targetCanvas))
             {
-                ComputedVisibility = Visibility.Clipped;
-                ApplyClipping(targetCanvas);
+                ApplyClippingHierarchy(targetCanvas);
+                targetCanvas.Translate(Transform.Computed.X, Transform.Computed.Y);
+
+                for (int i = 0; i < cmds.Count; i++)
+                {
+                    cmds[i].Execute(targetCanvas);
+                }
             }
-
-            DrawBase(targetCanvas);
-            DrawText(targetCanvas);
+        }
+        else
+        {
+            targetCanvas.Translate(Transform.Computed.X, Transform.Computed.Y);
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                cmds[i].Execute(targetCanvas);
+            }
+            targetCanvas.Translate(-Transform.Computed.X, -Transform.Computed.Y);
         }
     }
 
-    private void ApplyClipping(SKCanvas targetCanvas)
+    private SKRoundRect? _cachedRoundRect;
+    private SKRect _cachedRoundRectBounds;
+    private float _cachedR1, _cachedR2, _cachedR3, _cachedR4;
+
+    internal SKRoundRect GetOrCreateRoundRect()
     {
-        var prevClipping = Parent.GetPreviousClippingRect();
-
-        var clippingRect = Parent?.IsClipping == true ? new SKRect(
-            Parent.Transform.Computed.X,
-            Parent.Transform.Computed.Y,
-            Parent.Transform.Computed.RectF.Right,
-            Parent.Transform.Computed.RectF.Bottom
-        ) : prevClipping.Rect;
-
-        if (prevClipping?.Rect != clippingRect && prevClipping != null)
-            clippingRect = SKRect.Intersect(clippingRect, prevClipping.Rect);
-
-        var compClippingRect = new SKRoundRect(
-            clippingRect,
-            Parent?.Style?.Border?.Roundness ?? 0, Parent?.Style?.Border?.Roundness ?? 0
+        var rect = new SKRect(
+            0,
+            0,
+            Transform.Computed.Width,
+            Transform.Computed.Height
         );
+        // Translate the local bounds to global canvas space for clipping
+        rect.Offset(Transform.Computed.X, Transform.Computed.Y);
 
-        // Browser.AddVisualMarker(compClippingRect.Rect, SKColors.Red);
+        float r1 = Style?.Border?.RoundnessTopLeft ?? 0;
+        float r2 = Style?.Border?.RoundnessTopRight ?? 0;
+        float r3 = Style?.Border?.RoundnessBottomRight ?? 0;
+        float r4 = Style?.Border?.RoundnessBottomLeft ?? 0;
 
-        // TODO: Border could have each corner of different roundness
-        // compClippingRect.SetRectRadii(clippingRect, new SKPoint[] {
-        //     new(15,5),
-        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-        //     new(Parent.Style.Border.Roundness, Parent.Style.Border.Roundness),
-        // });
-
-        targetCanvas.ClipRoundRect(compClippingRect, SKClipOperation.Intersect, true);
-
-        ComputedClipping = compClippingRect;
-    }
-
-    internal void DrawBase(SKCanvas targetCanvas)
-    {
-        // TODO: - Performance - check if this or root transform changed, if not, reuse the rect.
-        SKRect rect = new(
-            Transform.Computed.X,
-            Transform.Computed.Y,
-            Transform.Computed.X + Transform.Computed.Width,
-            Transform.Computed.Y + Transform.Computed.Height
-        );
-
-        SKRoundRect roundRect = new(rect);
-
-        if (Style.Border != null)
+        if (_cachedRoundRect == null || 
+            _cachedRoundRectBounds != rect || 
+            _cachedR1 != r1 || _cachedR2 != r2 || _cachedR3 != r3 || _cachedR4 != r4)
         {
-            roundRect.SetRectRadii(rect, new SKPoint[] {
-                new(Style.Border.RoundnessTopLeft, Style.Border.RoundnessTopLeft),
-                new(Style.Border.RoundnessTopRight, Style.Border.RoundnessTopRight),
-                new(Style.Border.RoundnessBottomRight, Style.Border.RoundnessBottomRight),
-                new(Style.Border.RoundnessBottomLeft, Style.Border.RoundnessBottomLeft),
+            _cachedRoundRect?.Dispose();
+            _cachedRoundRect = new SKRoundRect(rect);
+            _cachedRoundRect.SetRectRadii(rect, new SKPoint[] {
+                new(r1, r1),
+                new(r2, r2),
+                new(r3, r3),
+                new(r4, r4)
             });
+            _cachedRoundRectBounds = rect;
+            _cachedR1 = r1;
+            _cachedR2 = r2;
+            _cachedR3 = r3;
+            _cachedR4 = r4;
         }
 
-        if (Style.Shadow?.HasValidValues() == true)
-        {
-            Style.Shadow.Paint.PathEffect = Style.BackgroundPathEffect;
-            targetCanvas.DrawRoundRect(roundRect, Style.Shadow.Paint);
-        }
-
-        paint.Style = SKPaintStyle.Fill;
-        paint.IsAntialias = true;
-        paint.Color = Style.BackColor;
-        paint.PathEffect = Style.BackgroundPathEffect;
-
-        targetCanvas.DrawRoundRect(roundRect, paint);
-
-        if (Style.Border?.Width > 0)
-        {
-            paint.Style = SKPaintStyle.Stroke;
-
-            if (Style.Border.PathEffect != null)
-                paint.PathEffect = Style.Border.PathEffect;
-
-            paint.StrokeWidth = Style.Border.Width;
-            paint.Color = Style.Border.Color;
-
-            roundRect.Inflate(new SKSize(Style.Border.Width / 2f, Style.Border.Width / 2f));
-            targetCanvas.DrawRoundRect(roundRect, paint);
-        }
-
-        // TODO: reuse roundRect for next render
-        roundRect.Dispose();
+        return _cachedRoundRect;
     }
 
-    private void DrawText(SKCanvas targetCanvas)
+    private void ApplyClippingHierarchy(SKCanvas canvas)
     {
-        if (string.IsNullOrEmpty(Text) || Style.Text is null)
-            return;
-
-        CalculateText();
-        DrawTextShadow(targetCanvas);
+        if (!_hasClippingAncestors) return;
+        var ancestor = Parent;
+        while (ancestor != null)
+        {
+            if (ancestor.IsClipping)
+            {
+                canvas.ClipRoundRect(ancestor.GetOrCreateRoundRect(), SKClipOperation.Intersect, true);
+            }
+            ancestor = ancestor.Parent;
+        }
     }
 
-    internal void DrawTextShadow(SKCanvas targetCanvas)
+    public virtual void RecordDrawCommands(CommandLedger ledger)
     {
-        targetCanvas.DrawText(Text, TextPosition, Style.Text.Paint);
+        var cmds = new List<DrawCommand>();
+
+        // Local boundaries relative to element origin (0, 0)
+        var rect = new SKRect(0, 0, Transform.Computed.Width, Transform.Computed.Height);
+
+        // 1. Draw Shadow
+        if (Style?.Shadow?.HasValidValues() == true)
+        {
+            var paint = Style.Shadow.Paint.Clone();
+            paint.PathEffect = Style.BackgroundPathEffect;
+            
+            cmds.Add(new DrawRoundRectCommand(
+                rect,
+                Style.Border?.RoundnessTopLeft ?? 0,
+                Style.Border?.RoundnessTopRight ?? 0,
+                Style.Border?.RoundnessBottomRight ?? 0,
+                Style.Border?.RoundnessBottomLeft ?? 0,
+                paint
+            ));
+        }
+
+        // 2. Draw Fill
+        if ((Style != null && Style.BackColor.Alpha > 0) || (Style != null && Style.BackgroundPathEffect != null))
+        {
+            var fillPaint = new SKPaint
+            {
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true,
+                Color = Style.BackColor,
+                PathEffect = Style.BackgroundPathEffect
+            };
+            cmds.Add(new DrawRoundRectCommand(
+                rect,
+                Style?.Border?.RoundnessTopLeft ?? 0,
+                Style?.Border?.RoundnessTopRight ?? 0,
+                Style?.Border?.RoundnessBottomRight ?? 0,
+                Style?.Border?.RoundnessBottomLeft ?? 0,
+                fillPaint
+            ));
+        }
+
+        // 3. Draw Stroke/Border
+        if (Style?.Border?.Width > 0 && Style.Border.Color.Alpha > 0)
+        {
+            var strokePaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                IsAntialias = true,
+                StrokeWidth = Style.Border.Width,
+                Color = Style.Border.Color,
+                PathEffect = Style.Border.PathEffect
+            };
+            
+            var borderRect = rect;
+            borderRect.Inflate(Style.Border.Width / 2f, Style.Border.Width / 2f);
+            
+            cmds.Add(new DrawRoundRectCommand(
+                borderRect,
+                Style.Border.RoundnessTopLeft,
+                Style.Border.RoundnessTopRight,
+                Style.Border.RoundnessBottomRight,
+                Style.Border.RoundnessBottomLeft,
+                strokePaint
+            ));
+        }
+
+        // 4. Draw Text
+        if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+        {
+            CalculateText(); // calculates local TextPosition
+            cmds.Add(new DrawTextCommand(Text, TextPosition, Style.Text.Paint));
+        }
+
+        ledger.Record(Name, cmds);
     }
 
     private SKRect TextBounds;
     private void CalculateTextBounds()
     {
-        if (Browser.IsLoaded && Style != null && Text.Length > 0)
+        if (Browser.IsLoaded && Style?.Text?.Paint != null && Text.Length > 0)
             Style.Text.Paint.MeasureText(Text, ref TextBounds);
     }
 
     internal void CalculateText()
     {
-        if (Style.Text == null || Style.Text.Paint == null)
+        if (Style?.Text == null || Style.Text.Paint == null)
             return;
 
-        var cx = Transform.Computed.X;
-        var cy = Transform.Computed.Y;
+        // Local coordinate space (origin at 0, 0)
+        var cx = 0f;
+        var cy = 0f;
         var cw = Transform.Computed.Width;
         var ch = Transform.Computed.Height;
 
@@ -508,13 +584,82 @@ public class VisualElement : IDisposable
         };
     }
 
-    private void OnTransformChanged(Transform transform)
+    public void EvaluateVisibilityAndClipping()
     {
-        Transform.Evaluate();
-        CalculateText();
-        TransformChanged?.Invoke(this, transform);
+        if (!Visible)
+        {
+            ComputedVisibility = Visibility.Hidden;
+            _hasClippingAncestors = false;
+            return;
+        }
 
-        ScheduleRender();
+        SKRect? clipRect = null;
+        var ancestor = Parent;
+        _hasClippingAncestors = false;
+        while (ancestor != null)
+        {
+            if (!ancestor.Visible)
+            {
+                ComputedVisibility = Visibility.Hidden;
+                return;
+            }
+
+            if (ancestor.IsClipping)
+            {
+                _hasClippingAncestors = true;
+                var bounds = new SKRect(
+                    ancestor.Transform.Computed.X,
+                    ancestor.Transform.Computed.Y,
+                    ancestor.Transform.Computed.X + ancestor.Transform.Computed.Width,
+                    ancestor.Transform.Computed.Y + ancestor.Transform.Computed.Height
+                );
+                
+                if (clipRect.HasValue)
+                {
+                    var intersect = SKRect.Intersect(clipRect.Value, bounds);
+                    if (intersect.Width <= 0 || intersect.Height <= 0)
+                    {
+                        ComputedVisibility = Visibility.Hidden;
+                        return;
+                    }
+                    clipRect = intersect;
+                }
+                else
+                {
+                    clipRect = bounds;
+                }
+            }
+            ancestor = ancestor.Parent;
+        }
+
+        if (clipRect.HasValue)
+        {
+            var myBounds = new SKRect(
+                Transform.Computed.X,
+                Transform.Computed.Y,
+                Transform.Computed.X + Transform.Computed.Width,
+                Transform.Computed.Y + Transform.Computed.Height
+            );
+            
+            var intersect = SKRect.Intersect(clipRect.Value, myBounds);
+            if (intersect.Width <= 0 || intersect.Height <= 0)
+            {
+                ComputedVisibility = Visibility.Hidden;
+            }
+            else if (clipRect.Value.Contains(myBounds))
+            {
+                ComputedVisibility = Visibility.Visible;
+            }
+            else
+            {
+                ComputedVisibility = Visibility.Clipped;
+                ComputedClipping = new SKRoundRect(clipRect.Value);
+            }
+        }
+        else
+        {
+            ComputedVisibility = Visibility.Visible;
+        }
     }
 
     private void ParentTransformChanged(VisualElement e, Transform t)
@@ -547,27 +692,10 @@ public class VisualElement : IDisposable
         );
     }
 
-    internal SKRoundRect GetPreviousClippingRect()
-    {
-        if (ComputedVisibility == Visibility.Clipped)
-            return ComputedClipping;
-
-        if (Parent != null)
-            return Parent.GetPreviousClippingRect();
-
-        var rect = new SKRect(
-            Transform.Computed.X,
-            Transform.Computed.Y,
-            Transform.Computed.RectF.Right,
-            Transform.Computed.RectF.Bottom
-        );
-
-        return new(rect, Style?.Border?.Roundness ?? 0);
-    }
-
     public void Dispose()
     {
         paint.Dispose();
+        _cachedRoundRect?.Dispose();
         OnDisposing?.Invoke(this);
 
         ParentView.Elements.RemoveElement(this);

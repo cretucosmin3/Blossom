@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Threading;
 using System;
 using System.Collections.Generic;
@@ -39,6 +39,8 @@ namespace Blossom
             Log.Info(_appDataPathScreenshot);
 
             AppDomain.CurrentDomain.ProcessExit += (sender, e) => Log.Debug("Closing");
+
+            Blossom.Core.BenchmarkManager.CheckArgs(Environment.GetCommandLineArgs());
 
             Browser.Initialize();
             Environment.Exit(0);

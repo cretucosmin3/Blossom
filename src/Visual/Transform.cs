@@ -5,6 +5,8 @@ public class Transform
 {
     internal VisualElement ParentElement;
     internal bool HasChanged;
+    private bool _anchorsInitialized = false;
+    internal bool _transformDirty = true;
     private Transform _Parent = null;
     public Transform Parent
     {
@@ -12,6 +14,7 @@ public class Transform
         set
         {
             _Parent = value;
+            _transformDirty = true;
             SetAnchorValues();
         }
     }
@@ -56,12 +59,16 @@ public class Transform
         get => ComputedTransform.X;
         set
         {
-            Local.X = value;
+            Local.Width = Computed.Width;
+            Local.Height = Computed.Height;
+
+            Local.X = value - (Parent != null ? Parent.ComputedTransform.X : 0);
             CalculateLeftAnchor();
             CalculateRighAnchor();
 
             CenterX = X + (Width / 2f);
 
+            _transformDirty = true;
             OnChanged?.Invoke(this);
             ParentElement?.ScheduleRender();
         }
@@ -72,12 +79,16 @@ public class Transform
         get => ComputedTransform.Y;
         set
         {
-            Local.Y = value;
+            Local.Width = Computed.Width;
+            Local.Height = Computed.Height;
+
+            Local.Y = value - (Parent != null ? Parent.ComputedTransform.Y : 0);
             CalculateTopAnchor();
             CalculateBottomAnchor();
 
             CenterY = Y + (Height / 2f);
 
+            _transformDirty = true;
             OnChanged?.Invoke(this);
             ParentElement?.ScheduleRender();
         }
@@ -94,6 +105,7 @@ public class Transform
 
             CenterX = X + (Width / 2f);
 
+            _transformDirty = true;
             OnChanged?.Invoke(this);
             ParentElement?.ScheduleRender();
         }
@@ -110,6 +122,7 @@ public class Transform
 
             CenterY = Y + (Height / 2f);
 
+            _transformDirty = true;
             OnChanged?.Invoke(this);
             ParentElement?.ScheduleRender();
         }
@@ -133,14 +146,18 @@ public class Transform
         {
             _Anchor = value;
 
-            Local.X = Computed.X;
-            Local.Y = Computed.Y;
+            var parentX = Parent != null ? Parent.ComputedTransform.X : 0;
+            var parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
+
+            Local.X = Computed.X - parentX;
+            Local.Y = Computed.Y - parentY;
             Local.Width = Computed.Width;
             Local.Height = Computed.Height;
 
             if (ValidateOnAnchor)
                 SetAnchorValues();
 
+            _transformDirty = true;
             OnChanged?.Invoke(this);
             ParentElement?.ScheduleRender();
         }
@@ -162,6 +179,12 @@ public class Transform
 
     internal void SetAnchorValues()
     {
+        if (Parent != null && ParentWidth == 0)
+        {
+            _anchorsInitialized = false;
+            return;
+        }
+
         // Horizontal anchors.
         CalculateLeftAnchor();
         CalculateRighAnchor();
@@ -172,30 +195,32 @@ public class Transform
 
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
+
+        _anchorsInitialized = true;
     }
 
     private void CalculateLeftAnchor()
     {
         FixedLeft = Local.X;
-        RelativeLeft = FixedLeft / ParentWidth;
+        RelativeLeft = ParentWidth == 0 ? 0 : FixedLeft / ParentWidth;
     }
 
     private void CalculateRighAnchor()
     {
         FixedRight = ParentWidth - (Local.X + Local.Width);
-        RelativeRight = FixedRight / ParentWidth;
+        RelativeRight = ParentWidth == 0 ? 0 : FixedRight / ParentWidth;
     }
 
     private void CalculateTopAnchor()
     {
         FixedTop = Local.Y;
-        RelativeTop = FixedTop / ParentHeight;
+        RelativeTop = ParentHeight == 0 ? 0 : FixedTop / ParentHeight;
     }
 
     private void CalculateBottomAnchor()
     {
         FixedBottom = ParentHeight - (Local.Y + Local.Height);
-        RelativeBottom = FixedBottom / ParentHeight;
+        RelativeBottom = ParentHeight == 0 ? 0 : FixedBottom / ParentHeight;
     }
 
     private void ComputeHorizontalTransform()
@@ -239,10 +264,12 @@ public class Transform
         }
 
         // Add parent X
-        ComputedTransform.X += Parent is null ? 0 : Parent.ComputedTransform.X;
-
-        Local.X = ComputedTransform.X;
-        Local.Width = ComputedTransform.Width;
+        float scrollX = 0f;
+        if (Parent?.ParentElement is ScrollContainer sc)
+        {
+            scrollX = sc.ScrollX;
+        }
+        ComputedTransform.X += Parent is null ? 0 : (Parent.ComputedTransform.X - scrollX);
     }
 
     private void ComputeVerticalTransform()
@@ -289,19 +316,56 @@ public class Transform
         }
 
         // Add parent Y
-        ComputedTransform.Y += Parent != null ? Parent.ComputedTransform.Y : 0;
-
-        Local.Y = ComputedTransform.Y;
-        Local.Height = ComputedTransform.Height;
+        float scrollY = 0f;
+        if (Parent?.ParentElement is ScrollContainer sc)
+        {
+            scrollY = sc.ScrollY;
+        }
+        ComputedTransform.Y += Parent != null ? (Parent.ComputedTransform.Y - scrollY) : 0;
     }
 
     internal bool Evaluate()
     {
+        if (Browser.WasResized)
+        {
+            _transformDirty = true;
+        }
+
+        if (!_transformDirty && _anchorsInitialized)
+        {
+            return false;
+        }
+
+        if (!_anchorsInitialized && (Parent == null || ParentWidth > 0))
+        {
+            SetAnchorValues();
+        }
+
         Rect previousComputed = new(Computed.X, Computed.Y, Computed.Width, Computed.Height);
 
         ComputeHorizontalTransform();
         ComputeVerticalTransform();
 
-        return previousComputed != Computed;
+        _transformDirty = false;
+
+        bool changed = previousComputed != Computed;
+        if (changed)
+        {
+            var children = ParentElement?.Children;
+            if (children != null)
+            {
+                for (int i = 0; i < children.Length; i++)
+                {
+                    var child = children[i];
+                    if (child != null)
+                    {
+                        child.Transform._transformDirty = true;
+                        child.ScheduleRender();
+                    }
+                }
+            }
+        }
+
+        return changed;
     }
 }
