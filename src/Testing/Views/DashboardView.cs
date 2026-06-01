@@ -13,6 +13,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToNeon;
         public Action? OnSwitchToPaint;
         public Action? OnSwitchToKanban;
+        public Action? OnSwitchTo3D;
 
         public DashboardView() : base("Web Dashboard")
         {
@@ -57,7 +58,7 @@ namespace Blossom.Testing.Views
             sidebar.AddChild(brand);
 
             // Navigation menu items
-            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board" };
+            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase" };
             float menuY = 100f;
             for (int i = 0; i < menuItems.Length; i++)
             {
@@ -76,6 +77,7 @@ namespace Blossom.Testing.Views
                     if (idx == 1) OnSwitchToNeon?.Invoke();
                     else if (idx == 2) OnSwitchToPaint?.Invoke();
                     else if (idx == 3) OnSwitchToKanban?.Invoke();
+                    else if (idx == 4) OnSwitchTo3D?.Invoke();
                 };
 
                 sidebar.AddChild(btn);

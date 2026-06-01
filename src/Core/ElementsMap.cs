@@ -43,6 +43,17 @@ public class ElementTree : IDisposable
     public VisualElement FirstFromPoint(PointF point) =>
         FirstFromPoint(point.X, point.Y);
 
+    private static SKPoint3 MapPoint3D(SKMatrix44 matrix, float x, float y, float z)
+    {
+        float[] result = matrix.MapScalars(x, y, z, 1f);
+        float w = result[3];
+        if (Math.Abs(w) > 1e-6f)
+        {
+            return new SKPoint3(result[0] / w, result[1] / w, result[2] / w);
+        }
+        return new SKPoint3(result[0], result[1], result[2]);
+    }
+
     public VisualElement FirstFromPoint(float x, float y)
     {
         var elements = Map.Values.Select(x => x.Item1)
@@ -55,19 +66,78 @@ public class ElementTree : IDisposable
             if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
                 continue;
 
-            var bounds = new SKRect(
-                elementFromPoint.Transform.Computed.X,
-                elementFromPoint.Transform.Computed.Y,
-                elementFromPoint.Transform.Computed.X + elementFromPoint.Transform.Computed.Width,
-                elementFromPoint.Transform.Computed.Y + elementFromPoint.Transform.Computed.Height
-            );
+            SKMatrix44 globalMatrix = elementFromPoint.Transform.GetGlobalM44();
 
-            if (!bounds.Contains(x, y))
+            // Solve:
+            // x = (m00 * Xl + m01 * Yl + m03) / (m30 * Xl + m31 * Yl + m33)
+            // y = (m10 * Xl + m11 * Yl + m13) / (m30 * Xl + m31 * Yl + m33)
+            //
+            // Rearranged as linear system:
+            // (x * m30 - m00) * Xl + (x * m31 - m01) * Yl = m03 - x * m33
+            // (y * m30 - m10) * Xl + (y * m31 - m11) * Yl = m13 - y * m33
+
+            float m00 = globalMatrix[0, 0];
+            float m01 = globalMatrix[0, 1];
+            float m03 = globalMatrix[0, 3];
+
+            float m10 = globalMatrix[1, 0];
+            float m11 = globalMatrix[1, 1];
+            float m13 = globalMatrix[1, 3];
+
+            float m30 = globalMatrix[3, 0];
+            float m31 = globalMatrix[3, 1];
+            float m33 = globalMatrix[3, 3];
+
+            float A1 = x * m30 - m00;
+            float B1 = x * m31 - m01;
+            float C1 = m03 - x * m33;
+
+            float A2 = y * m30 - m10;
+            float B2 = y * m31 - m11;
+            float C2 = m13 - y * m33;
+
+            float D = A1 * B2 - B1 * A2;
+            if (Math.Abs(D) < 1e-6f)
                 continue;
+
+            float localX = (C1 * B2 - B1 * C2) / D;
+            float localY = (A1 * C2 - C1 * A2) / D;
+
+            // Ensure the clicked point is in front of the camera (w > 0)
+            float w = m30 * localX + m31 * localY + m33;
+            if (w <= 1e-6f)
+                continue;
+
+            if (localX < 0 || localX > elementFromPoint.Transform.Width ||
+                localY < 0 || localY > elementFromPoint.Transform.Height)
+            {
+                continue;
+            }
 
             if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
             {
-                var insideClipping = elementFromPoint.ComputedClipping.Rect.Contains(x, y);
+                bool insideClipping = true;
+                var ancestor = elementFromPoint.Parent;
+                while (ancestor != null)
+                {
+                    if (ancestor.IsClipping)
+                    {
+                        var globalPt3D = MapPoint3D(globalMatrix, localX, localY, 0f);
+                        var ancestorGlobal = ancestor.Transform.GetGlobalM44();
+                        var invAncestorGlobal = new SKMatrix44();
+                        if (ancestorGlobal.Invert(invAncestorGlobal))
+                        {
+                            var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
+                            if (ancestorLocalPt.X < 0 || ancestorLocalPt.X > ancestor.Transform.Width ||
+                                ancestorLocalPt.Y < 0 || ancestorLocalPt.Y > ancestor.Transform.Height)
+                            {
+                                insideClipping = false;
+                                break;
+                            }
+                        }
+                    }
+                    ancestor = ancestor.Parent;
+                }
                 if (!insideClipping) continue;
             }
 

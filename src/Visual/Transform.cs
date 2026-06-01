@@ -1,8 +1,134 @@
 using System;
+using SkiaSharp;
+
 namespace Blossom.Core.Visual;
 
 public class Transform
 {
+    private SKMatrix44 _cachedLocalM44 = new SKMatrix44();
+    private bool _matrixDirty = true;
+
+    private float _rotationX = 0f;
+    private float _rotationY = 0f;
+    private float _rotationZ = 0f;
+    private float _scaleX = 1f;
+    private float _scaleY = 1f;
+    private float _scaleZ = 1f;
+    private float _perspective = 0f;
+    private float _originX = 0.5f;
+    private float _originY = 0.5f;
+
+    public float RotationX
+    {
+        get => _rotationX;
+        set { if (_rotationX != value) { _rotationX = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float RotationY
+    {
+        get => _rotationY;
+        set { if (_rotationY != value) { _rotationY = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float RotationZ
+    {
+        get => _rotationZ;
+        set { if (_rotationZ != value) { _rotationZ = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float ScaleX
+    {
+        get => _scaleX;
+        set { if (_scaleX != value) { _scaleX = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float ScaleY
+    {
+        get => _scaleY;
+        set { if (_scaleY != value) { _scaleY = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float ScaleZ
+    {
+        get => _scaleZ;
+        set { if (_scaleZ != value) { _scaleZ = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float Perspective
+    {
+        get => _perspective;
+        set { if (_perspective != value) { _perspective = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float TransformOriginX
+    {
+        get => _originX;
+        set { if (_originX != value) { _originX = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+    public float TransformOriginY
+    {
+        get => _originY;
+        set { if (_originY != value) { _originY = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+    }
+
+    public SKMatrix44 GetLocalM44()
+    {
+        if (_matrixDirty)
+        {
+            var m = SKMatrix44.CreateIdentity();
+
+            float localX = X - (Parent != null ? Parent.X : 0);
+            float localY = Y - (Parent != null ? Parent.Y : 0);
+
+            m.PreTranslate(localX, localY, 0);
+
+            float originPxX = Width * TransformOriginX;
+            float originPxY = Height * TransformOriginY;
+            m.PreTranslate(originPxX, originPxY, 0);
+
+            if (Perspective > 0)
+            {
+                var persp = SKMatrix44.CreateIdentity();
+                persp[3, 2] = -1f / Perspective;
+                m.PreConcat(persp);
+            }
+
+            if (RotationX != 0)
+            {
+                var rot = SKMatrix44.CreateRotationDegrees(1f, 0f, 0f, RotationX);
+                m.PreConcat(rot);
+            }
+            if (RotationY != 0)
+            {
+                var rot = SKMatrix44.CreateRotationDegrees(0f, 1f, 0f, RotationY);
+                m.PreConcat(rot);
+            }
+            if (RotationZ != 0)
+            {
+                var rot = SKMatrix44.CreateRotationDegrees(0f, 0f, 1f, RotationZ);
+                m.PreConcat(rot);
+            }
+
+            if (ScaleX != 1 || ScaleY != 1 || ScaleZ != 1)
+            {
+                m.PreScale(ScaleX, ScaleY, ScaleZ);
+            }
+
+            m.PreTranslate(-originPxX, -originPxY, 0);
+
+            _cachedLocalM44 = m;
+            _matrixDirty = false;
+        }
+        return _cachedLocalM44;
+    }
+
+    public SKMatrix44 GetGlobalM44()
+    {
+        var local = GetLocalM44();
+        if (Parent != null)
+        {
+            var parentGlobal = Parent.GetGlobalM44();
+            var global = SKMatrix44.CreateIdentity();
+            global.PreConcat(parentGlobal);
+            global.PreConcat(local);
+            return global;
+        }
+        return local;
+    }
+
     internal VisualElement ParentElement;
     internal bool HasChanged;
     private bool _anchorsInitialized = false;
@@ -15,6 +141,7 @@ public class Transform
         {
             _Parent = value;
             _transformDirty = true;
+            _matrixDirty = true;
             SetAnchorValues();
         }
     }
@@ -36,6 +163,7 @@ public class Transform
     // TODO: Change into SKRect for simplicity and to avoid casting
     public Rect Computed => ComputedTransform;
     public Rect Local { get; } = new Rect(0, 0, 0, 0);
+
 
     public bool FixedHeight { get; set; } = false;
     public bool FixedWidth { get; set; } = false;
@@ -335,6 +463,8 @@ public class Transform
         {
             return false;
         }
+
+        _matrixDirty = true;
 
         if (!_anchorsInitialized && (Parent == null || ParentWidth > 0))
         {
