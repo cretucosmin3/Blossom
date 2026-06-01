@@ -2,6 +2,8 @@ using System;
 using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
+using System.Collections.Generic;
+using System.Linq;
 using SkiaSharp;
 
 namespace Blossom.Core
@@ -11,6 +13,7 @@ namespace Blossom.Core
         public EventMap Events = new();
         public ElementTree Elements = new();
         public SKColor BackColor = SKColors.White;
+        public readonly CommandLedger Ledger = new();
 
         public int Width => (int)Browser.RenderRect.Width;
         public int Height => (int)Browser.RenderRect.Height;
@@ -19,9 +22,26 @@ namespace Blossom.Core
 
         internal bool IsLoaded { get; set; }
         public bool RenderRequired { get; internal set; } = true;
+        public bool FullRenderRequired { get; set; } = true;
 
         private VisualElement hoveredElement;
         private VisualElement mouseDownElement;
+
+        private readonly object _dirtyRectsLock = new();
+        internal readonly List<SKRect> DirtyRects = new();
+
+        private bool _hierarchyDirty = true;
+        internal void MarkHierarchyDirty() { _hierarchyDirty = true; }
+        internal readonly List<VisualElement> CachedRenderQueue = new();
+        internal readonly List<VisualElement> CachedSortedElements = new();
+
+        internal void AddDirtyRect(SKRect rect)
+        {
+            lock (_dirtyRectsLock)
+            {
+                DirtyRects.Add(rect);
+            }
+        }
 
         private string _title = "";
         public string Title
@@ -56,6 +76,7 @@ namespace Blossom.Core
             Events.OnMouseDown += OnMouseDown;
             Events.OnMouseUp += OnMouseUp;
             Events.OnMouseMove += OnMouseMove;
+            Events.OnMouseScroll += OnMouseScroll;
         }
 
         private void OnMouseDown(object _, MouseEventArgs args)
@@ -118,6 +139,20 @@ namespace Blossom.Core
             hoveredElement = element;
         }
 
+        private void OnMouseScroll(object sender, System.Numerics.Vector2 offset)
+        {
+            var el = hoveredElement;
+            while (el != null)
+            {
+                el.Events.HandleMouseScroll(offset, el);
+                if (el is ScrollContainer)
+                {
+                    break;
+                }
+                el = el.Parent;
+            }
+        }
+
         internal void TriggerLoop() => Loop?.Invoke();
 
         public void AddElement(VisualElement element)
@@ -126,12 +161,14 @@ namespace Blossom.Core
             Elements.AddElement(ref element);
 
             element.AddedToView();
+            _hierarchyDirty = true;
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
         public void RemoveElement(VisualElement element)
         {
             Elements.RemoveElement(element);
+            _hierarchyDirty = true;
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
@@ -139,32 +176,130 @@ namespace Blossom.Core
         {
             Elements.AddElement(ref element);
             element.AddedToView();
+            _hierarchyDirty = true;
             Browser.BrowserApp.ActiveView.RenderRequired = true;
         }
 
         public void UntrackElement(ref VisualElement element)
         {
             Elements.RemoveElement(element);
+            _hierarchyDirty = true;
             Browser.BrowserApp.ActiveView.RenderRequired = true;
+        }
+
+        private void CollectElements(VisualElement root, List<VisualElement> list)
+        {
+            list.Add(root);
+            foreach (var child in root.Children)
+            {
+                CollectElements(child, list);
+            }
         }
 
         internal void Render()
         {
-            RenderRequired = false;
+            if (Browser.WasResized) FullRenderRequired = true;
 
-            foreach (var element in Elements.Items)
+            List<SKRect> localDirtyRects;
+            lock (_dirtyRectsLock)
             {
-                if (element.Layer > 0 || !element.Visible) continue;
+                if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired) return;
 
-                lock (element)
+                if (FullRenderRequired)
                 {
-                    using (new SKAutoCanvasRestore(Renderer.Canvas))
+                    // Full redraw required (e.g. view switch or resize)
+                    DirtyRects.Clear();
+                    DirtyRects.Add(new SKRect(0, 0, Width, Height));
+                    FullRenderRequired = false;
+                }
+                else if (RenderRequired && DirtyRects.Count == 0)
+                {
+                    DirtyRects.Add(new SKRect(0, 0, Width, Height));
+                }
+
+                localDirtyRects = new List<SKRect>(DirtyRects);
+                DirtyRects.Clear();
+            }
+
+            using var dirtyPath = new SKPath();
+            foreach (var r in localDirtyRects)
+            {
+                // Align to pixel boundaries to ensure complete clearing/drawing
+                var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
+                dirtyPath.AddRect(rounded);
+            }
+
+            if (_hierarchyDirty)
+            {
+                CachedRenderQueue.Clear();
+                foreach (var element in Elements.Items)
+                {
+                    if (element.Parent == null) 
+                        CollectElements(element, CachedRenderQueue);
+                }
+
+                CachedSortedElements.Clear();
+                CachedSortedElements.AddRange(CachedRenderQueue.OrderBy(e => e.ZIndex));
+
+                foreach (var element in CachedRenderQueue)
+                {
+                    element.MarkVisibilityClippingDirty();
+                }
+
+                _hierarchyDirty = false;
+            }
+
+            // Evaluate transform and visibility in hierarchical order (parents first)
+            for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
+            {
+                var element = CachedRenderQueue[idx];
+                if (element.Transform.Evaluate())
+                {
+                    element.IsDirty = true;
+                    element.MarkVisibilityClippingDirty();
+                }
+
+                if (element._visibilityClippingDirty)
+                {
+                    element.EvaluateVisibilityAndClipping();
+                    element._visibilityClippingDirty = false;
+                }
+            }
+
+            using (new SKAutoCanvasRestore(Renderer.Canvas))
+            {
+                Renderer.Canvas.ClipPath(dirtyPath, SKClipOperation.Intersect, true);
+                
+                // Clear dirty region to background
+                Renderer.Canvas.DrawColor(BackColor);
+
+                for (int idx = 0; idx < CachedSortedElements.Count; idx++)
+                {
+                    var element = CachedSortedElements[idx];
+                    if (!element.Visible) continue;
+                    if (element.ComputedVisibility == Visibility.Hidden) continue;
+
+                    var elementRect = element.RenderBounds;
+
+                    bool overlapsDirty = false;
+                    for (int i = 0; i < localDirtyRects.Count; i++)
                     {
-                        element.Render(Renderer.Canvas);
+                        if (localDirtyRects[i].IntersectsWith(elementRect))
+                        {
+                            overlapsDirty = true;
+                            break;
+                        }
+                    }
+
+                    if (overlapsDirty)
+                    {
+                        element.RenderSingle(Renderer.Canvas);
                         element.IsDirty = false;
                     }
                 }
             }
+
+            RenderRequired = false;
         }
 
         internal void RenderChanges(Action doChanges)

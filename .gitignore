@@ -401,3 +401,9 @@ FodyWeavers.xsd
 .infersharpconfig
 /infer-out
 .vscode/settings.json
+
+# Blossom Build & Executable outputs
+/Blossom
+/dist/
+/build_log.txt
+/build_output.txt

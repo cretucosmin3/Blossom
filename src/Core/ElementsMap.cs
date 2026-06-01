@@ -1,9 +1,10 @@
-﻿using Blossom.Core.Visual;
+using Blossom.Core.Visual;
 using QuadTrees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using SkiaSharp;
 
 namespace Blossom.Core;
 
@@ -44,29 +45,29 @@ public class ElementTree : IDisposable
 
     public VisualElement FirstFromPoint(float x, float y)
     {
-        var hitPoint = new RectangleF(x, y, 1, 1);
-        var components = QuadTree.GetObjects(hitPoint);
+        var elements = Map.Values.Select(x => x.Item1)
+            .OrderByDescending(e => e.ZIndex)
+            .ThenByDescending(e => e.Layer)
+            .ToList();
 
-        if (!components.Any()) return default!;
-
-        for (int i = components.Count - 1; i >= 0; i--)
+        foreach (var elementFromPoint in elements)
         {
-            var elementFromPoint = components[i].Element;
-
             if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
+                continue;
+
+            var bounds = new SKRect(
+                elementFromPoint.Transform.Computed.X,
+                elementFromPoint.Transform.Computed.Y,
+                elementFromPoint.Transform.Computed.X + elementFromPoint.Transform.Computed.Width,
+                elementFromPoint.Transform.Computed.Y + elementFromPoint.Transform.Computed.Height
+            );
+
+            if (!bounds.Contains(x, y))
                 continue;
 
             if (elementFromPoint.ComputedVisibility == Visibility.Clipped)
             {
-                var insideClipping = elementFromPoint.ComputedClipping.Contains(
-                    new(
-                        hitPoint.Left,
-                        hitPoint.Top,
-                        hitPoint.Right,
-                        hitPoint.Bottom
-                    )
-                );
-
+                var insideClipping = elementFromPoint.ComputedClipping.Rect.Contains(x, y);
                 if (!insideClipping) continue;
             }
 
@@ -119,9 +120,10 @@ public class ElementTree : IDisposable
 
     private void RemoveTracker(VisualElement Element)
     {
-        var (_, tracker) = Map[Element.Name];
-
-        QuadTree.Remove(tracker);
+        if (Map.TryGetValue(Element.Name, out var entry))
+        {
+            QuadTree.Remove(entry.Item2);
+        }
     }
 
     public void AddElement(ref VisualElement element)
@@ -145,6 +147,7 @@ public class ElementTree : IDisposable
 
     public void RemoveElement(VisualElement element)
     {
+        if (element == null || !Map.ContainsKey(element.Name)) return;
         RemoveTracker(element);
         Map.Remove(element.Name);
         BoundAxis.RemoveElement(element);

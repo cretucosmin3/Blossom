@@ -43,6 +43,7 @@ public abstract class Application : IDisposable
             ActiveView.IsLoaded = true;
         }
 
+        ActiveView.FullRenderRequired = true;
         ActiveView.RenderRequired = true;
     }
 
