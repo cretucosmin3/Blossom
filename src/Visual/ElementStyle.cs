@@ -15,6 +15,8 @@ public class ElementStyle : IDisposable
     private float _BorderEffectAmount = 5f;
     private float _BackdropBlur = 0f;
     private EffectRenderMode _ShaderRenderMode = EffectRenderMode.OnDemand;
+    private TransitionEffectType _TransitionType = TransitionEffectType.None;
+    private float _TransitionProgress = 1.0f;
 
     public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; }
@@ -86,6 +88,26 @@ public class ElementStyle : IDisposable
         set
         {
             _ShaderRenderMode = value;
+            ScheduleRender();
+        }
+    }
+
+    public TransitionEffectType TransitionType
+    {
+        get => _TransitionType;
+        set
+        {
+            _TransitionType = value;
+            ScheduleRender();
+        }
+    }
+
+    public float TransitionProgress
+    {
+        get => _TransitionProgress;
+        set
+        {
+            _TransitionProgress = Math.Clamp(value, 0f, 1f);
             ScheduleRender();
         }
     }

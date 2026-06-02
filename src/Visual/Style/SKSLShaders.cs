@@ -9,6 +9,7 @@ namespace Blossom.Core.Visual
         private static readonly Dictionary<BackgroundShaderType, SKRuntimeEffect> _effects = new();
         private static readonly Dictionary<BorderEffectType, SKRuntimeEffect> _borderEffects = new();
         private static readonly object _lock = new();
+        private static SKRuntimeEffect? _halftoneEffect;
 
         public const string CrtShaderSource = @"
             uniform float u_time;
@@ -319,6 +320,73 @@ namespace Blossom.Core.Visual
             return effect.ToShader(true, uniforms, children);
         }
 
+        public const string HalftoneTransitionShaderSource = @"
+            uniform float u_progress;
+            uniform float2 u_resolution;
+            uniform float2 u_elementPos;
+
+            float my_smoothstep(float edge0, float edge1, float x) {
+                float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                return t * t * (3.0 - 2.0 * t);
+            }
+
+            half4 main(float2 fragCoord) {
+                float2 screenCoord = fragCoord + u_elementPos;
+                float cellSize = 16.0;
+                
+                // Compute coordinates inside the grid cell in screen space
+                float2 cellCoord = screenCoord - cellSize * floor(screenCoord / cellSize);
+                float2 center = float2(cellSize / 2.0);
+                float dist = distance(cellCoord, center);
+                
+                // Max radius to cover the cell corners completely
+                float maxRadius = cellSize * 0.75;
+                
+                // Progress-based dot radius. We add a gradient fade from left to right!
+                // The gradient is relative to the element's local coordinate space
+                float gradient = fragCoord.x / u_resolution.x;
+                
+                // Let's calculate local progress for this cell
+                float localProgress = u_progress;
+                
+                // Grow dots dynamically
+                float dotProgress = clamp((localProgress * 1.3) - (gradient * 0.3), 0.0, 1.0);
+                
+                float targetRadius = maxRadius * dotProgress;
+                
+                // Smoothstep for anti-aliasing the edges
+                float alpha = 1.0 - my_smoothstep(targetRadius - 1.0, targetRadius + 1.0, dist);
+                
+                return half4(1.0, 1.0, 1.0, alpha);
+            }
+        ";
+
+        public static SKShader CreateHalftoneShader(float progress, float width, float height, float screenX, float screenY)
+        {
+            if (_halftoneEffect == null)
+            {
+                lock (_lock)
+                {
+                    if (_halftoneEffect == null)
+                    {
+                        _halftoneEffect = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string errors);
+                        if (_halftoneEffect == null)
+                        {
+                            Console.WriteLine("[SHADER ERROR] Halftone Transition Shader compilation failed: " + errors);
+                            return null!;
+                        }
+                    }
+                }
+            }
+
+            var uniforms = new SKRuntimeEffectUniforms(_halftoneEffect);
+            uniforms["u_progress"] = progress;
+            uniforms["u_resolution"] = new float[] { width, height };
+            uniforms["u_elementPos"] = new float[] { screenX, screenY };
+
+            return _halftoneEffect.ToShader(false, uniforms);
+        }
+
         public static void TestCompilation()
         {
             try
@@ -337,6 +405,9 @@ namespace Blossom.Core.Visual
 
                 var glassBorder = SKRuntimeEffect.Create(GlassBorderShaderSource, out string glassBorderErrors);
                 Console.WriteLine("[SHADER TEST] Glass Border compilation: " + (glassBorder != null ? "SUCCESS" : "FAILED - " + glassBorderErrors));
+
+                var halftone = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string halftoneErrors);
+                Console.WriteLine("[SHADER TEST] Halftone Transition compilation: " + (halftone != null ? "SUCCESS" : "FAILED - " + halftoneErrors));
             }
             catch (Exception ex)
             {
@@ -359,6 +430,9 @@ namespace Blossom.Core.Visual
                     effect.Dispose();
                 }
                 _borderEffects.Clear();
+
+                _halftoneEffect?.Dispose();
+                _halftoneEffect = null;
             }
         }
     }
