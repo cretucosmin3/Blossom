@@ -692,9 +692,10 @@ public class DrawBorderCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
+        float margin = 24f;
         if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
         {
-            canvas.DrawImage(_cachedImage, _localBounds.Left, _localBounds.Top);
+            canvas.DrawImage(_cachedImage, _localBounds.Left - margin, _localBounds.Top - margin);
             return;
         }
 
@@ -724,7 +725,9 @@ public class DrawBorderCommand : DrawCommand
 
         if (_renderMode == EffectRenderMode.OnDemand)
         {
-            var info = new SKImageInfo((int)Math.Max(1, _localBounds.Width), (int)Math.Max(1, _localBounds.Height), SKColorType.Rgba8888, SKAlphaType.Premul);
+            int surfaceW = (int)Math.Max(1, _localBounds.Width + 2 * margin);
+            int surfaceH = (int)Math.Max(1, _localBounds.Height + 2 * margin);
+            var info = new SKImageInfo(surfaceW, surfaceH, SKColorType.Rgba8888, SKAlphaType.Premul);
             using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
             if (tempSurface != null)
             {
@@ -733,7 +736,7 @@ public class DrawBorderCommand : DrawCommand
 
                 using (new SKAutoCanvasRestore(tempCanvas))
                 {
-                    tempCanvas.Translate(-_localBounds.Left, -_localBounds.Top);
+                    tempCanvas.Translate(-_localBounds.Left + margin, -_localBounds.Top + margin);
 
                     if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
                     {
@@ -766,7 +769,7 @@ public class DrawBorderCommand : DrawCommand
 
             if (_cachedImage != null)
             {
-                canvas.DrawImage(_cachedImage, _localBounds.Left, _localBounds.Top);
+                canvas.DrawImage(_cachedImage, _localBounds.Left - margin, _localBounds.Top - margin);
             }
             return;
         }

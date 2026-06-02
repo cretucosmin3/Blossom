@@ -13,6 +13,44 @@ public class VisualElement : IDisposable
 
     public string Name { get; set; }
 
+    #region Transitions
+    public float EffectiveTransitionProgress
+    {
+        get
+        {
+            if (Style != null && Style.TransitionType != TransitionEffectType.None)
+                return Style.TransitionProgress;
+            if (Parent != null)
+                return Parent.EffectiveTransitionProgress;
+            return 1.0f;
+        }
+    }
+
+    public TransitionEffectType EffectiveTransitionType
+    {
+        get
+        {
+            if (Style != null && Style.TransitionType != TransitionEffectType.None)
+                return Style.TransitionType;
+            if (Parent != null)
+                return Parent.EffectiveTransitionType;
+            return TransitionEffectType.None;
+        }
+    }
+
+    public VisualElement TransitionHost
+    {
+        get
+        {
+            if (Style != null && Style.TransitionType != TransitionEffectType.None)
+                return this;
+            if (Parent != null)
+                return Parent.TransitionHost;
+            return this;
+        }
+    }
+    #endregion
+
     #region User Interactions
     public bool HasFocus { get { return ParentView.FocusedElement == this; } }
     public bool Focusable { get; set; }
@@ -49,10 +87,11 @@ public class VisualElement : IDisposable
             ScheduleRender();
         }
 
-        // If the element has active shaders or animated border effects, keep scheduling redrawing frames
+        // If the element has active shaders, animated border effects, or an active transition shader, keep scheduling redrawing frames
         if (Style != null && (
             Style.BackgroundShader != BackgroundShaderType.None ||
-            Style.BorderEffect != BorderEffectType.None))
+            Style.BorderEffect != BorderEffectType.None ||
+            (EffectiveTransitionType != TransitionEffectType.None && EffectiveTransitionProgress < 1.0f)))
         {
             ScheduleRender();
         }
@@ -678,6 +717,9 @@ public class VisualElement : IDisposable
         var cmds = ParentView.Ledger.GetCommands(Name);
         if (cmds == null) return;
 
+        float transitionProgress = EffectiveTransitionProgress;
+        TransitionEffectType transitionType = EffectiveTransitionType;
+
         using (new SKAutoCanvasRestore(targetCanvas))
         {
             if (_hasClippingAncestors)
@@ -687,11 +729,49 @@ public class VisualElement : IDisposable
 
             var globalMatrix3D = Transform.GetGlobalM44();
             var globalMatrix2D = globalMatrix3D.Matrix;
-            targetCanvas.Concat(ref globalMatrix2D);
+            
+            bool hasTransition = transitionType == TransitionEffectType.HalftoneDots && transitionProgress < 1.0f;
+            int saveCount = -1;
+
+            if (hasTransition)
+            {
+                float margin = 32f;
+                var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
+                targetCanvas.Concat(ref globalMatrix2D);
+                saveCount = targetCanvas.SaveLayer(localRect, null);
+            }
+            else
+            {
+                targetCanvas.Concat(ref globalMatrix2D);
+            }
 
             for (int i = 0; i < cmds.Count; i++)
             {
                 cmds[i].Execute(targetCanvas);
+            }
+
+            if (saveCount != -1)
+            {
+                var host = TransitionHost;
+                float hostW = host.Transform.Computed.Width;
+                float hostH = host.Transform.Computed.Height;
+                float screenX = globalMatrix2D.TransX;
+                float screenY = globalMatrix2D.TransY;
+
+                using var halftoneShader = SKSLShaderManager.CreateHalftoneShader(transitionProgress, hostW, hostH, screenX, screenY);
+                if (halftoneShader != null)
+                {
+                    using var maskPaint = new SKPaint
+                    {
+                        Shader = halftoneShader,
+                        BlendMode = SKBlendMode.DstIn,
+                        IsAntialias = true
+                    };
+                    float margin = 32f;
+                    var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
+                    targetCanvas.DrawRect(localRect, maskPaint);
+                }
+                targetCanvas.RestoreToCount(saveCount);
             }
         }
     }

@@ -19,6 +19,10 @@ namespace Blossom.Testing.Views
         private float _baseX;
         private bool _autoAnimate = true;
 
+        private float _transitionTarget = 1.0f;
+        private bool _transitionLooping = false;
+        private float _transitionSpeed = 1.0f;
+
         public NeonShowcaseView() : base("Neon Showcase")
         {
             // Dark Cyberpunk Background
@@ -137,6 +141,8 @@ namespace Blossom.Testing.Views
                     },
                     BorderEffect = BorderEffectType.GlassReflection,
                     BorderEffectSpeed = 1f,
+                    TransitionType = TransitionEffectType.HalftoneDots,
+                    TransitionProgress = 1.0f,
                     Shadow = new ShadowStyle
                     {
                         Color = new SKColor(0, 0, 0, 80),
@@ -422,13 +428,73 @@ namespace Blossom.Testing.Views
             };
             AddElement(btnAdjustBlur);
 
+            // Row 4: Halftone Shader Transition Controls
+            float row4Y = row3Y + ctrlBtnH + 15f;
+
+            var btnTransIn = new NeonButton("HALFTONE REVEAL", new SKColor(57, 255, 20), ctrlBtnW, ctrlBtnH)
+            {
+                Transform = { X = startCtrlX, Y = row4Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
+                    _transitionLooping = false;
+                    _transitionTarget = 1.0f;
+                }
+            };
+            AddElement(btnTransIn);
+
+            var btnTransOut = new NeonButton("HALFTONE HIDE", new SKColor(255, 0, 110), ctrlBtnW, ctrlBtnH)
+            {
+                Transform = { X = startCtrlX + ctrlBtnW + btnGap, Y = row4Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
+                    _transitionLooping = false;
+                    _transitionTarget = 0.0f;
+                }
+            };
+            AddElement(btnTransOut);
+
+            var btnTransLoop = new NeonButton("LOOP TRANSITION", new SKColor(255, 170, 0), ctrlBtnW, ctrlBtnH)
+            {
+                Transform = { X = startCtrlX + (ctrlBtnW + btnGap) * 2f, Y = row4Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
+                    _transitionLooping = !_transitionLooping;
+                    if (_transitionLooping)
+                    {
+                        _transitionTarget = _glassCard.Style.TransitionProgress > 0.5f ? 0.0f : 1.0f;
+                    }
+                }
+            };
+            AddElement(btnTransLoop);
+
+            NeonButton btnTransType = null!;
+            btnTransType = new NeonButton("DISABLE DOTS", new SKColor(120, 120, 120), ctrlBtnW, ctrlBtnH)
+            {
+                Transform = { X = startCtrlX + (ctrlBtnW + btnGap) * 3f, Y = row4Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
+                    _transitionLooping = false;
+                    if (_glassCard.Style.TransitionType == TransitionEffectType.HalftoneDots)
+                    {
+                        _glassCard.Style.TransitionType = TransitionEffectType.None;
+                        btnTransType.Text = "ENABLE DOTS";
+                    }
+                    else
+                    {
+                        _glassCard.Style.TransitionType = TransitionEffectType.HalftoneDots;
+                        btnTransType.Text = "DISABLE DOTS";
+                    }
+                }
+            };
+            AddElement(btnTransType);
+
             // Bottom Navigation Links
             float backBtnWidth = 240f;
             float backBtnHeight = 50f;
             float centerGap = 20f;
             float totalNavWidth = (3f * backBtnWidth) + (2f * centerGap);
             float startNavX = (Width / 2f) - (totalNavWidth / 2f);
-            float navY = row3Y + ctrlBtnH + 30f;
+            float navY = row4Y + ctrlBtnH + 30f;
 
             var backBtn = new NeonButton("➜ DASHBOARD", new SKColor(139, 92, 246), backBtnWidth, backBtnHeight)
             {
@@ -465,6 +531,30 @@ namespace Blossom.Testing.Views
                 float offset = (float)Math.Sin(SKSLShaderTimeTracker.ElapsedSeconds * 1.2f) * 230f;
                 
                 _glassCard.Transform.X = centerLimitX + offset;
+            }
+
+            // Animate transition progress towards target
+            if (_glassCard != null)
+            {
+                float current = _glassCard.Style.TransitionProgress;
+                if (_transitionLooping)
+                {
+                    if (current >= 1.0f) _transitionTarget = 0.0f;
+                    else if (current <= 0.0f) _transitionTarget = 1.0f;
+                }
+
+                if (Math.Abs(current - _transitionTarget) > 0.001f)
+                {
+                    float step = SKSLShaderTimeTracker.DeltaTime * _transitionSpeed;
+                    if (current < _transitionTarget)
+                    {
+                        _glassCard.Style.TransitionProgress = Math.Min(_transitionTarget, current + step);
+                    }
+                    else
+                    {
+                        _glassCard.Style.TransitionProgress = Math.Max(_transitionTarget, current - step);
+                    }
+                }
             }
         }
     }
