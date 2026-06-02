@@ -352,6 +352,131 @@ public class VisualElement : IDisposable
         }
     }
 
+    private SKBitmap? _BackgroundImage;
+    public SKBitmap? BackgroundImage
+    {
+        get => _BackgroundImage;
+        set
+        {
+            if (_BackgroundImage != value)
+            {
+                _BackgroundImage?.Dispose();
+                _BackgroundImage = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    private ImageScaleMode _BackgroundImageScale = ImageScaleMode.Stretch;
+    public ImageScaleMode BackgroundImageScale
+    {
+        get => _BackgroundImageScale;
+        set
+        {
+            if (_BackgroundImageScale != value)
+            {
+                _BackgroundImageScale = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    private float _BackgroundImageBlur = 0f;
+    public float BackgroundImageBlur
+    {
+        get => _BackgroundImageBlur;
+        set
+        {
+            if (_BackgroundImageBlur != value)
+            {
+                _BackgroundImageBlur = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    private float _BackgroundImageGrayscale = 0f;
+    public float BackgroundImageGrayscale
+    {
+        get => _BackgroundImageGrayscale;
+        set
+        {
+            if (_BackgroundImageGrayscale != value)
+            {
+                _BackgroundImageGrayscale = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    private SKColor _BackgroundImageTintColor = SKColors.Transparent;
+    public SKColor BackgroundImageTintColor
+    {
+        get => _BackgroundImageTintColor;
+        set
+        {
+            if (_BackgroundImageTintColor != value)
+            {
+                _BackgroundImageTintColor = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    private static readonly System.Net.Http.HttpClient _httpClient = new();
+
+    public void LoadImageFromFile(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                BackgroundImage = null;
+                return;
+            }
+            if (System.IO.File.Exists(filePath))
+            {
+                BackgroundImage = SKBitmap.Decode(filePath);
+            }
+            else
+            {
+                Console.WriteLine($"[ERROR] File not found: {filePath}");
+                BackgroundImage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to load image from file '{filePath}': {ex.Message}");
+            BackgroundImage = null;
+        }
+    }
+
+    public void LoadImageFromUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            BackgroundImage = null;
+            return;
+        }
+
+        System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                var bytes = await _httpClient.GetByteArrayAsync(url);
+                var bmp = SKBitmap.Decode(bytes);
+                if (bmp != null)
+                {
+                    BackgroundImage = bmp;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to load image from URL '{url}': {ex.Message}");
+            }
+        });
+    }
+
     public void AddChild(VisualElement child)
     {
         child.Parent = this;
@@ -629,6 +754,23 @@ public class VisualElement : IDisposable
             ));
         }
 
+        // 2.5 Draw Background Image
+        if (BackgroundImage != null)
+        {
+            cmds.Add(new DrawImageCommand(
+                BackgroundImage,
+                rect,
+                BackgroundImageScale,
+                Style?.Border?.RoundnessTopLeft ?? 0,
+                Style?.Border?.RoundnessTopRight ?? 0,
+                Style?.Border?.RoundnessBottomRight ?? 0,
+                Style?.Border?.RoundnessBottomLeft ?? 0,
+                BackgroundImageBlur,
+                BackgroundImageGrayscale,
+                BackgroundImageTintColor
+            ));
+        }
+
         // 3. Draw Stroke/Border
         if (Style?.Border?.Width > 0 && Style.Border.Color.Alpha > 0)
         {
@@ -861,6 +1003,7 @@ public class VisualElement : IDisposable
     {
         paint.Dispose();
         _cachedRoundRect?.Dispose();
+        _BackgroundImage?.Dispose();
         OnDisposing?.Invoke(this);
 
         ParentView.Elements.RemoveElement(this);

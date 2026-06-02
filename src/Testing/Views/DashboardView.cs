@@ -28,6 +28,10 @@ namespace Blossom.Testing.Views
         private LiveTelemetryCard? _card2;
         private LiveTelemetryCard? _card3;
 
+        private VisualElement? _imageCard1;
+        private VisualElement? _imageCard2;
+        private VisualElement? _imageCard3;
+
         private float _animTime = 0f;
         private float _lastWidth = 0f;
         private float _lastHeight = 0f;
@@ -401,6 +405,100 @@ namespace Blossom.Testing.Views
             optimizeBtn.OnClick = () => Console.WriteLine("Triggering UI optimization...");
             _goalsPanel.AddChild(optimizeBtn);
 
+            // --- 6. IMAGE SHOWCASE GRID ---
+            var imgStyle1 = new ElementStyle
+            {
+                BackColor = new SKColor(30, 27, 75), // Dark indigo background for empty zones
+                Border = new BorderStyle { Roundness = 16, Width = 1, Color = new SKColor(255, 255, 255, 20) },
+                Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(60), SpreadY = 8, OffsetY = 4 }
+            };
+
+            var imgStyle2 = new ElementStyle
+            {
+                BackColor = new SKColor(30, 27, 75),
+                Border = new BorderStyle { Roundness = 16, Width = 1, Color = new SKColor(255, 255, 255, 20) },
+                Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(60), SpreadY = 8, OffsetY = 4 }
+            };
+
+            var imgStyle3 = new ElementStyle
+            {
+                BackColor = new SKColor(30, 27, 75),
+                Border = new BorderStyle { Roundness = 16, Width = 1, Color = new SKColor(255, 255, 255, 20) },
+                Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(60), SpreadY = 8, OffsetY = 4 }
+            };
+
+            _imageCard1 = new VisualElement
+            {
+                Name = "ImageCard1",
+                Style = imgStyle1,
+                Transform = new Transform(0, 710f, 200, 240f) { Anchor = Anchor.Top | Anchor.Left }
+            };
+            _imageCard1.BackgroundImageScale = ImageScaleMode.Contain;
+            _imageCard1.BackgroundImageGrayscale = 1.0f; // Enable Grayscale effect
+            _imageCard1.LoadImageFromUrl("https://picsum.photos/id/10/600/400");
+            scrollArea.AddChild(_imageCard1);
+
+            _imageCard1.AddChild(new VisualElement
+            {
+                Name = "Image1_Badge",
+                Text = "CONTAIN + GRAYSCALE",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(15, 23, 42, 180), // Glassmorphic slate
+                    Border = new BorderStyle { Roundness = 6 },
+                    Text = new TextStyle { Color = new SKColor(56, 189, 248), Size = 10, Weight = 700, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(12, 12, 170, 24) { Anchor = Anchor.Top | Anchor.Left }
+            });
+
+            _imageCard2 = new VisualElement
+            {
+                Name = "ImageCard2",
+                Style = imgStyle2,
+                Transform = new Transform(0, 710f, 200, 240f) { Anchor = Anchor.Top | Anchor.Left }
+            };
+            _imageCard2.BackgroundImageScale = ImageScaleMode.Cover;
+            _imageCard2.BackgroundImageBlur = 8f; // Enable Blur effect
+            _imageCard2.LoadImageFromUrl("https://picsum.photos/id/48/600/400");
+            scrollArea.AddChild(_imageCard2);
+
+            _imageCard2.AddChild(new VisualElement
+            {
+                Name = "Image2_Badge",
+                Text = "COVER + BLUR (8px)",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(15, 23, 42, 180),
+                    Border = new BorderStyle { Roundness = 6 },
+                    Text = new TextStyle { Color = new SKColor(56, 189, 248), Size = 10, Weight = 700, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(12, 12, 170, 24) { Anchor = Anchor.Top | Anchor.Left }
+            });
+
+            _imageCard3 = new VisualElement
+            {
+                Name = "ImageCard3",
+                Style = imgStyle3,
+                Transform = new Transform(0, 710f, 200, 240f) { Anchor = Anchor.Top | Anchor.Left }
+            };
+            _imageCard3.BackgroundImageScale = ImageScaleMode.Stretch;
+            _imageCard3.BackgroundImageTintColor = new SKColor(56, 189, 248, 80); // Enable Sky-blue Tint overlay
+            _imageCard3.LoadImageFromUrl("https://picsum.photos/id/60/600/400");
+            scrollArea.AddChild(_imageCard3);
+
+            _imageCard3.AddChild(new VisualElement
+            {
+                Name = "Image3_Badge",
+                Text = "STRETCH + BLUE TINT",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(15, 23, 42, 180),
+                    Border = new BorderStyle { Roundness = 6 },
+                    Text = new TextStyle { Color = new SKColor(56, 189, 248), Size = 10, Weight = 700, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(12, 12, 170, 24) { Anchor = Anchor.Top | Anchor.Left }
+            });
+
             // Execute initial layout solving
             LayoutGrid();
         }
@@ -512,6 +610,23 @@ namespace Blossom.Testing.Views
             {
                 _card3.Transform.X = sidebarWidth + padding + (cardWidth + gap) * 2f;
                 _card3.Transform.Width = cardWidth;
+            }
+
+            // Responsive image cards positioning
+            if (_imageCard1 != null)
+            {
+                _imageCard1.Transform.X = sidebarWidth + padding;
+                _imageCard1.Transform.Width = cardWidth;
+            }
+            if (_imageCard2 != null)
+            {
+                _imageCard2.Transform.X = sidebarWidth + padding + cardWidth + gap;
+                _imageCard2.Transform.Width = cardWidth;
+            }
+            if (_imageCard3 != null)
+            {
+                _imageCard3.Transform.X = sidebarWidth + padding + (cardWidth + gap) * 2f;
+                _imageCard3.Transform.Width = cardWidth;
             }
 
             // Waveform chart and Goals panel alignment
