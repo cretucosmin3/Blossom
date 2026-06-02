@@ -332,6 +332,9 @@ public static class Browser
 
     private static void Render(double time)
     {
+        Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = (float)time;
+        Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += (float)time;
+
         Renderer.ResetContext();
         // Renderer.Canvas.Clear(BrowserApp.ActiveView?.BackColor ?? DefaultBackColor);
         

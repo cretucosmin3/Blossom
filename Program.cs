@@ -42,6 +42,9 @@ namespace Blossom
 
             Blossom.Core.BenchmarkManager.CheckArgs(Environment.GetCommandLineArgs());
 
+            // Run SKSL Shader verification tests
+            Blossom.Core.Visual.SKSLShaderManager.TestCompilation();
+
             Browser.Initialize();
             Environment.Exit(0);
         }
