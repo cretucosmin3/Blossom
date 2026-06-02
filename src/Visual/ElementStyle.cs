@@ -8,9 +8,76 @@ public class ElementStyle : IDisposable
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
     private SkiaSharp.SKPathEffect _BackgroundPathEffect;
 
+    private BackgroundShaderType _BackgroundShader = BackgroundShaderType.None;
+    private SkiaSharp.SKColor _BackgroundShaderColor = SkiaSharp.SKColors.Transparent;
+    private BorderEffectType _BorderEffect = BorderEffectType.None;
+    private float _BorderEffectSpeed = 1f;
+    private float _BorderEffectAmount = 5f;
+    private float _BackdropBlur = 0f;
+
     public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; }
     public ShadowStyle Shadow { get; set; }
+
+    public BackgroundShaderType BackgroundShader
+    {
+        get => _BackgroundShader;
+        set
+        {
+            _BackgroundShader = value;
+            ScheduleRender();
+        }
+    }
+
+    public SkiaSharp.SKColor BackgroundShaderColor
+    {
+        get => _BackgroundShaderColor;
+        set
+        {
+            _BackgroundShaderColor = value;
+            ScheduleRender();
+        }
+    }
+
+    public BorderEffectType BorderEffect
+    {
+        get => _BorderEffect;
+        set
+        {
+            _BorderEffect = value;
+            ScheduleRender();
+        }
+    }
+
+    public float BorderEffectSpeed
+    {
+        get => _BorderEffectSpeed;
+        set
+        {
+            _BorderEffectSpeed = value;
+            ScheduleRender();
+        }
+    }
+
+    public float BorderEffectAmount
+    {
+        get => _BorderEffectAmount;
+        set
+        {
+            _BorderEffectAmount = value;
+            ScheduleRender();
+        }
+    }
+
+    public float BackdropBlur
+    {
+        get => _BackdropBlur;
+        set
+        {
+            _BackdropBlur = value;
+            ScheduleRender();
+        }
+    }
 
     internal void AssignElement(VisualElement element)
     {

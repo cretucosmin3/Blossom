@@ -30,6 +30,7 @@ namespace Blossom.Core
 
         private VisualElement hoveredElement;
         private VisualElement mouseDownElement;
+        public VisualElement HoveredElement => hoveredElement;
 
         private readonly object _dirtyRectsLock = new();
         internal readonly List<SKRect> DirtyRects = new();
@@ -229,6 +230,8 @@ namespace Blossom.Core
                 DirtyRects.Clear();
             }
 
+            RenderRequired = false;
+
             // Union dirty rects to simplify clipping path and minimize element overlap checks
             if (_localDirtyRects.Count > 10)
             {
@@ -269,6 +272,8 @@ namespace Blossom.Core
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
+                element.UpdateHover(Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime);
+
                 if (element.Transform.Evaluate())
                 {
                     element.IsDirty = true;
@@ -330,8 +335,6 @@ namespace Blossom.Core
                     }
                 }
             }
-
-            RenderRequired = false;
         }
 
         internal void RenderChanges(Action doChanges)

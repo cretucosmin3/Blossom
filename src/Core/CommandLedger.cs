@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SkiaSharp;
+using Blossom.Core.Visual;
 
 namespace Blossom.Core;
 
@@ -367,6 +368,241 @@ public class DrawSvgCommand : DrawCommand
         _paint.ImageFilter?.Dispose();
         _paint.ColorFilter?.Dispose();
         _paint.Dispose();
+    }
+}
+
+/// <summary>
+/// Command to render backdrop blur for glassmorphism.
+/// </summary>
+public class DrawBackdropBlurCommand : DrawCommand
+{
+    private readonly float _blurSigma;
+    private readonly float _rTopLeft;
+    private readonly float _rTopRight;
+    private readonly float _rBottomRight;
+    private readonly float _rBottomLeft;
+    private readonly VisualElement _element;
+
+    public DrawBackdropBlurCommand(
+        float blurSigma,
+        float rTopLeft,
+        float rTopRight,
+        float rBottomRight,
+        float rBottomLeft,
+        VisualElement element)
+    {
+        _blurSigma = blurSigma;
+        _rTopLeft = rTopLeft;
+        _rTopRight = rTopRight;
+        _rBottomRight = rBottomRight;
+        _rBottomLeft = rBottomLeft;
+        _element = element;
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        if (_blurSigma <= 0) return;
+
+        // 1. Take a snapshot of the current offscreen surface pixels
+        using var snapshot = Renderer.OffscreenSurface.Snapshot();
+        if (snapshot == null) return;
+
+        // 2. Create the local rounded rectangle path
+        float w = _element.Transform.Computed.Width;
+        float h = _element.Transform.Computed.Height;
+        var rect = new SKRect(0, 0, w, h);
+        using var localRoundRect = new SKRoundRect(rect);
+        localRoundRect.SetRectRadii(rect, new SKPoint[] {
+            new(_rTopLeft, _rTopLeft),
+            new(_rTopRight, _rTopRight),
+            new(_rBottomRight, _rBottomRight),
+            new(_rBottomLeft, _rBottomLeft),
+        });
+
+        using var path = new SKPath();
+        path.AddRoundRect(localRoundRect);
+
+        // Transform the path to global screen space using the element's global matrix
+        var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+        path.Transform(globalMatrix);
+
+        // 3. Draw the blurred backdrop image clipped to the transformed path
+        using (new SKAutoCanvasRestore(canvas))
+        {
+            // Reset transform to draw in screen-space
+            canvas.SetMatrix(SKMatrix.Identity);
+
+            // Clip drawing to the element's actual shape
+            canvas.ClipPath(path, SKClipOperation.Intersect, true);
+
+            // Blur paint
+            using var paint = new SKPaint
+            {
+                IsAntialias = true,
+                ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
+            };
+
+            var globalBounds = path.Bounds;
+            
+            // Draw the snapshot portion onto the canvas
+            canvas.DrawImage(snapshot, globalBounds, globalBounds, paint);
+        }
+    }
+}
+
+/// <summary>
+/// Command to draw dynamic GPU fragment shader background (SKSL).
+/// </summary>
+public class DrawShaderBackgroundCommand : DrawCommand
+{
+    private readonly Blossom.Core.Visual.BackgroundShaderType _type;
+    private readonly SKColor _baseColor;
+    private readonly float _rTopLeft;
+    private readonly float _rTopRight;
+    private readonly float _rBottomRight;
+    private readonly float _rBottomLeft;
+    private readonly VisualElement _element;
+    private readonly SKRoundRect _roundRect;
+
+    public DrawShaderBackgroundCommand(
+        Blossom.Core.Visual.BackgroundShaderType type,
+        SKColor baseColor,
+        float rTopLeft,
+        float rTopRight,
+        float rBottomRight,
+        float rBottomLeft,
+        VisualElement element)
+    {
+        _type = type;
+        _baseColor = baseColor;
+        _rTopLeft = rTopLeft;
+        _rTopRight = rTopRight;
+        _rBottomRight = rBottomRight;
+        _rBottomLeft = rBottomLeft;
+        _element = element;
+
+        var rect = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
+        _roundRect = new SKRoundRect(rect);
+        _roundRect.SetRectRadii(rect, new SKPoint[] {
+            new(_rTopLeft, _rTopLeft),
+            new(_rTopRight, _rTopRight),
+            new(_rBottomRight, _rBottomRight),
+            new(_rBottomLeft, _rBottomLeft),
+        });
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
+        float hoverProgress = _element.HoverProgress;
+        float w = _element.Transform.Computed.Width;
+        float h = _element.Transform.Computed.Height;
+
+        using var shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
+        if (shader == null) return;
+
+        using var paint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+            Shader = shader,
+            PathEffect = _element.Style?.BackgroundPathEffect
+        };
+
+        canvas.DrawRoundRect(_roundRect, paint);
+    }
+
+    public override void Dispose()
+    {
+        _roundRect.Dispose();
+    }
+}
+
+/// <summary>
+/// Command to draw dynamic borders with vector animation effects (jitter, marching ants).
+/// </summary>
+public class DrawBorderCommand : DrawCommand
+{
+    private readonly Blossom.Core.Visual.BorderEffectType _effectType;
+    private readonly float _width;
+    private readonly float _speed;
+    private readonly float _amount;
+    private readonly SKColor _color;
+    private readonly float _rTopLeft;
+    private readonly float _rTopRight;
+    private readonly float _rBottomRight;
+    private readonly float _rBottomLeft;
+    private readonly VisualElement _element;
+    private readonly SKRoundRect _roundRect;
+
+    public DrawBorderCommand(
+        Blossom.Core.Visual.BorderEffectType effectType,
+        float width,
+        float speed,
+        float amount,
+        SKColor color,
+        float rTopLeft,
+        float rTopRight,
+        float rBottomRight,
+        float rBottomLeft,
+        VisualElement element)
+    {
+        _effectType = effectType;
+        _width = width;
+        _speed = speed;
+        _amount = amount;
+        _color = color;
+        _rTopLeft = rTopLeft;
+        _rTopRight = rTopRight;
+        _rBottomRight = rBottomRight;
+        _rBottomLeft = rBottomLeft;
+        _element = element;
+
+        var rect = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
+        rect.Inflate(_width / 2f, _width / 2f);
+
+        _roundRect = new SKRoundRect(rect);
+        _roundRect.SetRectRadii(rect, new SKPoint[] {
+            new(_rTopLeft, _rTopLeft),
+            new(_rTopRight, _rTopRight),
+            new(_rBottomRight, _rBottomRight),
+            new(_rBottomLeft, _rBottomLeft),
+        });
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
+
+        SKPathEffect? effect = null;
+        if (_effectType == Blossom.Core.Visual.BorderEffectType.Jitter)
+        {
+            float seedVariation = (float)(Math.Sin(time * _speed * 10f) + 1.0) / 2.0f;
+            float jitterAmount = _amount * (0.5f + 0.5f * seedVariation);
+            effect = SKPathEffect.CreateDiscrete(8f, jitterAmount);
+        }
+        else if (_effectType == Blossom.Core.Visual.BorderEffectType.MarchingAnts)
+        {
+            float phase = -time * _speed * 50f;
+            effect = SKPathEffect.CreateDash(new float[] { 15f, 10f }, phase);
+        }
+
+        using var paint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true,
+            StrokeWidth = _width,
+            Color = _color,
+            PathEffect = effect
+        };
+
+        canvas.DrawRoundRect(_roundRect, paint);
+        effect?.Dispose();
+    }
+
+    public override void Dispose()
+    {
+        _roundRect.Dispose();
     }
 }
 

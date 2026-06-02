@@ -31,6 +31,32 @@ public class VisualElement : IDisposable
             }
         }
     }
+
+    public float HoverProgress { get; internal set; } = 0f;
+
+    internal void UpdateHover(float dt)
+    {
+        bool isHovered = ParentView != null && ParentView.HoveredElement == this;
+        float target = isHovered ? 1f : 0f;
+        if (HoverProgress != target)
+        {
+            float speed = 8f; // Transition speed (approx. 125ms)
+            if (isHovered)
+                HoverProgress = Math.Min(1f, HoverProgress + dt * speed);
+            else
+                HoverProgress = Math.Max(0f, HoverProgress - dt * speed);
+
+            ScheduleRender();
+        }
+
+        // If the element has active shaders or animated border effects, keep scheduling redrawing frames
+        if (Style != null && (
+            Style.BackgroundShader != BackgroundShaderType.None ||
+            Style.BorderEffect != BorderEffectType.None))
+        {
+            ScheduleRender();
+        }
+    }
     #endregion
 
     #region Events
@@ -824,8 +850,33 @@ public class VisualElement : IDisposable
             ));
         }
 
-        // 2. Draw Fill
-        if ((Style != null && Style.BackColor.Alpha > 0) || (Style != null && Style.BackgroundPathEffect != null))
+        // 1.5 Draw Backdrop Blur (Glassmorphism)
+        if (Style != null && Style.BackdropBlur > 0)
+        {
+            cmds.Add(new DrawBackdropBlurCommand(
+                Style.BackdropBlur,
+                Style.Border?.RoundnessTopLeft ?? 0,
+                Style.Border?.RoundnessTopRight ?? 0,
+                Style.Border?.RoundnessBottomRight ?? 0,
+                Style.Border?.RoundnessBottomLeft ?? 0,
+                this
+            ));
+        }
+
+        // 2. Draw Fill / Background Shader
+        if (Style != null && Style.BackgroundShader != BackgroundShaderType.None)
+        {
+            cmds.Add(new DrawShaderBackgroundCommand(
+                Style.BackgroundShader,
+                Style.BackgroundShaderColor,
+                Style.Border?.RoundnessTopLeft ?? 0,
+                Style.Border?.RoundnessTopRight ?? 0,
+                Style.Border?.RoundnessBottomRight ?? 0,
+                Style.Border?.RoundnessBottomLeft ?? 0,
+                this
+            ));
+        }
+        else if ((Style != null && Style.BackColor.Alpha > 0) || (Style != null && Style.BackgroundPathEffect != null))
         {
             var fillPaint = new SKPaint
             {
@@ -881,26 +932,44 @@ public class VisualElement : IDisposable
         // 3. Draw Stroke/Border
         if (Style?.Border?.Width > 0 && Style.Border.Color.Alpha > 0)
         {
-            var strokePaint = new SKPaint
+            if (Style.BorderEffect != BorderEffectType.None)
             {
-                Style = SKPaintStyle.Stroke,
-                IsAntialias = true,
-                StrokeWidth = Style.Border.Width,
-                Color = Style.Border.Color,
-                PathEffect = Style.Border.PathEffect
-            };
-            
-            var borderRect = rect;
-            borderRect.Inflate(Style.Border.Width / 2f, Style.Border.Width / 2f);
-            
-            cmds.Add(new DrawRoundRectCommand(
-                borderRect,
-                Style.Border.RoundnessTopLeft,
-                Style.Border.RoundnessTopRight,
-                Style.Border.RoundnessBottomRight,
-                Style.Border.RoundnessBottomLeft,
-                strokePaint
-            ));
+                cmds.Add(new DrawBorderCommand(
+                    Style.BorderEffect,
+                    Style.Border.Width,
+                    Style.BorderEffectSpeed,
+                    Style.BorderEffectAmount,
+                    Style.Border.Color,
+                    Style.Border.RoundnessTopLeft,
+                    Style.Border.RoundnessTopRight,
+                    Style.Border.RoundnessBottomRight,
+                    Style.Border.RoundnessBottomLeft,
+                    this
+                ));
+            }
+            else
+            {
+                var strokePaint = new SKPaint
+                {
+                    Style = SKPaintStyle.Stroke,
+                    IsAntialias = true,
+                    StrokeWidth = Style.Border.Width,
+                    Color = Style.Border.Color,
+                    PathEffect = Style.Border.PathEffect
+                };
+                
+                var borderRect = rect;
+                borderRect.Inflate(Style.Border.Width / 2f, Style.Border.Width / 2f);
+                
+                cmds.Add(new DrawRoundRectCommand(
+                    borderRect,
+                    Style.Border.RoundnessTopLeft,
+                    Style.Border.RoundnessTopRight,
+                    Style.Border.RoundnessBottomRight,
+                    Style.Border.RoundnessBottomLeft,
+                    strokePaint
+                ));
+            }
         }
 
         // 4. Draw Text
