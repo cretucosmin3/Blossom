@@ -4,5 +4,6 @@ public enum BorderEffectType
 {
     None,
     Jitter,
-    MarchingAnts
+    MarchingAnts,
+    GlassReflection
 }

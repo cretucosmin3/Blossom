@@ -498,18 +498,42 @@ public class DrawShaderBackgroundCommand : DrawCommand
         float w = _element.Transform.Computed.Width;
         float h = _element.Transform.Computed.Height;
 
-        using var shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
+        SKShader? shader = null;
+        if (_type == Blossom.Core.Visual.BackgroundShaderType.GlassRefraction)
+        {
+            using var snapshot = Renderer.OffscreenSurface.Snapshot();
+            if (snapshot != null)
+            {
+                using var backdropShader = snapshot.ToShader();
+                var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
+                shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
+                    _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY);
+            }
+        }
+        else
+        {
+            shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
+        }
+
         if (shader == null) return;
 
-        using var paint = new SKPaint
+        try
         {
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true,
-            Shader = shader,
-            PathEffect = _element.Style?.BackgroundPathEffect
-        };
+            using var paint = new SKPaint
+            {
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true,
+                Shader = shader,
+                PathEffect = _element.Style?.BackgroundPathEffect
+            };
 
-        canvas.DrawRoundRect(_roundRect, paint);
+            canvas.DrawRoundRect(_roundRect, paint);
+        }
+        finally
+        {
+            shader.Dispose();
+        }
     }
 
     public override void Dispose()
@@ -596,7 +620,29 @@ public class DrawBorderCommand : DrawCommand
             PathEffect = effect
         };
 
-        canvas.DrawRoundRect(_roundRect, paint);
+        if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
+        {
+            using var snapshot = Renderer.OffscreenSurface.Snapshot();
+            if (snapshot != null)
+            {
+                using var backdropShader = snapshot.ToShader();
+                var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                float localW = _element.Transform.Computed.Width;
+                float localH = _element.Transform.Computed.Height;
+                var screenRect = globalMatrix.MapRect(new SKRect(0, 0, localW, localH));
+                
+                using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
+                    _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                
+                paint.Shader = borderShader;
+                canvas.DrawRoundRect(_roundRect, paint);
+            }
+        }
+        else
+        {
+            canvas.DrawRoundRect(_roundRect, paint);
+        }
+
         effect?.Dispose();
     }
 
