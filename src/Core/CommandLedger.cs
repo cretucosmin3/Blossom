@@ -372,6 +372,7 @@ public class DrawSvgCommand : DrawCommand
 }
 
 /// <summary>
+/// <summary>
 /// Command to render backdrop blur for glassmorphism.
 /// </summary>
 public class DrawBackdropBlurCommand : DrawCommand
@@ -382,6 +383,9 @@ public class DrawBackdropBlurCommand : DrawCommand
     private readonly float _rBottomRight;
     private readonly float _rBottomLeft;
     private readonly VisualElement _element;
+    private readonly EffectRenderMode _renderMode;
+    private SKImage? _cachedImage;
+    private SKRect _cachedBounds;
 
     public DrawBackdropBlurCommand(
         float blurSigma,
@@ -389,7 +393,8 @@ public class DrawBackdropBlurCommand : DrawCommand
         float rTopRight,
         float rBottomRight,
         float rBottomLeft,
-        VisualElement element)
+        VisualElement element,
+        EffectRenderMode renderMode)
     {
         _blurSigma = blurSigma;
         _rTopLeft = rTopLeft;
@@ -397,11 +402,23 @@ public class DrawBackdropBlurCommand : DrawCommand
         _rBottomRight = rBottomRight;
         _rBottomLeft = rBottomLeft;
         _element = element;
+        _renderMode = renderMode;
     }
 
     public override void Execute(SKCanvas canvas)
     {
         if (_blurSigma <= 0) return;
+
+        // If cached and in OnDemand mode, draw the cached snapshot directly in screen-space
+        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        {
+            using (new SKAutoCanvasRestore(canvas))
+            {
+                canvas.SetMatrix(SKMatrix.Identity);
+                canvas.DrawImage(_cachedImage, _cachedBounds.Left, _cachedBounds.Top);
+            }
+            return;
+        }
 
         // 1. Take a snapshot of the current offscreen surface pixels
         using var snapshot = Renderer.OffscreenSurface.Snapshot();
@@ -426,6 +443,36 @@ public class DrawBackdropBlurCommand : DrawCommand
         var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
         path.Transform(globalMatrix);
 
+        var globalBounds = path.Bounds;
+
+        if (_renderMode == EffectRenderMode.OnDemand)
+        {
+            // Create a GPU-backed offscreen surface (matching current GL rendering context)
+            var info = new SKImageInfo((int)Math.Max(1, globalBounds.Width), (int)Math.Max(1, globalBounds.Height), SKColorType.Rgba8888, SKAlphaType.Premul);
+            using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
+            if (tempSurface != null)
+            {
+                var tempCanvas = tempSurface.Canvas;
+                tempCanvas.Clear(SKColors.Transparent);
+
+                // Offset the path to start at 0, 0 relative to the cached image surface
+                using var tempPath = new SKPath(path);
+                tempPath.Offset(-globalBounds.Left, -globalBounds.Top);
+                tempCanvas.ClipPath(tempPath, SKClipOperation.Intersect, true);
+
+                using var paint = new SKPaint
+                {
+                    IsAntialias = true,
+                    ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
+                };
+                // Draw snapshot offset so the element's screen location aligns with 0, 0 in cached image
+                tempCanvas.DrawImage(snapshot, -globalBounds.Left, -globalBounds.Top, paint);
+
+                _cachedImage = tempSurface.Snapshot();
+                _cachedBounds = globalBounds;
+            }
+        }
+
         // 3. Draw the blurred backdrop image clipped to the transformed path
         using (new SKAutoCanvasRestore(canvas))
         {
@@ -442,11 +489,23 @@ public class DrawBackdropBlurCommand : DrawCommand
                 ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
             };
 
-            var globalBounds = path.Bounds;
-            
             // Draw the snapshot portion onto the canvas
-            canvas.DrawImage(snapshot, globalBounds, globalBounds, paint);
+            if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+            {
+                canvas.DrawImage(_cachedImage, globalBounds.Left, globalBounds.Top);
+            }
+            else
+            {
+                canvas.DrawImage(snapshot, globalBounds, globalBounds, paint);
+            }
         }
+    }
+
+    public override void Dispose()
+    {
+        _cachedImage?.Dispose();
+        _cachedImage = null;
+        base.Dispose();
     }
 }
 
@@ -463,6 +522,8 @@ public class DrawShaderBackgroundCommand : DrawCommand
     private readonly float _rBottomLeft;
     private readonly VisualElement _element;
     private readonly SKRoundRect _roundRect;
+    private readonly EffectRenderMode _renderMode;
+    private SKImage? _cachedImage;
 
     public DrawShaderBackgroundCommand(
         Blossom.Core.Visual.BackgroundShaderType type,
@@ -471,7 +532,8 @@ public class DrawShaderBackgroundCommand : DrawCommand
         float rTopRight,
         float rBottomRight,
         float rBottomLeft,
-        VisualElement element)
+        VisualElement element,
+        EffectRenderMode renderMode)
     {
         _type = type;
         _baseColor = baseColor;
@@ -480,6 +542,7 @@ public class DrawShaderBackgroundCommand : DrawCommand
         _rBottomRight = rBottomRight;
         _rBottomLeft = rBottomLeft;
         _element = element;
+        _renderMode = renderMode;
 
         var rect = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
         _roundRect = new SKRoundRect(rect);
@@ -493,6 +556,12 @@ public class DrawShaderBackgroundCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
+        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        {
+            canvas.DrawImage(_cachedImage, 0, 0);
+            return;
+        }
+
         float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
         float hoverProgress = _element.HoverProgress;
         float w = _element.Transform.Computed.Width;
@@ -528,7 +597,27 @@ public class DrawShaderBackgroundCommand : DrawCommand
                 PathEffect = _element.Style?.BackgroundPathEffect
             };
 
-            canvas.DrawRoundRect(_roundRect, paint);
+            if (_renderMode == EffectRenderMode.OnDemand)
+            {
+                var info = new SKImageInfo((int)Math.Max(1, w), (int)Math.Max(1, h), SKColorType.Rgba8888, SKAlphaType.Premul);
+                using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
+                if (tempSurface != null)
+                {
+                    var tempCanvas = tempSurface.Canvas;
+                    tempCanvas.Clear(SKColors.Transparent);
+                    tempCanvas.DrawRoundRect(_roundRect, paint);
+                    _cachedImage = tempSurface.Snapshot();
+                }
+
+                if (_cachedImage != null)
+                {
+                    canvas.DrawImage(_cachedImage, 0, 0);
+                }
+            }
+            else
+            {
+                canvas.DrawRoundRect(_roundRect, paint);
+            }
         }
         finally
         {
@@ -538,7 +627,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
 
     public override void Dispose()
     {
+        _cachedImage?.Dispose();
         _roundRect.Dispose();
+        base.Dispose();
     }
 }
 
@@ -558,6 +649,9 @@ public class DrawBorderCommand : DrawCommand
     private readonly float _rBottomLeft;
     private readonly VisualElement _element;
     private readonly SKRoundRect _roundRect;
+    private readonly EffectRenderMode _renderMode;
+    private SKImage? _cachedImage;
+    private SKRect _localBounds;
 
     public DrawBorderCommand(
         Blossom.Core.Visual.BorderEffectType effectType,
@@ -569,7 +663,8 @@ public class DrawBorderCommand : DrawCommand
         float rTopRight,
         float rBottomRight,
         float rBottomLeft,
-        VisualElement element)
+        VisualElement element,
+        EffectRenderMode renderMode)
     {
         _effectType = effectType;
         _width = width;
@@ -581,12 +676,13 @@ public class DrawBorderCommand : DrawCommand
         _rBottomRight = rBottomRight;
         _rBottomLeft = rBottomLeft;
         _element = element;
+        _renderMode = renderMode;
 
-        var rect = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
-        rect.Inflate(_width / 2f, _width / 2f);
+        _localBounds = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
+        _localBounds.Inflate(_width / 2f, _width / 2f);
 
-        _roundRect = new SKRoundRect(rect);
-        _roundRect.SetRectRadii(rect, new SKPoint[] {
+        _roundRect = new SKRoundRect(_localBounds);
+        _roundRect.SetRectRadii(_localBounds, new SKPoint[] {
             new(_rTopLeft, _rTopLeft),
             new(_rTopRight, _rTopRight),
             new(_rBottomRight, _rBottomRight),
@@ -596,6 +692,12 @@ public class DrawBorderCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
+        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        {
+            canvas.DrawImage(_cachedImage, _localBounds.Left, _localBounds.Top);
+            return;
+        }
+
         float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
 
         SKPathEffect? effect = null;
@@ -619,6 +721,55 @@ public class DrawBorderCommand : DrawCommand
             Color = _color,
             PathEffect = effect
         };
+
+        if (_renderMode == EffectRenderMode.OnDemand)
+        {
+            var info = new SKImageInfo((int)Math.Max(1, _localBounds.Width), (int)Math.Max(1, _localBounds.Height), SKColorType.Rgba8888, SKAlphaType.Premul);
+            using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
+            if (tempSurface != null)
+            {
+                var tempCanvas = tempSurface.Canvas;
+                tempCanvas.Clear(SKColors.Transparent);
+
+                using (new SKAutoCanvasRestore(tempCanvas))
+                {
+                    tempCanvas.Translate(-_localBounds.Left, -_localBounds.Top);
+
+                    if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
+                    {
+                        using var snapshot = Renderer.OffscreenSurface.Snapshot();
+                        if (snapshot != null)
+                        {
+                            using var backdropShader = snapshot.ToShader();
+                            var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                            float localW = _element.Transform.Computed.Width;
+                            float localH = _element.Transform.Computed.Height;
+                            var screenRect = globalMatrix.MapRect(new SKRect(0, 0, localW, localH));
+                            
+                            using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
+                                _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                            
+                            paint.Shader = borderShader;
+                            tempCanvas.DrawRoundRect(_roundRect, paint);
+                        }
+                    }
+                    else
+                    {
+                        tempCanvas.DrawRoundRect(_roundRect, paint);
+                    }
+                }
+
+                _cachedImage = tempSurface.Snapshot();
+            }
+
+            effect?.Dispose();
+
+            if (_cachedImage != null)
+            {
+                canvas.DrawImage(_cachedImage, _localBounds.Left, _localBounds.Top);
+            }
+            return;
+        }
 
         if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
         {
@@ -648,7 +799,9 @@ public class DrawBorderCommand : DrawCommand
 
     public override void Dispose()
     {
+        _cachedImage?.Dispose();
         _roundRect.Dispose();
+        base.Dispose();
     }
 }
 

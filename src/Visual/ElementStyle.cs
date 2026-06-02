@@ -14,6 +14,7 @@ public class ElementStyle : IDisposable
     private float _BorderEffectSpeed = 1f;
     private float _BorderEffectAmount = 5f;
     private float _BackdropBlur = 0f;
+    private EffectRenderMode _ShaderRenderMode = EffectRenderMode.OnDemand;
 
     public TextStyle Text { get; set; }
     public BorderStyle Border { get; set; }
@@ -75,6 +76,16 @@ public class ElementStyle : IDisposable
         set
         {
             _BackdropBlur = value;
+            ScheduleRender();
+        }
+    }
+
+    public EffectRenderMode ShaderRenderMode
+    {
+        get => _ShaderRenderMode;
+        set
+        {
+            _ShaderRenderMode = value;
             ScheduleRender();
         }
     }
