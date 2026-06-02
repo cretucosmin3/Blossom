@@ -859,7 +859,8 @@ public class VisualElement : IDisposable
                 Style.Border?.RoundnessTopRight ?? 0,
                 Style.Border?.RoundnessBottomRight ?? 0,
                 Style.Border?.RoundnessBottomLeft ?? 0,
-                this
+                this,
+                Style.ShaderRenderMode
             ));
         }
 
@@ -873,7 +874,8 @@ public class VisualElement : IDisposable
                 Style.Border?.RoundnessTopRight ?? 0,
                 Style.Border?.RoundnessBottomRight ?? 0,
                 Style.Border?.RoundnessBottomLeft ?? 0,
-                this
+                this,
+                Style.ShaderRenderMode
             ));
         }
         else if ((Style != null && Style.BackColor.Alpha > 0) || (Style != null && Style.BackgroundPathEffect != null))
@@ -944,7 +946,8 @@ public class VisualElement : IDisposable
                     Style.Border.RoundnessTopRight,
                     Style.Border.RoundnessBottomRight,
                     Style.Border.RoundnessBottomLeft,
-                    this
+                    this,
+                    Style.ShaderRenderMode
                 ));
             }
             else
