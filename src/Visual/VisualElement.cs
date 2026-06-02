@@ -423,6 +423,20 @@ public class VisualElement : IDisposable
         }
     }
 
+    private SKBlendMode _BackgroundImageTintBlendMode = SKBlendMode.SrcATop;
+    public SKBlendMode BackgroundImageTintBlendMode
+    {
+        get => _BackgroundImageTintBlendMode;
+        set
+        {
+            if (_BackgroundImageTintBlendMode != value)
+            {
+                _BackgroundImageTintBlendMode = value;
+                ScheduleRender();
+            }
+        }
+    }
+
     private static readonly System.Net.Http.HttpClient _httpClient = new();
 
     public void LoadImageFromFile(string filePath)
@@ -473,6 +487,76 @@ public class VisualElement : IDisposable
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] Failed to load image from URL '{url}': {ex.Message}");
+            }
+        });
+    }
+
+    private SkiaSharp.Extended.Svg.SKSvg? _BackgroundSvg;
+    public SkiaSharp.Extended.Svg.SKSvg? BackgroundSvg
+    {
+        get => _BackgroundSvg;
+        set
+        {
+            if (_BackgroundSvg != value)
+            {
+                _BackgroundSvg?.Picture?.Dispose();
+                _BackgroundSvg = value;
+                ScheduleRender();
+            }
+        }
+    }
+
+    public void LoadSvgFromFile(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                BackgroundSvg = null;
+                return;
+            }
+            if (System.IO.File.Exists(filePath))
+            {
+                var svg = new SkiaSharp.Extended.Svg.SKSvg();
+                svg.Load(filePath);
+                BackgroundSvg = svg;
+            }
+            else
+            {
+                Console.WriteLine($"[ERROR] Svg file not found: {filePath}");
+                BackgroundSvg = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to load SVG from file '{filePath}': {ex.Message}");
+            BackgroundSvg = null;
+        }
+    }
+
+    public void LoadSvgFromUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            BackgroundSvg = null;
+            return;
+        }
+
+        System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                var bytes = await _httpClient.GetByteArrayAsync(url);
+                using (var ms = new System.IO.MemoryStream(bytes))
+                {
+                    var svg = new SkiaSharp.Extended.Svg.SKSvg();
+                    svg.Load(ms);
+                    BackgroundSvg = svg;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to load SVG from URL '{url}': {ex.Message}");
             }
         });
     }
@@ -754,7 +838,7 @@ public class VisualElement : IDisposable
             ));
         }
 
-        // 2.5 Draw Background Image
+        // 2.5 Draw Background Image / SVG
         if (BackgroundImage != null)
         {
             cmds.Add(new DrawImageCommand(
@@ -767,7 +851,24 @@ public class VisualElement : IDisposable
                 Style?.Border?.RoundnessBottomLeft ?? 0,
                 BackgroundImageBlur,
                 BackgroundImageGrayscale,
-                BackgroundImageTintColor
+                BackgroundImageTintColor,
+                BackgroundImageTintBlendMode
+            ));
+        }
+        else if (BackgroundSvg != null)
+        {
+            cmds.Add(new DrawSvgCommand(
+                BackgroundSvg,
+                rect,
+                BackgroundImageScale,
+                Style?.Border?.RoundnessTopLeft ?? 0,
+                Style?.Border?.RoundnessTopRight ?? 0,
+                Style?.Border?.RoundnessBottomRight ?? 0,
+                Style?.Border?.RoundnessBottomLeft ?? 0,
+                BackgroundImageBlur,
+                BackgroundImageGrayscale,
+                BackgroundImageTintColor,
+                BackgroundImageTintBlendMode
             ));
         }
 
@@ -1004,6 +1105,7 @@ public class VisualElement : IDisposable
         paint.Dispose();
         _cachedRoundRect?.Dispose();
         _BackgroundImage?.Dispose();
+        _BackgroundSvg?.Picture?.Dispose();
         OnDisposing?.Invoke(this);
 
         ParentView.Elements.RemoveElement(this);
