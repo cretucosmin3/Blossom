@@ -33,6 +33,7 @@ namespace Blossom.Core
 
         private readonly object _dirtyRectsLock = new();
         internal readonly List<SKRect> DirtyRects = new();
+        private readonly List<SKRect> _localDirtyRects = new();
 
         private bool _hierarchyDirty = true;
         internal void MarkHierarchyDirty() { _hierarchyDirty = true; }
@@ -207,7 +208,6 @@ namespace Blossom.Core
         {
             if (Browser.WasResized) FullRenderRequired = true;
 
-            List<SKRect> localDirtyRects;
             lock (_dirtyRectsLock)
             {
                 if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired) return;
@@ -224,16 +224,21 @@ namespace Blossom.Core
                     DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
                 }
 
-                localDirtyRects = new List<SKRect>(DirtyRects);
+                _localDirtyRects.Clear();
+                _localDirtyRects.AddRange(DirtyRects);
                 DirtyRects.Clear();
             }
 
-            using var dirtyPath = new SKPath();
-            foreach (var r in localDirtyRects)
+            // Union dirty rects to simplify clipping path and minimize element overlap checks
+            if (_localDirtyRects.Count > 10)
             {
-                // Align to pixel boundaries to ensure complete clearing/drawing
-                var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
-                dirtyPath.AddRect(rounded);
+                var unionRect = _localDirtyRects[0];
+                for (int i = 1; i < _localDirtyRects.Count; i++)
+                {
+                    unionRect = SKRect.Union(unionRect, _localDirtyRects[i]);
+                }
+                _localDirtyRects.Clear();
+                _localDirtyRects.Add(unionRect);
             }
 
             if (_hierarchyDirty)
@@ -279,7 +284,23 @@ namespace Blossom.Core
 
             using (new SKAutoCanvasRestore(Renderer.Canvas))
             {
-                Renderer.Canvas.ClipPath(dirtyPath, SKClipOperation.Intersect, true);
+                if (_localDirtyRects.Count == 1)
+                {
+                    var r = _localDirtyRects[0];
+                    var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
+                    Renderer.Canvas.ClipRect(rounded, SKClipOperation.Intersect, true);
+                }
+                else
+                {
+                    using var dirtyPath = new SKPath();
+                    for (int i = 0; i < _localDirtyRects.Count; i++)
+                    {
+                        var r = _localDirtyRects[i];
+                        var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
+                        dirtyPath.AddRect(rounded);
+                    }
+                    Renderer.Canvas.ClipPath(dirtyPath, SKClipOperation.Intersect, true);
+                }
                 
                 // Clear dirty region to background
                 Renderer.Canvas.DrawColor(BackColor);
@@ -293,9 +314,9 @@ namespace Blossom.Core
                     var elementRect = element.RenderBounds;
 
                     bool overlapsDirty = false;
-                    for (int i = 0; i < localDirtyRects.Count; i++)
+                    for (int i = 0; i < _localDirtyRects.Count; i++)
                     {
-                        if (localDirtyRects[i].IntersectsWith(elementRect))
+                        if (_localDirtyRects[i].IntersectsWith(elementRect))
                         {
                             overlapsDirty = true;
                             break;

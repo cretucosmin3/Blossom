@@ -67,6 +67,8 @@ public class VisualElement : IDisposable
     private SKRect _lastRenderBounds = SKRect.Empty;
     private SKRect _cachedRenderBounds;
     internal bool _renderBoundsDirty = true;
+    private SKRect _cachedLocalBounds;
+    internal bool _localBoundsDirty = true;
 
     public SKRect RenderBounds
     {
@@ -122,45 +124,51 @@ public class VisualElement : IDisposable
 
     private SKRect GetLocalCombinedBounds()
     {
-        var localRect = new SKRect(0, 0, Transform.Width, Transform.Height);
-
-        // Include text bounds if text is rendered
-        if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+        if (_localBoundsDirty)
         {
-            CalculateText(); // Ensure local TextPosition is updated
-            var textRect = SKRect.Create(
-                TextPosition.X + TextBounds.Left,
-                TextPosition.Y + TextBounds.Top,
-                TextBounds.Width,
-                TextBounds.Height
-            );
-            localRect.Union(textRect);
+            var localRect = new SKRect(0, 0, Transform.Width, Transform.Height);
+
+            // Include text bounds if text is rendered
+            if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+            {
+                CalculateText(); // Ensure local TextPosition is updated
+                var textRect = SKRect.Create(
+                    TextPosition.X + TextBounds.Left,
+                    TextPosition.Y + TextBounds.Top,
+                    TextBounds.Width,
+                    TextBounds.Height
+                );
+                localRect.Union(textRect);
+            }
+
+            // Include shadow bounds if shadow is valid
+            if (Style?.Shadow?.HasValidValues() == true)
+            {
+                var s = Style.Shadow;
+                var blurX = Math.Abs(s.SpreadX) * 3f;
+                var blurY = Math.Abs(s.SpreadY) * 3f;
+                
+                var shadowRect = new SKRect(
+                    s.OffsetX - blurX,
+                    s.OffsetY - blurY,
+                    Transform.Width + s.OffsetX + blurX,
+                    Transform.Height + s.OffsetY + blurY
+                );
+                localRect.Union(shadowRect);
+            }
+
+            // Include border width inflation
+            if (Style?.Border?.Width > 0)
+            {
+                var borderInflate = Style.Border.Width + 1.5f;
+                localRect.Inflate(borderInflate, borderInflate);
+            }
+
+            _cachedLocalBounds = localRect;
+            _localBoundsDirty = false;
         }
 
-        // Include shadow bounds if shadow is valid
-        if (Style?.Shadow?.HasValidValues() == true)
-        {
-            var s = Style.Shadow;
-            var blurX = Math.Abs(s.SpreadX) * 3f;
-            var blurY = Math.Abs(s.SpreadY) * 3f;
-            
-            var shadowRect = new SKRect(
-                s.OffsetX - blurX,
-                s.OffsetY - blurY,
-                Transform.Width + s.OffsetX + blurX,
-                Transform.Height + s.OffsetY + blurY
-            );
-            localRect.Union(shadowRect);
-        }
-
-        // Include border width inflation
-        if (Style?.Border?.Width > 0)
-        {
-            var borderInflate = Style.Border.Width + 1.5f;
-            localRect.Inflate(borderInflate, borderInflate);
-        }
-
-        return localRect;
+        return _cachedLocalBounds;
     }
 
     private SKRect GetRenderBounds()
@@ -174,9 +182,7 @@ public class VisualElement : IDisposable
             var curr = this;
             while (curr != null)
             {
-                var t = curr.Transform;
-                if (t.RotationX != 0 || t.RotationY != 0 || t.RotationZ != 0 ||
-                    t.ScaleX != 1 || t.ScaleY != 1 || t.ScaleZ != 1)
+                if (curr.Transform.Has3DTransforms)
                 {
                     useGlobalMapping = true;
                     break;
@@ -1048,6 +1054,7 @@ public class VisualElement : IDisposable
     internal void ScheduleRender()
     {
         IsDirty = true;
+        _localBoundsDirty = true;
 
         if (ParentView is not null)
         {
@@ -1102,6 +1109,7 @@ public class VisualElement : IDisposable
 
     public void Dispose()
     {
+        Transform.Dispose();
         paint.Dispose();
         _cachedRoundRect?.Dispose();
         _BackgroundImage?.Dispose();
