@@ -126,20 +126,22 @@ namespace Blossom.Testing.Views
                 Style = new ElementStyle
                 {
                     BackdropBlur = 18f,
-                    BackColor = new SKColor(15, 15, 25, 90), // Semi-transparent dark overlay
+                    BackColor = new SKColor(255, 255, 255, 25), // Semi-transparent overlay
+                    BackgroundShader = BackgroundShaderType.GlassRefraction,
+                    BackgroundShaderColor = new SKColor(255, 255, 255, 30),
                     Border = new BorderStyle
                     {
-                        Color = new SKColor(255, 0, 110, 250),
-                        Width = 3,
+                        Color = new SKColor(255, 255, 255, 180),
+                        Width = 1.5f,
                         Roundness = 12
                     },
-                    BorderEffect = BorderEffectType.MarchingAnts,
+                    BorderEffect = BorderEffectType.GlassReflection,
                     BorderEffectSpeed = 1f,
                     Shadow = new ShadowStyle
                     {
-                        Color = new SKColor(255, 0, 110, 100),
+                        Color = new SKColor(0, 0, 0, 80),
                         OffsetX = 0,
-                        OffsetY = 0,
+                        OffsetY = 10,
                         SpreadX = 15,
                         SpreadY = 15
                     }
@@ -153,6 +155,7 @@ namespace Blossom.Testing.Views
             {
                 Name = "CardTitle",
                 Text = "GLASSMORPHIC CARD",
+                IsClickthrough = true,
                 Style = new ElementStyle
                 {
                     Text = new TextStyle
@@ -171,6 +174,7 @@ namespace Blossom.Testing.Views
             {
                 Name = "DragText",
                 Text = "Drag me around!",
+                IsClickthrough = true,
                 Style = new ElementStyle
                 {
                     Text = new TextStyle
@@ -189,6 +193,7 @@ namespace Blossom.Testing.Views
             {
                 Name = "BlurText",
                 Text = "Backdrop Blur: 18px",
+                IsClickthrough = true,
                 Style = new ElementStyle
                 {
                     Text = new TextStyle
@@ -207,6 +212,7 @@ namespace Blossom.Testing.Views
             {
                 Name = "DoubleClickText",
                 Text = "Double-click to auto-slide",
+                IsClickthrough = true,
                 Style = new ElementStyle
                 {
                     Text = new TextStyle
@@ -327,7 +333,7 @@ namespace Blossom.Testing.Views
             };
             AddElement(btnNoShader);
 
-            // Row 2: Border Effects & Blur Selection Buttons
+            // Row 2: Border Effects
             float row2Y = startY + ctrlBtnH + 15f;
 
             var btnMarching = new NeonButton("BORDER: DYNAMIC", new SKColor(255, 170, 0), ctrlBtnW, ctrlBtnH)
@@ -353,22 +359,55 @@ namespace Blossom.Testing.Views
             };
             AddElement(btnJitter);
 
-            var btnNoBorderEffect = new NeonButton("BORDER: SOLID", new SKColor(120, 120, 120), ctrlBtnW, ctrlBtnH)
+            var btnGlassBorder = new NeonButton("BORDER: GLASS", new SKColor(230, 240, 255), ctrlBtnW, ctrlBtnH)
             {
                 Transform = { X = startCtrlX + (ctrlBtnW + btnGap) * 2f, Y = row2Y, Anchor = Anchor.Top },
                 OnClick = () =>
                 {
-                    _glassCard.Style.BorderEffect = BorderEffectType.None;
+                    _glassCard.Style.BorderEffect = BorderEffectType.GlassReflection;
+                    _glassCard.Style.Border.Color = new SKColor(255, 255, 255, 200);
                 }
             };
-            AddElement(btnNoBorderEffect);
+            AddElement(btnGlassBorder);
 
-            var btnAdjustBlur = new NeonButton("CYCLE BLUR", new SKColor(139, 92, 246), ctrlBtnW, ctrlBtnH)
+            var btnNoBorderEffect = new NeonButton("BORDER: SOLID", new SKColor(120, 120, 120), ctrlBtnW, ctrlBtnH)
             {
                 Transform = { X = startCtrlX + (ctrlBtnW + btnGap) * 3f, Y = row2Y, Anchor = Anchor.Top },
                 OnClick = () =>
                 {
-                    // Cycle blur level between 0, 8, 18, 30 px
+                    _glassCard.Style.BorderEffect = BorderEffectType.None;
+                    _glassCard.Style.Border.Color = new SKColor(255, 0, 110, 250);
+                }
+            };
+            AddElement(btnNoBorderEffect);
+
+            // Row 3: Glass Background & Blur Controls
+            float row3Y = row2Y + ctrlBtnH + 15f;
+
+            var btnGlassBg = new NeonButton("GLASS BACKGROUND", new SKColor(186, 230, 253), ctrlBtnW * 1.5f, ctrlBtnH)
+            {
+                Transform = { X = (Width / 2f) - (ctrlBtnW * 1.5f + btnGap + ctrlBtnW) / 2f, Y = row3Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
+                    if (_glassCard.Style.BackgroundShader == BackgroundShaderType.GlassRefraction)
+                    {
+                        _glassCard.Style.BackgroundShader = BackgroundShaderType.None;
+                        _glassCard.Style.BackColor = new SKColor(15, 15, 25, 90);
+                    }
+                    else
+                    {
+                        _glassCard.Style.BackgroundShader = BackgroundShaderType.GlassRefraction;
+                        _glassCard.Style.BackgroundShaderColor = new SKColor(255, 255, 255, 30);
+                    }
+                }
+            };
+            AddElement(btnGlassBg);
+
+            var btnAdjustBlur = new NeonButton("CYCLE BLUR", new SKColor(139, 92, 246), ctrlBtnW, ctrlBtnH)
+            {
+                Transform = { X = (Width / 2f) - (ctrlBtnW * 1.5f + btnGap + ctrlBtnW) / 2f + ctrlBtnW * 1.5f + btnGap, Y = row3Y, Anchor = Anchor.Top },
+                OnClick = () =>
+                {
                     float currentBlur = _glassCard.Style.BackdropBlur;
                     float nextBlur = currentBlur switch
                     {
@@ -389,7 +428,7 @@ namespace Blossom.Testing.Views
             float centerGap = 20f;
             float totalNavWidth = (3f * backBtnWidth) + (2f * centerGap);
             float startNavX = (Width / 2f) - (totalNavWidth / 2f);
-            float navY = row2Y + ctrlBtnH + 30f;
+            float navY = row3Y + ctrlBtnH + 30f;
 
             var backBtn = new NeonButton("➜ DASHBOARD", new SKColor(139, 92, 246), backBtnWidth, backBtnHeight)
             {

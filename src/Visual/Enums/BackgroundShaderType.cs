@@ -5,5 +5,6 @@ public enum BackgroundShaderType
     None,
     Scanlines,
     SynthwaveGrid,
-    LiquidPlasma
+    LiquidPlasma,
+    GlassRefraction
 }
