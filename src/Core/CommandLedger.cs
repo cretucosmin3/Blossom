@@ -90,6 +90,151 @@ public class DrawTextCommand : DrawCommand
 }
 
 /// <summary>
+/// Defines how a background image scales to fit its target element.
+/// </summary>
+public enum ImageScaleMode
+{
+    Stretch,
+    Contain,
+    Cover
+}
+
+/// <summary>
+/// Command to draw a background image with scaling and optional rounded corner clipping.
+/// </summary>
+public class DrawImageCommand : DrawCommand
+{
+    public SKBitmap Bitmap { get; }
+    public SKRect Dest { get; }
+    public ImageScaleMode ScaleMode { get; }
+    public float RoundnessTopLeft { get; }
+    public float RoundnessTopRight { get; }
+    public float RoundnessBottomRight { get; }
+    public float RoundnessBottomLeft { get; }
+    public float BlurSigma { get; }
+    public float GrayscaleAmount { get; }
+    public SKColor TintColor { get; }
+
+    public DrawImageCommand(
+        SKBitmap bitmap,
+        SKRect dest,
+        ImageScaleMode scaleMode,
+        float rTopLeft,
+        float rTopRight,
+        float rBottomRight,
+        float rBottomLeft,
+        float blurSigma,
+        float grayscaleAmount,
+        SKColor tintColor)
+    {
+        Bitmap = bitmap;
+        Dest = dest;
+        ScaleMode = scaleMode;
+        RoundnessTopLeft = rTopLeft;
+        RoundnessTopRight = rTopRight;
+        RoundnessBottomRight = rBottomRight;
+        RoundnessBottomLeft = rBottomLeft;
+        BlurSigma = blurSigma;
+        GrayscaleAmount = grayscaleAmount;
+        TintColor = tintColor;
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        if (Bitmap == null || Bitmap.Width <= 0 || Bitmap.Height <= 0) return;
+
+        float bw = Bitmap.Width;
+        float bh = Bitmap.Height;
+        SKRect drawRect;
+
+        if (ScaleMode == ImageScaleMode.Contain)
+        {
+            float scale = Math.Min(Dest.Width / bw, Dest.Height / bh);
+            float drawW = bw * scale;
+            float drawH = bh * scale;
+            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
+            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
+            drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
+        }
+        else if (ScaleMode == ImageScaleMode.Cover)
+        {
+            float scale = Math.Max(Dest.Width / bw, Dest.Height / bh);
+            float drawW = bw * scale;
+            float drawH = bh * scale;
+            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
+            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
+            drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
+        }
+        else
+        {
+            drawRect = Dest;
+        }
+
+        using (new SKAutoCanvasRestore(canvas))
+        {
+            if (RoundnessTopLeft > 0 || RoundnessTopRight > 0 || RoundnessBottomRight > 0 || RoundnessBottomLeft > 0)
+            {
+                using var roundRect = new SKRoundRect(Dest);
+                roundRect.SetRectRadii(Dest, new SKPoint[] {
+                    new(RoundnessTopLeft, RoundnessTopLeft),
+                    new(RoundnessTopRight, RoundnessTopRight),
+                    new(RoundnessBottomRight, RoundnessBottomRight),
+                    new(RoundnessBottomLeft, RoundnessBottomLeft),
+                });
+                canvas.ClipRoundRect(roundRect, SKClipOperation.Intersect, true);
+            }
+
+            using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+
+            if (BlurSigma > 0)
+            {
+                paint.ImageFilter = SKImageFilter.CreateBlur(BlurSigma, BlurSigma);
+            }
+
+            if (GrayscaleAmount > 0 || TintColor.Alpha > 0)
+            {
+                SKColorFilter? filter = null;
+                if (GrayscaleAmount > 0)
+                {
+                    float g = Math.Clamp(GrayscaleAmount, 0f, 1f);
+                    float invG = 1f - g;
+                    float[] matrix = new float[] {
+                        invG + g * 0.2126f, g * 0.7152f,       g * 0.0722f,       0, 0,
+                        g * 0.2126f,       invG + g * 0.7152f, g * 0.0722f,       0, 0,
+                        g * 0.2126f,       g * 0.7152f,       invG + g * 0.0722f, 0, 0,
+                        0,                 0,                 0,                 1, 0
+                    };
+                    filter = SKColorFilter.CreateColorMatrix(matrix);
+                }
+
+                if (TintColor.Alpha > 0)
+                {
+                    var tintFilter = SKColorFilter.CreateBlendMode(TintColor, SKBlendMode.SrcATop);
+                    if (filter != null)
+                    {
+                        var chained = SKColorFilter.CreateCompose(tintFilter, filter);
+                        filter.Dispose();
+                        tintFilter.Dispose();
+                        filter = chained;
+                    }
+                    else
+                    {
+                        filter = tintFilter;
+                    }
+                }
+
+                paint.ColorFilter = filter;
+            }
+
+            canvas.DrawBitmap(Bitmap, drawRect, paint);
+
+            paint.ImageFilter?.Dispose();
+            paint.ColorFilter?.Dispose();
+        }
+    }
+}
+
+/// <summary>
 /// A transaction recorded in the ledger, representing a state transition for undo/redo (analogous to a git commit/revert).
 /// </summary>
 public class LedgerTransaction
