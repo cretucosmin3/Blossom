@@ -978,27 +978,30 @@ namespace Blossom.Testing.Views
             fillPath.Close();
 
             // 1. Glowing linear gradient under the wave
+            using var shader = SKShader.CreateLinearGradient(
+                new SKPoint(_bounds.Left, chartY),
+                new SKPoint(_bounds.Left, chartY + chartHeight),
+                new SKColor[] { _color.WithAlpha(40), _color.WithAlpha(0) },
+                null,
+                SKShaderTileMode.Clamp);
+
             using var fillPaint = new SKPaint
             {
                 Style = SKPaintStyle.Fill,
                 IsAntialias = true,
-                Shader = SKShader.CreateLinearGradient(
-                    new SKPoint(_bounds.Left, chartY),
-                    new SKPoint(_bounds.Left, chartY + chartHeight),
-                    new SKColor[] { _color.WithAlpha(40), _color.WithAlpha(0) },
-                    null,
-                    SKShaderTileMode.Clamp)
+                Shader = shader
             };
             canvas.DrawPath(fillPath, fillPaint);
 
             // 2. Wide glowing backdrop shadow (simulating neon diffusion)
+            using var glowFilter = SKImageFilter.CreateBlur(3.5f, 3.5f);
             using var glowPaint = new SKPaint
             {
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 4.5f,
                 IsAntialias = true,
                 Color = _color.WithAlpha(90),
-                ImageFilter = SKImageFilter.CreateBlur(3.5f, 3.5f)
+                ImageFilter = glowFilter
             };
             canvas.DrawPath(path, glowPaint);
 

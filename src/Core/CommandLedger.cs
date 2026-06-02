@@ -39,7 +39,7 @@ public class DrawRoundRectCommand : DrawCommand
         RoundnessTopRight = rTopRight;
         RoundnessBottomRight = rBottomRight;
         RoundnessBottomLeft = rBottomLeft;
-        Paint = paint.Clone(); // Clone to prevent changes if the original is mutated or disposed
+        Paint = paint; // Take ownership to avoid double allocation and prevent leaks
 
         RoundRect = new SKRoundRect(Rect);
         RoundRect.SetRectRadii(Rect, new SKPoint[] {
@@ -104,17 +104,10 @@ public enum ImageScaleMode
 /// </summary>
 public class DrawImageCommand : DrawCommand
 {
-    public SKBitmap Bitmap { get; }
-    public SKRect Dest { get; }
-    public ImageScaleMode ScaleMode { get; }
-    public float RoundnessTopLeft { get; }
-    public float RoundnessTopRight { get; }
-    public float RoundnessBottomRight { get; }
-    public float RoundnessBottomLeft { get; }
-    public float BlurSigma { get; }
-    public float GrayscaleAmount { get; }
-    public SKColor TintColor { get; }
-    public SKBlendMode TintBlendMode { get; }
+    private readonly SKBitmap _bitmap;
+    private readonly SKRect _drawRect;
+    private readonly SKRoundRect? _clipRoundRect;
+    private readonly SKPaint _paint;
 
     public DrawImageCommand(
         SKBitmap bitmap,
@@ -129,111 +122,108 @@ public class DrawImageCommand : DrawCommand
         SKColor tintColor,
         SKBlendMode tintBlendMode)
     {
-        Bitmap = bitmap;
-        Dest = dest;
-        ScaleMode = scaleMode;
-        RoundnessTopLeft = rTopLeft;
-        RoundnessTopRight = rTopRight;
-        RoundnessBottomRight = rBottomRight;
-        RoundnessBottomLeft = rBottomLeft;
-        BlurSigma = blurSigma;
-        GrayscaleAmount = grayscaleAmount;
-        TintColor = tintColor;
-        TintBlendMode = tintBlendMode;
+        _bitmap = bitmap;
+
+        float bw = bitmap.Width;
+        float bh = bitmap.Height;
+        if (scaleMode == ImageScaleMode.Contain && bw > 0 && bh > 0)
+        {
+            float scale = Math.Min(dest.Width / bw, dest.Height / bh);
+            float drawW = bw * scale;
+            float drawH = bh * scale;
+            float drawX = dest.Left + (dest.Width - drawW) / 2f;
+            float drawY = dest.Top + (dest.Height - drawH) / 2f;
+            _drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
+        }
+        else if (scaleMode == ImageScaleMode.Cover && bw > 0 && bh > 0)
+        {
+            float scale = Math.Max(dest.Width / bw, dest.Height / bh);
+            float drawW = bw * scale;
+            float drawH = bh * scale;
+            float drawX = dest.Left + (dest.Width - drawW) / 2f;
+            float drawY = dest.Top + (dest.Height - drawH) / 2f;
+            _drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
+        }
+        else
+        {
+            _drawRect = dest;
+        }
+
+        if (rTopLeft > 0 || rTopRight > 0 || rBottomRight > 0 || rBottomLeft > 0)
+        {
+            _clipRoundRect = new SKRoundRect(dest);
+            _clipRoundRect.SetRectRadii(dest, new SKPoint[] {
+                new(rTopLeft, rTopLeft),
+                new(rTopRight, rTopRight),
+                new(rBottomRight, rBottomRight),
+                new(rBottomLeft, rBottomLeft),
+            });
+        }
+
+        _paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+
+        if (blurSigma > 0)
+        {
+            _paint.ImageFilter = SKImageFilter.CreateBlur(blurSigma, blurSigma);
+        }
+
+        if (grayscaleAmount > 0 || tintColor.Alpha > 0)
+        {
+            SKColorFilter? filter = null;
+            if (grayscaleAmount > 0)
+            {
+                float g = Math.Clamp(grayscaleAmount, 0f, 1f);
+                float invG = 1f - g;
+                float[] colorMatrix = new float[] {
+                    invG + g * 0.2126f, g * 0.7152f,       g * 0.0722f,       0, 0,
+                    g * 0.2126f,       invG + g * 0.7152f, g * 0.0722f,       0, 0,
+                    g * 0.2126f,       g * 0.7152f,       invG + g * 0.0722f, 0, 0,
+                    0,                 0,                 0,                 1, 0
+                };
+                filter = SKColorFilter.CreateColorMatrix(colorMatrix);
+            }
+
+            if (tintColor.Alpha > 0)
+            {
+                var tintFilter = SKColorFilter.CreateBlendMode(tintColor, tintBlendMode);
+                if (filter != null)
+                {
+                    var chained = SKColorFilter.CreateCompose(tintFilter, filter);
+                    filter.Dispose();
+                    tintFilter.Dispose();
+                    filter = chained;
+                }
+                else
+                {
+                    filter = tintFilter;
+                }
+            }
+
+            _paint.ColorFilter = filter;
+        }
     }
 
     public override void Execute(SKCanvas canvas)
     {
-        if (Bitmap == null || Bitmap.Width <= 0 || Bitmap.Height <= 0) return;
-
-        float bw = Bitmap.Width;
-        float bh = Bitmap.Height;
-        SKRect drawRect;
-
-        if (ScaleMode == ImageScaleMode.Contain)
-        {
-            float scale = Math.Min(Dest.Width / bw, Dest.Height / bh);
-            float drawW = bw * scale;
-            float drawH = bh * scale;
-            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
-            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
-            drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
-        }
-        else if (ScaleMode == ImageScaleMode.Cover)
-        {
-            float scale = Math.Max(Dest.Width / bw, Dest.Height / bh);
-            float drawW = bw * scale;
-            float drawH = bh * scale;
-            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
-            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
-            drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
-        }
-        else
-        {
-            drawRect = Dest;
-        }
+        if (_bitmap == null || _bitmap.Width <= 0 || _bitmap.Height <= 0) return;
 
         using (new SKAutoCanvasRestore(canvas))
         {
-            if (RoundnessTopLeft > 0 || RoundnessTopRight > 0 || RoundnessBottomRight > 0 || RoundnessBottomLeft > 0)
+            if (_clipRoundRect != null)
             {
-                using var roundRect = new SKRoundRect(Dest);
-                roundRect.SetRectRadii(Dest, new SKPoint[] {
-                    new(RoundnessTopLeft, RoundnessTopLeft),
-                    new(RoundnessTopRight, RoundnessTopRight),
-                    new(RoundnessBottomRight, RoundnessBottomRight),
-                    new(RoundnessBottomLeft, RoundnessBottomLeft),
-                });
-                canvas.ClipRoundRect(roundRect, SKClipOperation.Intersect, true);
+                canvas.ClipRoundRect(_clipRoundRect, SKClipOperation.Intersect, true);
             }
 
-            using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
-
-            if (BlurSigma > 0)
-            {
-                paint.ImageFilter = SKImageFilter.CreateBlur(BlurSigma, BlurSigma);
-            }
-
-            if (GrayscaleAmount > 0 || TintColor.Alpha > 0)
-            {
-                SKColorFilter? filter = null;
-                if (GrayscaleAmount > 0)
-                {
-                    float g = Math.Clamp(GrayscaleAmount, 0f, 1f);
-                    float invG = 1f - g;
-                    float[] matrix = new float[] {
-                        invG + g * 0.2126f, g * 0.7152f,       g * 0.0722f,       0, 0,
-                        g * 0.2126f,       invG + g * 0.7152f, g * 0.0722f,       0, 0,
-                        g * 0.2126f,       g * 0.7152f,       invG + g * 0.0722f, 0, 0,
-                        0,                 0,                 0,                 1, 0
-                    };
-                    filter = SKColorFilter.CreateColorMatrix(matrix);
-                }
-
-                if (TintColor.Alpha > 0)
-                {
-                    var tintFilter = SKColorFilter.CreateBlendMode(TintColor, TintBlendMode);
-                    if (filter != null)
-                    {
-                        var chained = SKColorFilter.CreateCompose(tintFilter, filter);
-                        filter.Dispose();
-                        tintFilter.Dispose();
-                        filter = chained;
-                    }
-                    else
-                    {
-                        filter = tintFilter;
-                    }
-                }
-
-                paint.ColorFilter = filter;
-            }
-
-            canvas.DrawBitmap(Bitmap, drawRect, paint);
-
-            paint.ImageFilter?.Dispose();
-            paint.ColorFilter?.Dispose();
+            canvas.DrawBitmap(_bitmap, _drawRect, _paint);
         }
+    }
+
+    public override void Dispose()
+    {
+        _clipRoundRect?.Dispose();
+        _paint.ImageFilter?.Dispose();
+        _paint.ColorFilter?.Dispose();
+        _paint.Dispose();
     }
 }
 
@@ -242,17 +232,10 @@ public class DrawImageCommand : DrawCommand
 /// </summary>
 public class DrawSvgCommand : DrawCommand
 {
-    public SkiaSharp.Extended.Svg.SKSvg Svg { get; }
-    public SKRect Dest { get; }
-    public ImageScaleMode ScaleMode { get; }
-    public float RoundnessTopLeft { get; }
-    public float RoundnessTopRight { get; }
-    public float RoundnessBottomRight { get; }
-    public float RoundnessBottomLeft { get; }
-    public float BlurSigma { get; }
-    public float GrayscaleAmount { get; }
-    public SKColor TintColor { get; }
-    public SKBlendMode TintBlendMode { get; }
+    private readonly SkiaSharp.Extended.Svg.SKSvg _svg;
+    private readonly SKRoundRect? _clipRoundRect;
+    private readonly SKPaint _paint;
+    private readonly SKMatrix _transformMatrix;
 
     public DrawSvgCommand(
         SkiaSharp.Extended.Svg.SKSvg svg,
@@ -267,121 +250,123 @@ public class DrawSvgCommand : DrawCommand
         SKColor tintColor,
         SKBlendMode tintBlendMode)
     {
-        Svg = svg;
-        Dest = dest;
-        ScaleMode = scaleMode;
-        RoundnessTopLeft = rTopLeft;
-        RoundnessTopRight = rTopRight;
-        RoundnessBottomRight = rBottomRight;
-        RoundnessBottomLeft = rBottomLeft;
-        BlurSigma = blurSigma;
-        GrayscaleAmount = grayscaleAmount;
-        TintColor = tintColor;
-        TintBlendMode = tintBlendMode;
-    }
+        _svg = svg;
 
-    public override void Execute(SKCanvas canvas)
-    {
-        if (Svg == null || Svg.Picture == null || Svg.CanvasSize.Width <= 0 || Svg.CanvasSize.Height <= 0) return;
-
-        float sw = Svg.CanvasSize.Width;
-        float sh = Svg.CanvasSize.Height;
+        float sw = svg.CanvasSize.Width;
+        float sh = svg.CanvasSize.Height;
         SKRect drawRect;
 
-        if (ScaleMode == ImageScaleMode.Contain)
+        if (scaleMode == ImageScaleMode.Contain && sw > 0 && sh > 0)
         {
-            float scale = Math.Min(Dest.Width / sw, Dest.Height / sh);
+            float scale = Math.Min(dest.Width / sw, dest.Height / sh);
             float drawW = sw * scale;
             float drawH = sh * scale;
-            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
-            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
+            float drawX = dest.Left + (dest.Width - drawW) / 2f;
+            float drawY = dest.Top + (dest.Height - drawH) / 2f;
             drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
         }
-        else if (ScaleMode == ImageScaleMode.Cover)
+        else if (scaleMode == ImageScaleMode.Cover && sw > 0 && sh > 0)
         {
-            float scale = Math.Max(Dest.Width / sw, Dest.Height / sh);
+            float scale = Math.Max(dest.Width / sw, dest.Height / sh);
             float drawW = sw * scale;
             float drawH = sh * scale;
-            float drawX = Dest.Left + (Dest.Width - drawW) / 2f;
-            float drawY = Dest.Top + (Dest.Height - drawH) / 2f;
+            float drawX = dest.Left + (dest.Width - drawW) / 2f;
+            float drawY = dest.Top + (dest.Height - drawH) / 2f;
             drawRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
         }
         else
         {
-            drawRect = Dest;
+            drawRect = dest;
         }
+
+        _transformMatrix = SKMatrix.CreateTranslation(drawRect.Left, drawRect.Top);
+        if (sw > 0 && sh > 0)
+        {
+            SKMatrix.PreConcat(ref _transformMatrix, SKMatrix.CreateScale(drawRect.Width / sw, drawRect.Height / sh));
+        }
+
+        if (rTopLeft > 0 || rTopRight > 0 || rBottomRight > 0 || rBottomLeft > 0)
+        {
+            _clipRoundRect = new SKRoundRect(dest);
+            _clipRoundRect.SetRectRadii(dest, new SKPoint[] {
+                new(rTopLeft, rTopLeft),
+                new(rTopRight, rTopRight),
+                new(rBottomRight, rBottomRight),
+                new(rBottomLeft, rBottomLeft),
+            });
+        }
+
+        _paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+
+        if (blurSigma > 0)
+        {
+            _paint.ImageFilter = SKImageFilter.CreateBlur(blurSigma, blurSigma);
+        }
+
+        if (grayscaleAmount > 0 || tintColor.Alpha > 0)
+        {
+            SKColorFilter? filter = null;
+            if (grayscaleAmount > 0)
+            {
+                float g = Math.Clamp(grayscaleAmount, 0f, 1f);
+                float invG = 1f - g;
+                float[] colorMatrix = new float[] {
+                    invG + g * 0.2126f, g * 0.7152f,       g * 0.0722f,       0, 0,
+                    g * 0.2126f,       invG + g * 0.7152f, g * 0.0722f,       0, 0,
+                    g * 0.2126f,       g * 0.7152f,       invG + g * 0.0722f, 0, 0,
+                    0,                 0,                 0,                 1, 0
+                };
+                filter = SKColorFilter.CreateColorMatrix(colorMatrix);
+            }
+
+            if (tintColor.Alpha > 0)
+            {
+                var tintFilter = SKColorFilter.CreateBlendMode(tintColor, tintBlendMode);
+                if (filter != null)
+                {
+                    var chained = SKColorFilter.CreateCompose(tintFilter, filter);
+                    filter.Dispose();
+                    tintFilter.Dispose();
+                    filter = chained;
+                }
+                else
+                {
+                    filter = tintFilter;
+                }
+            }
+
+            _paint.ColorFilter = filter;
+        }
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        if (_svg == null || _svg.Picture == null || _svg.CanvasSize.Width <= 0 || _svg.CanvasSize.Height <= 0) return;
 
         using (new SKAutoCanvasRestore(canvas))
         {
-            if (RoundnessTopLeft > 0 || RoundnessTopRight > 0 || RoundnessBottomRight > 0 || RoundnessBottomLeft > 0)
+            if (_clipRoundRect != null)
             {
-                using var roundRect = new SKRoundRect(Dest);
-                roundRect.SetRectRadii(Dest, new SKPoint[] {
-                    new(RoundnessTopLeft, RoundnessTopLeft),
-                    new(RoundnessTopRight, RoundnessTopRight),
-                    new(RoundnessBottomRight, RoundnessBottomRight),
-                    new(RoundnessBottomLeft, RoundnessBottomLeft),
-                });
-                canvas.ClipRoundRect(roundRect, SKClipOperation.Intersect, true);
+                canvas.ClipRoundRect(_clipRoundRect, SKClipOperation.Intersect, true);
             }
 
-            using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+            canvas.SaveLayer(_paint);
 
-            if (BlurSigma > 0)
-            {
-                paint.ImageFilter = SKImageFilter.CreateBlur(BlurSigma, BlurSigma);
-            }
+            var mat = _transformMatrix;
+            canvas.Concat(ref mat);
 
-            if (GrayscaleAmount > 0 || TintColor.Alpha > 0)
-            {
-                SKColorFilter? filter = null;
-                if (GrayscaleAmount > 0)
-                {
-                    float g = Math.Clamp(GrayscaleAmount, 0f, 1f);
-                    float invG = 1f - g;
-                    float[] colorMatrix = new float[] {
-                        invG + g * 0.2126f, g * 0.7152f,       g * 0.0722f,       0, 0,
-                        g * 0.2126f,       invG + g * 0.7152f, g * 0.0722f,       0, 0,
-                        g * 0.2126f,       g * 0.7152f,       invG + g * 0.0722f, 0, 0,
-                        0,                 0,                 0,                 1, 0
-                    };
-                    filter = SKColorFilter.CreateColorMatrix(colorMatrix);
-                }
-
-                if (TintColor.Alpha > 0)
-                {
-                    var tintFilter = SKColorFilter.CreateBlendMode(TintColor, TintBlendMode);
-                    if (filter != null)
-                    {
-                        var chained = SKColorFilter.CreateCompose(tintFilter, filter);
-                        filter.Dispose();
-                        tintFilter.Dispose();
-                        filter = chained;
-                    }
-                    else
-                    {
-                        filter = tintFilter;
-                    }
-                }
-
-                paint.ColorFilter = filter;
-            }
-
-            // Save layer to apply paint filters (blur, grayscale, tint) correctly to vector commands
-            canvas.SaveLayer(paint);
-
-            // Translate and scale SVG drawing matrix to target drawRect boundaries
-            var matrix = SKMatrix.CreateTranslation(drawRect.Left, drawRect.Top);
-            SKMatrix.PreConcat(ref matrix, SKMatrix.CreateScale(drawRect.Width / sw, drawRect.Height / sh));
-            canvas.Concat(ref matrix);
-
-            canvas.DrawPicture(Svg.Picture);
+            canvas.DrawPicture(_svg.Picture);
 
             canvas.Restore();
-
-            paint.ImageFilter?.Dispose();
-            paint.ColorFilter?.Dispose();
         }
+    }
+
+    public override void Dispose()
+    {
+        _clipRoundRect?.Dispose();
+        _paint.ImageFilter?.Dispose();
+        _paint.ColorFilter?.Dispose();
+        _paint.Dispose();
     }
 }
 
