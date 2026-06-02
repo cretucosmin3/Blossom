@@ -431,17 +431,19 @@ namespace Blossom.Testing.Views
             {
                 Name = "ImageCard1",
                 Style = imgStyle1,
-                Transform = new Transform(0, 710f, 200, 240f) { Anchor = Anchor.Top | Anchor.Left }
+                Transform = new Transform(0, 710f, 200, 240f) { Anchor = Anchor.Top | Anchor.Left },
+                BackgroundImageScale = ImageScaleMode.Contain,
+                BackgroundImageTintColor = new SKColor(56, 189, 248, 255),
+                BackgroundImageTintBlendMode = SKBlendMode.SrcIn
             };
-            _imageCard1.BackgroundImageScale = ImageScaleMode.Contain;
-            _imageCard1.BackgroundImageGrayscale = 1.0f; // Enable Grayscale effect
-            _imageCard1.LoadImageFromUrl("https://picsum.photos/id/10/600/400");
+
+            _imageCard1.LoadSvgFromUrl("https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/check.svg");
             scrollArea.AddChild(_imageCard1);
 
             _imageCard1.AddChild(new VisualElement
             {
                 Name = "Image1_Badge",
-                Text = "CONTAIN + GRAYSCALE",
+                Text = "SVG + SOLID BLUE TINT",
                 Style = new ElementStyle
                 {
                     BackColor = new SKColor(15, 23, 42, 180), // Glassmorphic slate
