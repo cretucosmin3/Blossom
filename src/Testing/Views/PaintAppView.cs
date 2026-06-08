@@ -16,46 +16,54 @@ namespace Blossom.Testing.Views
 
         private DrawingCanvas? _drawingCanvas;
         
-        // Classic High-Fidelity Palette Colors (Non-neon, solid colors)
+        // Classic Palette Colors (Sleek solid colors - Primaries + Secondary + White/Black)
         private readonly SKColor[] _paletteColors = new[]
         {
-            new SKColor(239, 68, 68),   // Ruby Red
-            new SKColor(59, 130, 246),  // Royal Blue
-            new SKColor(34, 197, 94),   // Forest Green
-            new SKColor(249, 115, 22),  // Amber Orange
-            new SKColor(139, 92, 246),  // Violet Purple
-            new SKColor(234, 179, 8),   // Chrome Yellow
+            new SKColor(225, 29, 72),   // Ruby Red (Primary)
+            new SKColor(37, 99, 235),   // Royal Blue (Primary)
+            new SKColor(250, 204, 21),  // Chrome Yellow (Primary)
+            new SKColor(5, 150, 105),   // Forest Green (Secondary)
+            new SKColor(249, 115, 22),  // Amber Orange (Secondary)
+            new SKColor(124, 58, 237),  // Violet Purple (Secondary)
             new SKColor(255, 255, 255), // Pure White
-            new SKColor(30, 41, 59)     // Slate 800 (Eraser)
+            new SKColor(9, 9, 11)       // Midnight Black
         };
         
         private readonly string[] _paletteNames = new[]
         {
-            "Ruby Red", "Royal Blue", "Forest Green", "Amber Orange", "Violet Purple", "Chrome Yellow", "Pure White", "Eraser"
+            "Ruby Red", "Royal Blue", "Chrome Yellow", "Forest Green", "Amber Orange", "Violet Purple", "Pure White", "Midnight Black"
         };
         
         private readonly VisualElement[] _colorIndicators = new VisualElement[8];
         private VisualElement? _selectedColorText;
+        private Checkbox? _eraserCheckbox;
 
-        public PaintAppView() : base("Neon Paint")
+        // Color mixing controls
+        private readonly VisualElement[] _mixIndicators = new VisualElement[4];
+        private float _currentMixRate = 0.25f; // SLOW mixing by default
+
+        // Brush Type controls (Marker vs Brush)
+        private readonly VisualElement[] _brushTypeIndicators = new VisualElement[2];
+        private readonly VisualElement[] _brushTypeIcons = new VisualElement[2];
+        private bool _isBrushMode = false;
+
+        public PaintAppView() : base("Paint Canvas")
         {
-            // Consistent slate background color
-            BackColor = new SKColor(11, 14, 22);
+            BackColor = new SKColor(248, 250, 252); // Light background
         }
 
         public override void Init()
         {
             float sidebarWidth = 260f;
 
-            // --- 1. SIDEBAR ---
+            // --- 1. SIDEBAR (Sleek, Flat White UI) ---
             var sidebar = new VisualElement
             {
                 Name = "PaintSidebar",
                 Style = new ElementStyle
                 {
-                    BackColor = new SKColor(16, 20, 30, 240), // Same slate sidebar color
-                    Border = new BorderStyle { Width = 0, Color = SKColors.Transparent },
-                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(100), SpreadX = 8, SpreadY = 0, OffsetX = 2 }
+                    BackColor = new SKColor(255, 255, 255), // Flat white
+                    Border = new BorderStyle { Width = 1, Color = new SKColor(226, 232, 240), Roundness = 0 }
                 },
                 Transform = new Transform(0, 0, sidebarWidth, Height)
                 {
@@ -66,16 +74,16 @@ namespace Blossom.Testing.Views
             };
             AddElement(sidebar);
 
-            // Brand Label (shifted down to prevent stats box overlap)
+            // Brand Label (Flat, clean styling)
             var brand = new VisualElement
             {
                 Name = "PaintSidebar_Brand",
                 Text = "⚡ PAINT CANVAS",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle { Color = new SKColor(56, 189, 248), Size = 22, Weight = 800, Alignment = TextAlign.Center, Padding = 15 }
+                    Text = new TextStyle { Color = new SKColor(15, 23, 42), Size = 18, Weight = 800, Alignment = TextAlign.Center, Padding = 15 }
                 },
-                Transform = new Transform(0, 50, sidebarWidth, 60) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
+                Transform = new Transform(0, 40, sidebarWidth, 50) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
             };
             sidebar.AddChild(brand);
 
@@ -83,12 +91,12 @@ namespace Blossom.Testing.Views
             var paletteHeader = new VisualElement
             {
                 Name = "PaletteHeader",
-                Text = "SELECT PALETTE",
+                Text = "COLOR PALETTE",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 10, Weight = 700, Alignment = TextAlign.Left, Padding = 25 }
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
                 },
-                Transform = new Transform(0, 130, sidebarWidth, 25)
+                Transform = new Transform(0, 90, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
             };
             sidebar.AddChild(paletteHeader);
 
@@ -96,18 +104,18 @@ namespace Blossom.Testing.Views
             _selectedColorText = new VisualElement
             {
                 Name = "SelectedColorText",
-                Text = "Color: Ruby Red",
+                Text = "Active: Ruby Red",
                 Style = new ElementStyle
                 {
-                    Text = new TextStyle { Color = _paletteColors[0], Size = 12, Weight = 600, Alignment = TextAlign.Left, Padding = 25 }
+                    Text = new TextStyle { Color = _paletteColors[0], Size = 12, Weight = 600, Alignment = TextAlign.Left, Padding = 20 }
                 },
-                Transform = new Transform(0, 155, sidebarWidth, 25)
+                Transform = new Transform(0, 115, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
             };
             sidebar.AddChild(_selectedColorText);
 
-            // Color Palette Selector Grid (starts at startY = 185f)
-            float startX = 25f;
-            float startY = 185f;
+            // Color Palette Grid
+            float startX = 20f;
+            float startY = 140f;
             float buttonSize = 40f;
             float gapX = 12f;
             float gapY = 12f;
@@ -131,18 +139,12 @@ namespace Blossom.Testing.Views
                         { 
                             Roundness = buttonSize / 2f, 
                             Width = i == 0 ? 3 : 1, 
-                            Color = i == 0 ? SKColors.White : new SKColor(255, 255, 255, 60) 
-                        },
-                        Shadow = new ShadowStyle
-                        {
-                            Color = SKColors.Black.WithAlpha(40),
-                            SpreadX = 0,
-                            SpreadY = i == 0 ? 3 : 0,
-                            OffsetY = i == 0 ? 2 : 0
+                            Color = i == 0 ? new SKColor(15, 23, 42) : new SKColor(226, 232, 240) 
                         }
                     },
                     Transform = new Transform(x, y, buttonSize, buttonSize)
                     {
+                        Anchor = Anchor.Top | Anchor.Left,
                         FixedWidth = true,
                         FixedHeight = true
                     }
@@ -153,54 +155,355 @@ namespace Blossom.Testing.Views
                 {
                     SelectColor(index);
                 };
+                colorBtn.Events.OnMouseEnter += (s) =>
+                {
+                    colorBtn.Transform.ScaleX = 1.1f;
+                    colorBtn.Transform.ScaleY = 1.1f;
+                    colorBtn.ScheduleRender();
+                };
+                colorBtn.Events.OnMouseLeave += (s) =>
+                {
+                    colorBtn.Transform.ScaleX = 1.0f;
+                    colorBtn.Transform.ScaleY = 1.0f;
+                    colorBtn.ScheduleRender();
+                };
 
                 sidebar.AddChild(colorBtn);
                 _colorIndicators[i] = colorBtn;
             }
 
-            // Tools & Action buttons
-            float navY = startY + (buttonSize + gapY) * 2 + 25f;
-            
-            var clearBtn = new Button("CLEAR CANVAS", new SKColor(239, 68, 68))
+            // Brush Selection Header
+            float brushHeaderY = 255f;
+            sidebar.AddChild(new VisualElement
             {
-                Name = "Btn_ClearCanvas",
-                Transform = new Transform(20, navY, sidebarWidth - 40f, 42) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
-            };
-            clearBtn.Style.Text.Color = SKColors.White;
-            clearBtn.Style.Border.Roundness = 8;
-            clearBtn.OnClick = () =>
-            {
-                _drawingCanvas?.Clear(new SKColor(30, 41, 59));
-            };
-            sidebar.AddChild(clearBtn);
-
-            // Unified Sidebar Navigation Items
-            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase", "Glass Showcase" };
-            float sidebarMenuY = navY + 60f;
-            for (int i = 0; i < menuItems.Length; i++)
-            {
-                var item = menuItems[i];
-                var btn = new SidebarButton(item, i == 2) // Paint is active (i == 2)
+                Name = "BrushHeader",
+                Text = "BRUSH SIZE",
+                Style = new ElementStyle
                 {
-                    Transform = { X = 20, Y = sidebarMenuY, Width = sidebarWidth - 40 }
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
+                },
+                Transform = new Transform(0, brushHeaderY, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
+            });
+
+            // Brush size slider
+            var sizeSlider = new Slider(1f, 300f, 20f)
+            {
+                Transform = new Transform(20, brushHeaderY + 25f, sidebarWidth - 40f, 24) { Anchor = Anchor.Top | Anchor.Left }
+            };
+            sizeSlider.OnValueChanged += (val) =>
+            {
+                if (_drawingCanvas != null)
+                {
+                    _drawingCanvas.BrushSize = val;
+                }
+            };
+            sidebar.AddChild(sizeSlider);
+
+            // Brush options section
+            float optionsHeaderY = 330f;
+            var optionsHeader = new VisualElement
+            {
+                Name = "OptionsHeader",
+                Text = "BRUSH OPTIONS",
+                Style = new ElementStyle
+                {
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
+                },
+                Transform = new Transform(0, optionsHeaderY, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
+            };
+            sidebar.AddChild(optionsHeader);
+
+            var chkVelocity = new Checkbox("Velocity Dynamics", true)
+            {
+                TextColor = new SKColor(51, 65, 85),
+                Transform = new Transform(20, optionsHeaderY + 25f, sidebarWidth - 40f, 24)
+                {
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right
+                }
+            };
+            chkVelocity.OnCheckedChanged += (isChecked) =>
+            {
+                if (_drawingCanvas != null)
+                {
+                    _drawingCanvas.UseVelocityDynamics = isChecked;
+                }
+            };
+            sidebar.AddChild(chkVelocity);
+
+            var chkOpacity = new Checkbox("Semi-Transparent", false)
+            {
+                TextColor = new SKColor(51, 65, 85),
+                Transform = new Transform(20, optionsHeaderY + 55f, sidebarWidth - 40f, 24)
+                {
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right
+                }
+            };
+            chkOpacity.OnCheckedChanged += (isChecked) =>
+            {
+                if (_drawingCanvas != null)
+                {
+                    _drawingCanvas.PaintOpacity = isChecked ? 0.35f : 1.0f;
+                }
+            };
+            sidebar.AddChild(chkOpacity);
+
+            _eraserCheckbox = new Checkbox("Eraser Mode", false)
+            {
+                TextColor = new SKColor(51, 65, 85),
+                Transform = new Transform(20, optionsHeaderY + 85f, sidebarWidth - 40f, 24)
+                {
+                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right
+                }
+            };
+            _eraserCheckbox.OnCheckedChanged += (isChecked) =>
+            {
+                if (_drawingCanvas != null)
+                {
+                    _drawingCanvas.IsEraserMode = isChecked;
+                }
+            };
+            sidebar.AddChild(_eraserCheckbox);
+
+            // Color mixing selection
+            float mixHeaderY = 455f;
+            sidebar.AddChild(new VisualElement
+            {
+                Name = "MixHeader",
+                Text = "COLOR MIXING",
+                Style = new ElementStyle
+                {
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
+                },
+                Transform = new Transform(0, mixHeaderY, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
+            });
+
+            // Mixing speed selector buttons (Flat buttons in a 2x2 grid, styled for white theme)
+            float mixBtnW = 104f;
+            float mixBtnH = 34f;
+            float mixBtnStartX = 20f;
+            float mixBtnStartY = mixHeaderY + 25f;
+            float mixGapX = 12f;
+            float mixGapY = 12f;
+
+            string[] mixLabels = { "NONE", "SLOW", "MEDIUM", "FAST" };
+            float[] mixRates = { 0.0f, 0.25f, 0.55f, 0.85f };
+
+            for (int i = 0; i < 4; i++)
+            {
+                int row = i / 2;
+                int col = i % 2;
+                float x = mixBtnStartX + col * (mixBtnW + mixGapX);
+                float y = mixBtnStartY + row * (mixBtnH + mixGapY);
+
+                var btn = new VisualElement
+                {
+                    Name = $"MixBtn_{i}",
+                    Text = mixLabels[i],
+                    Style = new ElementStyle
+                    {
+                        BackColor = i == 1 ? new SKColor(9, 9, 11) : new SKColor(255, 255, 255),
+                        Border = new BorderStyle { Roundness = 8, Width = i == 1 ? 0 : 1, Color = i == 1 ? SKColors.Transparent : new SKColor(226, 232, 240) },
+                        Text = new TextStyle { Color = i == 1 ? SKColors.White : new SKColor(71, 85, 105), Size = 11, Weight = 700, Alignment = TextAlign.Center }
+                    },
+                    Transform = new Transform(x, y, mixBtnW, mixBtnH) { Anchor = Anchor.Top | Anchor.Left }
                 };
 
-                int idx = i;
-                btn.OnClick = () =>
+                float rate = mixRates[i];
+                int index = i;
+                btn.Events.OnMouseDown += (s, e) =>
                 {
-                    if (idx == 0) OnSwitchToDashboard?.Invoke();
-                    else if (idx == 1) OnSwitchToNeonShowcase?.Invoke();
-                    else if (idx == 3) OnSwitchToKanban?.Invoke();
-                    else if (idx == 4) OnSwitchTo3D?.Invoke();
-                    else if (idx == 5) OnSwitchToGlass?.Invoke();
+                    SelectMixRate(index, rate);
+                };
+                btn.Events.OnMouseEnter += (s) =>
+                {
+                    if (_currentMixRate != mixRates[index])
+                    {
+                        btn.Style.BackColor = new SKColor(248, 250, 252);
+                        btn.Style.Border.Color = new SKColor(203, 213, 225);
+                    }
+                    else
+                    {
+                        btn.Style.BackColor = new SKColor(30, 41, 59); // slate-800
+                    }
+                    btn.ScheduleRender();
+                };
+                btn.Events.OnMouseLeave += (s) =>
+                {
+                    if (_currentMixRate != mixRates[index])
+                    {
+                        btn.Style.BackColor = new SKColor(255, 255, 255);
+                        btn.Style.Border.Color = new SKColor(226, 232, 240);
+                    }
+                    else
+                    {
+                        btn.Style.BackColor = new SKColor(9, 9, 11);
+                    }
+                    btn.ScheduleRender();
                 };
 
                 sidebar.AddChild(btn);
-                sidebarMenuY += 55f;
+                _mixIndicators[i] = btn;
             }
 
+            // Brush Type Selection (MARKER / BRUSH)
+            float brushModeHeaderY = 575f;
+            var brushModeHeader = new VisualElement
+            {
+                Name = "BrushModeHeader",
+                Text = "BRUSH TYPE",
+                Style = new ElementStyle
+                {
+                    Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
+                },
+                Transform = new Transform(0, brushModeHeaderY, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
+            };
+            sidebar.AddChild(brushModeHeader);
 
-            // --- 2. MAIN CONTENT AREA ---
+            float brushModeBtnW = 104f;
+            float brushModeBtnH = 34f;
+            float brushModeBtnStartX = 20f;
+            float brushModeBtnY = brushModeHeaderY + 25f;
+            float brushModeGapX = 12f;
+
+            string[] brushModeLabels = { "MARKER", "BRUSH" };
+            bool[] brushModeValues = { false, true };
+
+            for (int i = 0; i < 2; i++)
+            {
+                var btn = new VisualElement
+                {
+                    Name = $"BrushModeBtn_{i}",
+                    Text = brushModeLabels[i],
+                    Style = new ElementStyle
+                    {
+                        BackColor = i == 0 ? new SKColor(9, 9, 11) : new SKColor(255, 255, 255),
+                        Border = new BorderStyle { Roundness = 8, Width = i == 0 ? 0 : 1, Color = i == 0 ? SKColors.Transparent : new SKColor(226, 232, 240) },
+                        Text = new TextStyle { Color = i == 0 ? SKColors.White : new SKColor(71, 85, 105), Size = 11, Weight = 700, Alignment = TextAlign.Left, Padding = 36 }
+                    },
+                    Transform = new Transform(brushModeBtnStartX + i * (brushModeBtnW + brushModeGapX), brushModeBtnY, brushModeBtnW, brushModeBtnH) { Anchor = Anchor.Top | Anchor.Left }
+                };
+
+                var icon = new VisualElement
+                {
+                    Name = $"BrushModeBtn_Icon_{i}",
+                    Style = new ElementStyle
+                    {
+                        BackColor = SKColors.Transparent,
+                        Border = new BorderStyle { Width = 0, Color = SKColors.Transparent }
+                    },
+                    Transform = new Transform(12, 9, 16, 16) { FixedWidth = true, FixedHeight = true },
+                    BackgroundImageTintColor = i == 0 ? SKColors.White : new SKColor(71, 85, 105),
+                    BackgroundImageTintBlendMode = SKBlendMode.SrcIn
+                };
+                if (i == 0) icon.LoadSvgFromFile("assets/marker.svg");
+                else icon.LoadSvgFromFile("assets/brush.svg");
+                btn.AddChild(icon);
+                _brushTypeIcons[i] = icon;
+
+                bool isBrush = brushModeValues[i];
+                int index = i;
+                btn.Events.OnMouseDown += (s, e) =>
+                {
+                    SelectBrushType(index, isBrush);
+                };
+                btn.Events.OnMouseEnter += (s) =>
+                {
+                    if (_isBrushMode != isBrush)
+                    {
+                        btn.Style.BackColor = new SKColor(248, 250, 252);
+                        btn.Style.Border.Color = new SKColor(203, 213, 225);
+                    }
+                    else
+                    {
+                        btn.Style.BackColor = new SKColor(30, 41, 59); // slate-800
+                    }
+                    btn.ScheduleRender();
+                };
+                btn.Events.OnMouseLeave += (s) =>
+                {
+                    if (_isBrushMode != isBrush)
+                    {
+                        btn.Style.BackColor = new SKColor(255, 255, 255);
+                        btn.Style.Border.Color = new SKColor(226, 232, 240);
+                    }
+                    else
+                    {
+                        btn.Style.BackColor = new SKColor(9, 9, 11);
+                    }
+                    btn.ScheduleRender();
+                };
+
+                sidebar.AddChild(btn);
+                _brushTypeIndicators[i] = btn;
+            }
+
+            // Reset Canvas Button next to the back button, above it
+            var clearBtn = new VisualElement
+            {
+                Name = "Btn_ClearCanvas",
+                Text = "RESET CANVAS",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(255, 255, 255),
+                    Border = new BorderStyle { Roundness = 8, Width = 1, Color = new SKColor(252, 165, 165) },
+                    Text = new TextStyle { Color = new SKColor(220, 38, 38), Size = 12, Weight = 700, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(20, Height - 110f, sidebarWidth - 40f, 38)
+                {
+                    Anchor = Anchor.Bottom | Anchor.Left | Anchor.Right
+                }
+            };
+            clearBtn.Events.OnMouseEnter += (s) =>
+            {
+                clearBtn.Style.BackColor = new SKColor(254, 242, 242);
+                clearBtn.Style.Border.Color = new SKColor(239, 68, 68);
+                clearBtn.ScheduleRender();
+            };
+            clearBtn.Events.OnMouseLeave += (s) =>
+            {
+                clearBtn.Style.BackColor = new SKColor(255, 255, 255);
+                clearBtn.Style.Border.Color = new SKColor(252, 165, 165);
+                clearBtn.ScheduleRender();
+            };
+            sidebar.AddChild(clearBtn);
+
+            // Simple Back Button at the bottom of the sidebar navigation
+            var backBtn = new VisualElement
+            {
+                Name = "Btn_BackToDashboard",
+                Text = "←  BACK TO DASHBOARD",
+                Style = new ElementStyle
+                {
+                    BackColor = new SKColor(255, 255, 255),
+                    Border = new BorderStyle { Roundness = 8, Width = 1, Color = new SKColor(203, 213, 225) },
+                    Text = new TextStyle { Color = new SKColor(71, 85, 105), Size = 11, Weight = 700, Alignment = TextAlign.Center }
+                },
+                Transform = new Transform(20, Height - 60f, sidebarWidth - 40f, 38)
+                {
+                    Anchor = Anchor.Bottom | Anchor.Left | Anchor.Right
+                }
+            };
+            backBtn.Events.OnMouseEnter += (s) =>
+            {
+                backBtn.Style.BackColor = new SKColor(248, 250, 252);
+                backBtn.Style.Border.Color = new SKColor(100, 116, 139);
+                backBtn.Style.Text.Color = new SKColor(15, 23, 42);
+                backBtn.ScheduleRender();
+            };
+            backBtn.Events.OnMouseLeave += (s) =>
+            {
+                backBtn.Style.BackColor = new SKColor(255, 255, 255);
+                backBtn.Style.Border.Color = new SKColor(203, 213, 225);
+                backBtn.Style.Text.Color = new SKColor(71, 85, 105);
+                backBtn.ScheduleRender();
+            };
+            backBtn.Events.OnMouseUp += (s, e) =>
+            {
+                OnSwitchToDashboard?.Invoke();
+            };
+            sidebar.AddChild(backBtn);
+
+            // --- 2. MAIN CONTENT AREA (Flat, sleek dark canvas card) ---
             var mainContent = new VisualElement
             {
                 Name = "PaintMainContent",
@@ -212,64 +515,120 @@ namespace Blossom.Testing.Views
             };
             AddElement(mainContent);
 
-            // Unified Header breadcrumb title block (shifted down to match Dashboard)
-            var titleBlock = new VisualElement
-            {
-                Name = "PaintTitle",
-                Style = new ElementStyle { BackColor = SKColors.Transparent },
-                Transform = new Transform(30, 18, Width - sidebarWidth - 60f, 44)
-                {
-                    Anchor = Anchor.Top | Anchor.Left | Anchor.Right,
-                    FixedHeight = true
-                }
-            };
-            mainContent.AddChild(titleBlock);
+            // Clean Frame for Canvas (no blurs, simple borders, white theme)
+            float frameW = Width - sidebarWidth - 60f;
+            float frameH = Height - 20f; // Expand container to use top space
 
-            titleBlock.AddChild(new VisualElement
-            {
-                Name = "Paint_HeaderTitle",
-                Text = "PAINT CANVAS",
-                Style = new ElementStyle { Text = new TextStyle { Color = SKColors.White, Size = 20, Weight = 800, Alignment = TextAlign.Left } },
-                Transform = new Transform(0, 0, 400, 24) { Anchor = Anchor.Top | Anchor.Left }
-            });
-
-            titleBlock.AddChild(new VisualElement
-            {
-                Name = "Paint_HeaderSub",
-                Text = "FREEHAND DRAWING & DESIGN HUB",
-                Style = new ElementStyle { Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 9, Weight = 600, Alignment = TextAlign.Left } },
-                Transform = new Transform(0, 24, 400, 20) { Anchor = Anchor.Top | Anchor.Left }
-            });
-
-            // Grid Canvas Container (Glassmorphic frame)
             var canvasFrame = new VisualElement
             {
                 Name = "CanvasFrame",
                 Style = new ElementStyle
                 {
-                    BackColor = new SKColor(22, 28, 41, 180), // Sleek glass card background
-                    Border = new BorderStyle { Roundness = 16, Width = 1, Color = new SKColor(255, 255, 255, 12) },
-                    Shadow = new ShadowStyle { Color = SKColors.Black.WithAlpha(50), SpreadY = 5, OffsetY = 5 }
+                    BackColor = new SKColor(255, 255, 255), // Flat white card background
+                    Border = new BorderStyle { Roundness = 12, Width = 1, Color = new SKColor(226, 232, 240) }
                 },
-                Transform = new Transform(30, 80, Width - sidebarWidth - 60, Height - 110)
+                Transform = new Transform(30, 10, frameW, frameH) // Starts at Y = 10
                 {
                     Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom
                 }
             };
             mainContent.AddChild(canvasFrame);
 
-            // Responsive Drawing Grid Canvas itself
-            _drawingCanvas = new DrawingCanvas(48, 36, Width - sidebarWidth - 100, Height - 150)
+            // Compute centered aspect ratio bounds (4:3 aspect ratio)
+            float canvasMaxW = frameW - 40f;
+            float canvasMaxH = frameH - 40f;
+            float aspectRatio = 4f / 3f;
+
+            float targetW = canvasMaxW;
+            float targetH = canvasMaxW / aspectRatio;
+
+            if (targetH > canvasMaxH)
+            {
+                targetH = canvasMaxH;
+                targetW = canvasMaxH * aspectRatio;
+            }
+
+            float canvasX = (frameW - targetW) / 2f;
+            float canvasY = (frameH - targetH) / 2f;
+
+            // Responsive Aspect-Ratio Drawing Canvas with Background Paint Shader
+            _drawingCanvas = new DrawingCanvas(targetW, targetH)
             {
                 Name = "DrawingCanvas_Main",
                 DrawColor = _paletteColors[0],
-                Transform = new Transform(20, 20, Width - sidebarWidth - 100, Height - 150)
+                BrushSize = 20f,
+                ShaderMixingRate = _currentMixRate,
+                IsBrushMode = _isBrushMode,
+                Style = new ElementStyle
                 {
-                    Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom
+                    BackgroundShader = BackgroundShaderType.LiquidPaint,
+                    BackgroundShaderColor = SKColors.Transparent,
+                    ShaderRenderMode = EffectRenderMode.Continuous,
+                    Border = new BorderStyle { Roundness = 8, Width = 1, Color = new SKColor(226, 232, 240) }
+                },
+                Transform = new Transform(canvasX, canvasY, targetW, targetH)
+                {
+                    Anchor = Anchor.Left | Anchor.Top // Position explicitly relative to Top-Left of parent frame
                 }
             };
-            _drawingCanvas.Clear(new SKColor(30, 41, 59)); // Initialize grid to deep slate
+            _drawingCanvas.Clear(SKColors.Transparent); // Clear to transparent
             canvasFrame.AddChild(_drawingCanvas);
+
+            // Wire reset canvas button to also reset layouts and backing bitmap in case window size changed
+            clearBtn.Events.OnMouseUp += (s, e) =>
+            {
+                if (_drawingCanvas != null)
+                {
+                    ForceLayoutEvaluation();
+                    UpdateCanvasLayout(canvasFrame.Transform.Computed.Width, canvasFrame.Transform.Computed.Height);
+                    _drawingCanvas.RecreateBackingBitmap(_drawingCanvas.Transform.Width, _drawingCanvas.Transform.Height);
+                }
+            };
+
+            float lastFrameW = 0;
+            float lastFrameH = 0;
+            this.Loop += () =>
+            {
+                if (canvasFrame.Transform.Computed.Width != lastFrameW || canvasFrame.Transform.Computed.Height != lastFrameH)
+                {
+                    lastFrameW = canvasFrame.Transform.Computed.Width;
+                    lastFrameH = canvasFrame.Transform.Computed.Height;
+                    UpdateCanvasLayout(lastFrameW, lastFrameH);
+                }
+            };
+        }
+
+        private void UpdateCanvasLayout(float frameW, float frameH)
+        {
+            if (_drawingCanvas == null) return;
+
+            // Compute centered aspect ratio bounds (4:3 aspect ratio)
+            float canvasMaxW = frameW - 40f;
+            float canvasMaxH = frameH - 40f;
+            float aspectRatio = 4f / 3f;
+
+            float targetW = canvasMaxW;
+            float targetH = canvasMaxW / aspectRatio;
+
+            if (targetH > canvasMaxH)
+            {
+                targetH = canvasMaxH;
+                targetW = canvasMaxH * aspectRatio;
+            }
+
+            float canvasX = (frameW - targetW) / 2f;
+            float canvasY = (frameH - targetH) / 2f;
+
+            // Update drawing canvas transform to the new centered, aspect-ratio-locked dimensions.
+            // Note: X and Y setters expect global coordinates, so we add the parent's global computed position.
+            var parent = _drawingCanvas.Transform.Parent;
+            float parentX = parent != null ? parent.Computed.X : 0;
+            float parentY = parent != null ? parent.Computed.Y : 0;
+
+            _drawingCanvas.Transform.X = parentX + canvasX;
+            _drawingCanvas.Transform.Y = parentY + canvasY;
+            _drawingCanvas.Transform.Width = targetW;
+            _drawingCanvas.Transform.Height = targetH;
         }
 
         private void SelectColor(int index)
@@ -279,10 +638,15 @@ namespace Blossom.Testing.Views
             var color = _paletteColors[index];
             _drawingCanvas.DrawColor = color;
 
+            if (_eraserCheckbox != null && _eraserCheckbox.IsChecked)
+            {
+                _eraserCheckbox.IsChecked = false;
+            }
+
             if (_selectedColorText != null)
             {
-                _selectedColorText.Text = $"Color: {_paletteNames[index]}";
-                _selectedColorText.Style.Text.Color = color;
+                _selectedColorText.Text = $"Active: {_paletteNames[index]}";
+                _selectedColorText.Style.Text.Color = (color == new SKColor(255, 255, 255)) ? new SKColor(71, 85, 105) : color;
             }
 
             for (int i = 0; i < _colorIndicators.Length; i++)
@@ -293,16 +657,86 @@ namespace Blossom.Testing.Views
                 if (i == index)
                 {
                     ind.Style.Border.Width = 3;
-                    ind.Style.Border.Color = SKColors.White;
-                    ind.Style.Shadow.SpreadY = 3;
-                    ind.Style.Shadow.OffsetY = 2;
+                    ind.Style.Border.Color = new SKColor(15, 23, 42);
                 }
                 else
                 {
                     ind.Style.Border.Width = 1;
-                    ind.Style.Border.Color = new SKColor(255, 255, 255, 60);
-                    ind.Style.Shadow.SpreadY = 0;
-                    ind.Style.Shadow.OffsetY = 0;
+                    ind.Style.Border.Color = new SKColor(226, 232, 240);
+                }
+                ind.ScheduleRender();
+            }
+        }
+
+        private void SelectMixRate(int btnIndex, float rate)
+        {
+            _currentMixRate = rate;
+            if (_drawingCanvas != null)
+            {
+                _drawingCanvas.ShaderMixingRate = rate;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                var ind = _mixIndicators[i];
+                if (ind == null) continue;
+
+                if (i == btnIndex)
+                {
+                    ind.Style.BackColor = new SKColor(9, 9, 11); // Midnight Black
+                    ind.Style.Border.Color = SKColors.Transparent;
+                    ind.Style.Border.Width = 0;
+                    ind.Style.Text.Color = SKColors.White;
+                }
+                else
+                {
+                    ind.Style.BackColor = new SKColor(255, 255, 255);
+                    ind.Style.Border.Color = new SKColor(226, 232, 240);
+                    ind.Style.Border.Width = 1;
+                    ind.Style.Text.Color = new SKColor(71, 85, 105);
+                }
+                ind.ScheduleRender();
+            }
+        }
+
+        private void SelectBrushType(int btnIndex, bool isBrush)
+        {
+            _isBrushMode = isBrush;
+            if (_drawingCanvas != null)
+            {
+                _drawingCanvas.IsBrushMode = isBrush;
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                var ind = _brushTypeIndicators[i];
+                if (ind == null) continue;
+
+                var icon = _brushTypeIcons[i];
+
+                if (i == btnIndex)
+                {
+                    ind.Style.BackColor = new SKColor(9, 9, 11); // Midnight Black
+                    ind.Style.Border.Color = SKColors.Transparent;
+                    ind.Style.Border.Width = 0;
+                    ind.Style.Text.Color = SKColors.White;
+                    if (icon != null)
+                    {
+                        icon.BackgroundImageTintColor = SKColors.White;
+                        icon.ScheduleRender();
+                    }
+                }
+                else
+                {
+                    ind.Style.BackColor = new SKColor(255, 255, 255);
+                    ind.Style.Border.Color = new SKColor(226, 232, 240);
+                    ind.Style.Border.Width = 1;
+                    ind.Style.Text.Color = new SKColor(71, 85, 105);
+                    if (icon != null)
+                    {
+                        icon.BackgroundImageTintColor = new SKColor(71, 85, 105);
+                        icon.ScheduleRender();
+                    }
                 }
                 ind.ScheduleRender();
             }

@@ -90,6 +90,11 @@ public static class Browser
                 {
                     BrowserApp.ActiveView.Init();
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[CRITICAL ERROR] Exception during ActiveView.Init():\n" + ex.ToString());
+                    throw;
+                }
                 finally
                 {
                     Browser.RenderRect = actualRect;
@@ -188,31 +193,41 @@ public static class Browser
 
     internal static void StartWindow()
     {
-        while (!window.IsClosing)
+        try
         {
-            BrowserApp.ActiveView?.TriggerLoop();
-            window.DoEvents();
-            window.ContinueEvents();
-
-            if (BrowserApp.ActiveView?.RenderRequired == true)
+            while (!window.IsClosing)
             {
-                window.DoRender();
+                BrowserApp.ActiveView?.TriggerLoop();
+                window.DoEvents();
+                window.ContinueEvents();
 
-                if (!SkipCountingNextRender)
+                if (BrowserApp.ActiveView?.RenderRequired == true)
                 {
-                    TotalRenders++;
-                    OnRenderRequired?.Invoke();
+                    window.DoRender();
+
+                    if (!SkipCountingNextRender)
+                    {
+                        TotalRenders++;
+                        OnRenderRequired?.Invoke();
+                    }
+                    else
+                    {
+                        SkipCountingNextRender = false;
+                    }
                 }
-                else
-                {
-                    SkipCountingNextRender = false;
-                }
+
+                Thread.Sleep(1);
             }
-
-            Thread.Sleep(1);
         }
-
-        window.Dispose();
+        catch (Exception ex)
+        {
+            Console.WriteLine("[CRITICAL ERROR] Exception in StartWindow main loop:\n" + ex.ToString());
+            throw;
+        }
+        finally
+        {
+            window.Dispose();
+        }
     }
 
     internal static void ChangeCursor(StandardCursor cursor)

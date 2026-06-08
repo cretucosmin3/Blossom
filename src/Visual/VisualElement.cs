@@ -71,6 +71,8 @@ public class VisualElement : IDisposable
     }
 
     public float HoverProgress { get; internal set; } = 0f;
+    public Func<SKBitmap?>? GetShaderBitmapResource;
+    public float ShaderMixingRate { get; set; } = 0.25f;
 
     internal void UpdateHover(float dt)
     {

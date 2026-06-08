@@ -29,6 +29,16 @@ public class Checkbox : VisualElement
         }
     }
 
+    public SKColor TextColor
+    {
+        get => _labelText.Style.Text.Color;
+        set
+        {
+            _labelText.Style.Text.Color = value;
+            _labelText.ScheduleRender();
+        }
+    }
+
     public Checkbox(string label, bool initialChecked = false)
     {
         Name = $"Checkbox_{label}_{Guid.NewGuid().ToString().Substring(0, 4)}";
@@ -90,14 +100,14 @@ public class Checkbox : VisualElement
         // Mouse events
         Events.OnMouseEnter += (s) =>
         {
-            _box.Style.Border.Color = new SKColor(56, 189, 248); // Cyberpunk Cyan
+            _box.Style.Border.Color = new SKColor(9, 9, 11); // Midnight Black
             Transform.ScaleX = 1.02f;
             Transform.ScaleY = 1.02f;
         };
 
         Events.OnMouseLeave += (s) =>
         {
-            _box.Style.Border.Color = _isChecked ? new SKColor(56, 189, 248) : new SKColor(148, 163, 184);
+            _box.Style.Border.Color = _isChecked ? new SKColor(9, 9, 11) : new SKColor(148, 163, 184);
             Transform.ScaleX = 1.0f;
             Transform.ScaleY = 1.0f;
         };
@@ -112,11 +122,11 @@ public class Checkbox : VisualElement
     {
         if (_isChecked)
         {
-            _box.Style.BackColor = new SKColor(56, 189, 248, 220); // Filled with Cyan
-            _box.Style.Border.Color = new SKColor(56, 189, 248);
+            _box.Style.BackColor = new SKColor(9, 9, 11, 220); // Midnight Black
+            _box.Style.Border.Color = new SKColor(9, 9, 11);
             _box.Style.Shadow = new ShadowStyle
             {
-                Color = new SKColor(56, 189, 248, 100),
+                Color = new SKColor(9, 9, 11, 50),
                 SpreadX = 4,
                 SpreadY = 4
             };

@@ -62,7 +62,20 @@ internal static class Renderer
 
     public static void SetCanvas(IWindow window)
     {
-        grGlInterface = GRGlInterface.Create();
+        grGlInterface = GRGlInterface.Create(name => {
+            if (window.GLContext != null)
+            {
+                return window.GLContext.GetProcAddress(name);
+            }
+            return IntPtr.Zero;
+        });
+
+        if (grGlInterface == null)
+        {
+            Console.WriteLine("[WARN] GRGlInterface creation via window context returned null, falling back to default...");
+            grGlInterface = GRGlInterface.Create();
+        }
+
         grGlInterface.Validate();
 
         grContext = GRContext.CreateGl(grGlInterface);

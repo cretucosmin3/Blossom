@@ -8,5 +8,6 @@ public enum BackgroundShaderType
     LiquidPlasma,
     GlassRefraction,
     HolographicLattice,
-    QuantumDots
+    QuantumDots,
+    LiquidPaint
 }

@@ -78,8 +78,8 @@ public class Slider : VisualElement
             Name = $"{Name}_Track",
             Style = new ElementStyle
             {
-                BackColor = new SKColor(30, 41, 59, 180), // Dark slate
-                Border = new BorderStyle { Width = 1, Color = new SKColor(71, 85, 105), Roundness = 3 }
+                BackColor = new SKColor(226, 232, 240), // light slate
+                Border = new BorderStyle { Width = 1, Color = new SKColor(203, 213, 225), Roundness = 3 }
             },
             Transform = new Transform(0, 8, 200, 6)
             {
@@ -93,7 +93,7 @@ public class Slider : VisualElement
             Name = $"{Name}_Fill",
             Style = new ElementStyle
             {
-                BackColor = new SKColor(236, 72, 153), // Hot pink
+                BackColor = new SKColor(9, 9, 11), // Midnight Black
                 Border = new BorderStyle { Width = 0, Roundness = 3 }
             },
             Transform = new Transform(0, 8, 100, 6)
@@ -109,8 +109,8 @@ public class Slider : VisualElement
             Style = new ElementStyle
             {
                 BackColor = SKColors.White,
-                Border = new BorderStyle { Width = 1, Color = new SKColor(236, 72, 153), Roundness = 8 },
-                Shadow = new ShadowStyle { Color = new SKColor(236, 72, 153, 100), SpreadX = 4, SpreadY = 4 }
+                Border = new BorderStyle { Width = 1.5f, Color = new SKColor(9, 9, 11), Roundness = 8 },
+                Shadow = new ShadowStyle { Color = new SKColor(9, 9, 11, 40), SpreadX = 4, SpreadY = 4 }
             },
             Transform = new Transform(90, 3, 16, 16)
             {
@@ -147,12 +147,12 @@ public class Slider : VisualElement
 
         Events.OnMouseEnter += (s) =>
         {
-            _handle.Style.Border.Color = new SKColor(56, 189, 248); // Switch border to Cyan on hover
+            _handle.Style.Border.Color = new SKColor(71, 85, 105); // Slate-600 on hover
         };
 
         Events.OnMouseLeave += (s) =>
         {
-            _handle.Style.Border.Color = new SKColor(236, 72, 153);
+            _handle.Style.Border.Color = new SKColor(9, 9, 11);
             _isDragging = false;
         };
     }
