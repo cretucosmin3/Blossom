@@ -1,4 +1,5 @@
 using System;
+using Blossom.Core;
 using Blossom.Core.Visual;
 using SkiaSharp;
 
@@ -16,6 +17,7 @@ public class BorderStyle : StyleProperty, IDisposable
     private float _RBottomRight = 0f;
     private SKPathEffect _PathEffect = null;
 
+    [BuilderProperty("Border Width", "Border", min: 0f, max: 20f, step: 0.5f)]
     public float Width
     {
         get => _Width;
@@ -26,6 +28,7 @@ public class BorderStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Border Color", "Border")]
     public SkiaSharp.SKColor Color
     {
         get => _Color;
@@ -36,6 +39,7 @@ public class BorderStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Border Corner Roundness", "Border", min: 0f, max: 200f, step: 1f)]
     public float Roundness
     {
         get => _Roundness;

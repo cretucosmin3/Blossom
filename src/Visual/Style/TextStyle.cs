@@ -1,5 +1,6 @@
 using System;
 using System.Security.Cryptography;
+using Blossom.Core;
 using SkiaSharp;
 
 namespace Blossom.Core.Visual;
@@ -53,6 +54,7 @@ public class TextStyle : StyleProperty, IDisposable
         TriggerRender();
     }
 
+    [BuilderProperty("Text Spacing", "Text", min: 0f, max: 20f, step: 1f)]
     public int Spacing
     {
         get => _Spacing;
@@ -63,6 +65,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Text Size", "Text", min: 6f, max: 120f, step: 1f)]
     public float Size
     {
         get => _Size;
@@ -73,6 +76,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Font Weight", "Text", min: 100f, max: 900f, step: 100f)]
     public int Weight
     {
         get => _Weight;
@@ -83,6 +87,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Text Padding", "Text", min: 0f, max: 100f, step: 1f)]
     public float Padding
     {
         get => _Padding;
@@ -93,6 +98,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Text Alignment", "Text")]
     public TextAlign Alignment
     {
         get => _Alignment;
@@ -103,6 +109,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Text Color", "Text")]
     public SKColor Color
     {
         get => _Color;
@@ -114,6 +121,7 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    [BuilderProperty("Font Family", "Text")]
     public string Font
     {
         get => _FontName;

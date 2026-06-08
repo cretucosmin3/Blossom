@@ -41,7 +41,16 @@ public abstract class Application : IDisposable
 
         if (Browser.IsLoaded && !ActiveView.IsLoaded)
         {
-            ActiveView.Init();
+            var actualRect = Browser.RenderRect;
+            Browser.RenderRect = new System.Drawing.RectangleF(0, 0, ActiveView.ReferenceWidth, ActiveView.ReferenceHeight);
+            try
+            {
+                ActiveView.Init();
+            }
+            finally
+            {
+                Browser.RenderRect = actualRect;
+            }
             ActiveView.IsLoaded = true;
         }
 

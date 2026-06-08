@@ -1,4 +1,5 @@
 using System;
+using Blossom.Core;
 namespace Blossom.Core.Visual;
 using System.Collections.Generic;
 
@@ -22,6 +23,7 @@ public class ElementStyle : IDisposable
     public BorderStyle Border { get; set; }
     public ShadowStyle Shadow { get; set; }
 
+    [BuilderProperty("Background Shader", "Effects")]
     public BackgroundShaderType BackgroundShader
     {
         get => _BackgroundShader;
@@ -32,6 +34,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Shader Color", "Effects")]
     public SkiaSharp.SKColor BackgroundShaderColor
     {
         get => _BackgroundShaderColor;
@@ -42,6 +45,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Border Effect", "Effects")]
     public BorderEffectType BorderEffect
     {
         get => _BorderEffect;
@@ -52,6 +56,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Border Effect Speed", "Effects", min: 0f, max: 20f, step: 0.1f)]
     public float BorderEffectSpeed
     {
         get => _BorderEffectSpeed;
@@ -62,6 +67,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Border Effect Amount", "Effects", min: 0f, max: 50f, step: 0.5f)]
     public float BorderEffectAmount
     {
         get => _BorderEffectAmount;
@@ -72,6 +78,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Backdrop Blur", "Effects", min: 0f, max: 50f, step: 0.5f)]
     public float BackdropBlur
     {
         get => _BackdropBlur;
@@ -92,6 +99,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Transition Type", "Effects")]
     public TransitionEffectType TransitionType
     {
         get => _TransitionType;
@@ -102,6 +110,7 @@ public class ElementStyle : IDisposable
         }
     }
 
+    [BuilderProperty("Transition Progress", "Effects", min: 0f, max: 1f, step: 0.01f)]
     public float TransitionProgress
     {
         get => _TransitionProgress;
@@ -140,6 +149,7 @@ public class ElementStyle : IDisposable
         Shadow?.Dispose();
     }
 
+    [BuilderProperty("Background Color", "Style")]
     public SkiaSharp.SKColor BackColor
     {
         get => _BackColor;

@@ -28,7 +28,7 @@ public static class Browser
     private static IInputContext input;
 
     internal static IWindow window;
-    internal static TestingApplication BrowserApp = new();
+    internal static Application BrowserApp = null!;
     internal static RectangleF RenderRect = new(0, 0, 0, 0);
     internal static bool WasResized;
 
@@ -58,13 +58,42 @@ public static class Browser
 
     internal static void Initialize()
     {
+        bool launchBuilder = false;
+        var cmdArgs = Environment.GetCommandLineArgs();
+        foreach (var arg in cmdArgs)
+        {
+            if (arg == "--builder")
+            {
+                launchBuilder = true;
+                break;
+            }
+        }
+
+        if (launchBuilder)
+        {
+            BrowserApp = new Testing.UiBuilderApplication();
+        }
+        else
+        {
+            BrowserApp = new TestingApplication();
+        }
+
         OnLoaded = () =>
         {
             ManageInputEvents();
 
             if (BrowserApp.ActiveView != null)
             {
-                BrowserApp.ActiveView.Init();
+                var actualRect = Browser.RenderRect;
+                Browser.RenderRect = new System.Drawing.RectangleF(0, 0, BrowserApp.ActiveView.ReferenceWidth, BrowserApp.ActiveView.ReferenceHeight);
+                try
+                {
+                    BrowserApp.ActiveView.Init();
+                }
+                finally
+                {
+                    Browser.RenderRect = actualRect;
+                }
                 BrowserApp.ActiveView.IsLoaded = true;
             }
             else

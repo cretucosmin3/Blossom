@@ -1,4 +1,5 @@
 using System;
+using Blossom.Core;
 using Blossom.Core.Visual;
 using SkiaSharp;
 
@@ -50,6 +51,7 @@ namespace Blossom.Testing.Components
             }
         }
         
+        [BuilderProperty("Fill Percentage", "ProgressBar", min: 0f, max: 1f, step: 0.01f)]
         public float Percentage
         {
             get => _percentage;
