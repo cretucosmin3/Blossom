@@ -140,11 +140,6 @@ else
         ContextFlags.ForwardCompatible,
         new APIVersion(3, 2));
 }
-           ContextAPI.OpenGL,
-           ContextProfile.Core,
-           ContextFlags.ForwardCompatible,
-           new APIVersion(3, 2)
-        );
 
         GlfwWindowing.Use();
         // SdlWindowing.Use();
