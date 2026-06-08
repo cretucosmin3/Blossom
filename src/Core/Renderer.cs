@@ -1,4 +1,5 @@
 using System;
+using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using SkiaSharp;
 
@@ -62,31 +63,33 @@ internal static class Renderer
 
     public static void SetCanvas(IWindow window)
     {
+        // Create GL interface using the window's GL context GetProcAddress
         grGlInterface = GRGlInterface.Create(name =>
         {
-            // Try the window's GL context first (if available)
+            // Attempt to get address via window's GL context
             if (window.GLContext != null)
             {
                 var ptr = window.GLContext.GetProcAddress(name);
                 if (ptr != IntPtr.Zero) return ptr;
             }
-            // Fallback to Silk.NET's global OpenGL API (works on Windows)
-            return Silk.NET.OpenGL.GL.GetApi().GetProcAddress(name);
+            // If not found, return zero pointer
+            return IntPtr.Zero;
         });
 
         if (grGlInterface == null)
         {
-            Console.WriteLine("[WARN] GRGlInterface creation via window context returned null, falling back to default...");
-            grGlInterface = GRGlInterface.Create();
+            Console.WriteLine("[ERROR] GRGlInterface creation failed.");
+            throw new InvalidOperationException("GRGlInterface creation failed.");
         }
 
+        // Validate interface (may throw if missing functions)
         grGlInterface.Validate();
 
         grContext = GRContext.CreateGl(grGlInterface);
 
         RenewCanvas(window.Size.X, window.Size.Y);
         // Ensure RenderRect matches actual window size immediately
-        Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y); 
+        Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
 
         window.FramebufferResize += newSize =>
         {

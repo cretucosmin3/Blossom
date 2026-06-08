@@ -129,12 +129,13 @@ public static class Browser
     ContextFlags.ForwardCompatible,
     new APIVersion(3, 2));
 
-        SetGlfwWindowHints();
         GlfwWindowing.Use();
         // SdlWindowing.Use();
 
         _glfw = Glfw.GetApi();
         _glfw = GlfwProvider.GLFW.Value;
+
+        // SetGlfwWindowHints();
 
         window = Window.Create(options);
 
