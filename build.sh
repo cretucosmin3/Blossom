@@ -71,8 +71,8 @@ else
   echo "=== Configuring native libraries ==="
   # Remove the NuGet-provided libglfw.so.3 which has context issues in some environments
   rm -f dist/libglfw.so.3
-  # Copy the custom workspace libglfw.so.3.3 which is known to work
-  cp glfw/libglfw.so.3.3 dist/
+  # Copy the custom workspace libglfw.so.3.3 which is known to work as libglfw.so.3
+  cp glfw/libglfw.so.3.3 dist/libglfw.so.3
 
   echo "=== Creating root launcher script ==="
   cat << 'EOF' > ./Blossom

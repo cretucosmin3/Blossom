@@ -398,6 +398,110 @@ namespace Blossom.Core.Visual
             }
         ";
 
+        public const string LiquidPaintShaderSource = @"
+            uniform shader u_backdrop;
+            uniform float u_time;
+            uniform float2 u_resolution;
+            uniform float4 u_color;
+            uniform float u_hover;
+            uniform float u_mixingRate;
+
+            float my_smoothstep(float edge0, float edge1, float x) {
+                float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                return t * t * (3.0 - 2.0 * t);
+            }
+
+            half4 main(float2 fragCoord) {
+                float2 uv = fragCoord / u_resolution;
+                
+                // Sample the drawing canvas bitmap
+                half4 drawing = sample(u_backdrop, fragCoord);
+                
+                // Clean sleek slate canvas background
+                float3 canvasBg = float3(0.96, 0.96, 0.95); 
+                
+                // Organic canvas fine grain noise
+                float noise = fract(sin(dot(fragCoord, float2(12.9898, 78.233))) * 43758.5453);
+                
+                // 3D normal mapping: sample neighbor height gradients
+                float step = 1.2;
+                float hL = sample(u_backdrop, fragCoord + float2(-step, 0.0)).a;
+                float hR = sample(u_backdrop, fragCoord + float2(step, 0.0)).a;
+                float hD = sample(u_backdrop, fragCoord + float2(0.0, -step)).a;
+                float hU = sample(u_backdrop, fragCoord + float2(0.0, step)).a;
+                
+                float3 normal = normalize(float3(hL - hR, hD - hU, 0.22));
+                
+                // Glossy specular highlight from top-left light source
+                float3 lightDir = normalize(float3(-1.0, 1.5, 2.5));
+                float3 viewDir = float3(0.0, 0.0, 1.0);
+                float3 halfDir = normalize(lightDir + viewDir);
+                float spec = pow(max(dot(normal, halfDir), 0.0), 28.0) * 0.45;
+                
+                // Soft edges on paint strokes
+                float edge = my_smoothstep(0.0, 0.1, drawing.a);
+                
+                // Unpremultiply color to prevent dim black outlines at anti-aliased edges
+                float3 paintCol = drawing.rgb;
+                float alpha = drawing.a;
+                if (alpha > 0.005) {
+                    paintCol = clamp(drawing.rgb / alpha, 0.0, 1.0);
+                }
+                
+                // Blend/mix neighboring colors subtractively (CMY) if mixing is enabled
+                if (u_mixingRate > 0.001 && alpha > 0.005) {
+                    float stepVal = (1.5 + 3.0 * u_mixingRate);
+                    float3 sumCMY = 1.0 - paintCol;
+                    float totalWeight = 1.0;
+                    float diag = stepVal * 0.707;
+                    
+                    half4 n;
+                    
+                    n = sample(u_backdrop, fragCoord + float2(-stepVal, 0.0));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(stepVal, 0.0));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(0.0, -stepVal));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(0.0, stepVal));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(-diag, -diag));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(diag, -diag));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(-diag, diag));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    n = sample(u_backdrop, fragCoord + float2(diag, diag));
+                    if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
+                    
+                    float3 mixedCMY = sumCMY / totalWeight;
+                    float3 mixedRgb = clamp(1.0 - mixedCMY, 0.0, 1.0);
+                    
+                    // Interpolate between original color and mixed color based on mixing rate
+                    paintCol = mix(paintCol, mixedRgb, u_mixingRate * 0.85);
+                }
+                
+                paintCol += float3(spec); // Glossy wet highlight
+                paintCol += (noise - 0.5) * 0.02; // Fine texture grain
+                
+                float3 col = mix(canvasBg, paintCol, edge);
+                
+                // Draw fine canvas grain on empty canvas space
+                if (edge < 0.01) {
+                    col += (noise - 0.5) * 0.008;
+                }
+                
+                return half4(col, 1.0);
+            }
+        ";
+
         private static SKRuntimeEffect GetOrCreateEffect(BackgroundShaderType type)
         {
             lock (_lock)
@@ -415,6 +519,7 @@ namespace Blossom.Core.Visual
                     BackgroundShaderType.GlassRefraction => GlassRefractionShaderSource,
                     BackgroundShaderType.HolographicLattice => HolographicLatticeShaderSource,
                     BackgroundShaderType.QuantumDots => QuantumDotsShaderSource,
+                    BackgroundShaderType.LiquidPaint => LiquidPaintShaderSource,
                     _ => throw new ArgumentException("Unsupported shader type", nameof(type))
                 };
 
@@ -455,32 +560,57 @@ namespace Blossom.Core.Visual
             }
         }
 
+        private static void TrySetUniform(SKRuntimeEffectUniforms uniforms, string name, float value)
+        {
+            try
+            {
+                uniforms[name] = value;
+            }
+            catch (ArgumentException)
+            {
+                // Ignored: uniform not present in this shader type
+            }
+        }
+
+        private static void TrySetUniform(SKRuntimeEffectUniforms uniforms, string name, float[] value)
+        {
+            try
+            {
+                uniforms[name] = value;
+            }
+            catch (ArgumentException)
+            {
+                // Ignored: uniform not present in this shader type
+            }
+        }
+
         public static SKShader CreateShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress)
         {
             if (type == BackgroundShaderType.None) return null!;
 
             var effect = GetOrCreateEffect(type);
             var uniforms = new SKRuntimeEffectUniforms(effect);
-            uniforms["u_time"] = time;
-            uniforms["u_resolution"] = new float[] { width, height };
-            uniforms["u_color"] = new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f };
-            uniforms["u_hover"] = hoverProgress;
+            TrySetUniform(uniforms, "u_time", time);
+            TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_color", new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f });
+            TrySetUniform(uniforms, "u_hover", hoverProgress);
 
             return effect.ToShader(true, uniforms);
         }
 
-        public static SKShader CreateGlassShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float scaleX = 1f, float scaleY = 1f)
+        public static SKShader CreateGlassShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float scaleX = 1f, float scaleY = 1f, float mixingRate = 0.25f)
         {
             if (type == BackgroundShaderType.None) return null!;
 
             var effect = GetOrCreateEffect(type);
             var uniforms = new SKRuntimeEffectUniforms(effect);
-            uniforms["u_time"] = time;
-            uniforms["u_resolution"] = new float[] { width, height };
-            uniforms["u_color"] = new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f };
-            uniforms["u_hover"] = hoverProgress;
-            uniforms["u_elementPos"] = new float[] { elementBounds.Left, elementBounds.Top };
-            uniforms["u_elementScale"] = new float[] { scaleX, scaleY };
+            TrySetUniform(uniforms, "u_time", time);
+            TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_color", new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f });
+            TrySetUniform(uniforms, "u_hover", hoverProgress);
+            TrySetUniform(uniforms, "u_elementPos", new float[] { elementBounds.Left, elementBounds.Top });
+            TrySetUniform(uniforms, "u_elementScale", new float[] { scaleX, scaleY });
+            TrySetUniform(uniforms, "u_mixingRate", mixingRate);
 
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("u_backdrop", backdrop);
@@ -494,13 +624,13 @@ namespace Blossom.Core.Visual
 
             var effect = GetOrCreateBorderEffect(type);
             var uniforms = new SKRuntimeEffectUniforms(effect);
-            uniforms["u_time"] = time;
-            uniforms["u_resolution"] = new float[] { width, height };
-            uniforms["u_color"] = new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f };
-            uniforms["u_hover"] = hoverProgress;
-            uniforms["u_elementPos"] = new float[] { elementBounds.Left, elementBounds.Top };
-            uniforms["u_elementScale"] = new float[] { scaleX, scaleY };
-            uniforms["u_borderWidth"] = borderWidth;
+            TrySetUniform(uniforms, "u_time", time);
+            TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_color", new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f });
+            TrySetUniform(uniforms, "u_hover", hoverProgress);
+            TrySetUniform(uniforms, "u_elementPos", new float[] { elementBounds.Left, elementBounds.Top });
+            TrySetUniform(uniforms, "u_elementScale", new float[] { scaleX, scaleY });
+            TrySetUniform(uniforms, "u_borderWidth", borderWidth);
 
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("u_backdrop", backdrop);
@@ -568,9 +698,9 @@ namespace Blossom.Core.Visual
             }
 
             var uniforms = new SKRuntimeEffectUniforms(_halftoneEffect);
-            uniforms["u_progress"] = progress;
-            uniforms["u_resolution"] = new float[] { width, height };
-            uniforms["u_elementPos"] = new float[] { screenX, screenY };
+            TrySetUniform(uniforms, "u_progress", progress);
+            TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_elementPos", new float[] { screenX, screenY });
 
             return _halftoneEffect.ToShader(false, uniforms);
         }
@@ -602,6 +732,9 @@ namespace Blossom.Core.Visual
 
                 var quantumDots = SKRuntimeEffect.Create(QuantumDotsShaderSource, out string quantumDotsErrors);
                 Console.WriteLine("[SHADER TEST] Quantum Dots compilation: " + (quantumDots != null ? "SUCCESS" : "FAILED - " + quantumDotsErrors));
+
+                var liquidPaint = SKRuntimeEffect.Create(LiquidPaintShaderSource, out string liquidPaintErrors);
+                Console.WriteLine("[SHADER TEST] Liquid Paint compilation: " + (liquidPaint != null ? "SUCCESS" : "FAILED - " + liquidPaintErrors));
             }
             catch (Exception ex)
             {

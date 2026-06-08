@@ -562,27 +562,48 @@ public class DrawShaderBackgroundCommand : DrawCommand
         float h = _element.Transform.Computed.Height;
 
         SKShader? shader = null;
-        if (_type == Blossom.Core.Visual.BackgroundShaderType.GlassRefraction)
-        {
-            using var snapshot = Renderer.OffscreenSurface.Snapshot();
-            if (snapshot != null)
-            {
-                using var backdropShader = snapshot.ToShader();
-                var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
-                var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
-                shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
-                    _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY);
-            }
-        }
-        else
-        {
-            shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
-        }
-
-        if (shader == null) return;
+        SKShader? backdropShader = null;
+        SKImage? snapshot = null;
 
         try
         {
+            if (_type == Blossom.Core.Visual.BackgroundShaderType.GlassRefraction)
+            {
+                snapshot = Renderer.OffscreenSurface.Snapshot();
+                if (snapshot != null)
+                {
+                    backdropShader = snapshot.ToShader();
+                    var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                    var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
+                    shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
+                        _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                }
+            }
+            else if (_type == Blossom.Core.Visual.BackgroundShaderType.LiquidPaint)
+            {
+                if (_element.GetShaderBitmapResource != null)
+                {
+                    var bitmap = _element.GetShaderBitmapResource();
+                    if (bitmap != null)
+                    {
+                        var scaleX = w / bitmap.Width;
+                        var scaleY = h / bitmap.Height;
+                        var matrix = SKMatrix.CreateScale(scaleX, scaleY);
+                        backdropShader = SKShader.CreateBitmap(bitmap, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, matrix);
+                        var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                        var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
+                        shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
+                            _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, _element.ShaderMixingRate);
+                    }
+                }
+            }
+            else
+            {
+                shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
+            }
+
+            if (shader == null) return;
+
             using var paint = new SKPaint
             {
                 Style = SKPaintStyle.Fill,
@@ -600,7 +621,8 @@ public class DrawShaderBackgroundCommand : DrawCommand
                     var tempCanvas = tempSurface.Canvas;
                     tempCanvas.Clear(SKColors.Transparent);
                     tempCanvas.DrawRoundRect(_roundRect, paint);
-                    _element.CachedShaderBackground = tempSurface.Snapshot();
+                    using var gpuSnapshot = tempSurface.Snapshot();
+                    _element.CachedShaderBackground = gpuSnapshot?.ToRasterImage();
                 }
 
                 if (_element.CachedShaderBackground != null)
@@ -615,7 +637,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
         }
         finally
         {
-            shader.Dispose();
+            shader?.Dispose();
+            backdropShader?.Dispose();
+            snapshot?.Dispose();
         }
     }
 
