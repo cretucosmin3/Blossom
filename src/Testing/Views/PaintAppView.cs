@@ -37,15 +37,17 @@ namespace Blossom.Testing.Views
         private readonly VisualElement[] _colorIndicators = new VisualElement[8];
         private VisualElement? _selectedColorText;
         private Checkbox? _eraserCheckbox;
+        private VisualElement? _mixHeader;
 
         // Color mixing controls
         private readonly VisualElement[] _mixIndicators = new VisualElement[4];
         private float _currentMixRate = 0.25f; // SLOW mixing by default
 
-        // Brush Type controls (Marker vs Brush)
-        private readonly VisualElement[] _brushTypeIndicators = new VisualElement[2];
-        private readonly VisualElement[] _brushTypeIcons = new VisualElement[2];
+        // Brush Type controls (Marker vs Brush vs Mixer)
+        private readonly VisualElement[] _brushTypeIndicators = new VisualElement[3];
+        private readonly VisualElement[] _brushTypeIcons = new VisualElement[3];
         private bool _isBrushMode = false;
+        private bool _isMixerMode = false;
 
         public PaintAppView() : base("Paint Canvas")
         {
@@ -173,7 +175,7 @@ namespace Blossom.Testing.Views
             }
 
             // Brush Selection Header
-            float brushHeaderY = 255f;
+            float brushHeaderY = 250f;
             sidebar.AddChild(new VisualElement
             {
                 Name = "BrushHeader",
@@ -200,7 +202,7 @@ namespace Blossom.Testing.Views
             sidebar.AddChild(sizeSlider);
 
             // Brush options section
-            float optionsHeaderY = 330f;
+            float optionsHeaderY = 320f;
             var optionsHeader = new VisualElement
             {
                 Name = "OptionsHeader",
@@ -233,7 +235,7 @@ namespace Blossom.Testing.Views
             var chkOpacity = new Checkbox("Semi-Transparent", false)
             {
                 TextColor = new SKColor(51, 65, 85),
-                Transform = new Transform(20, optionsHeaderY + 55f, sidebarWidth - 40f, 24)
+                Transform = new Transform(20, optionsHeaderY + 51f, sidebarWidth - 40f, 24)
                 {
                     Anchor = Anchor.Top | Anchor.Left | Anchor.Right
                 }
@@ -250,7 +252,7 @@ namespace Blossom.Testing.Views
             _eraserCheckbox = new Checkbox("Eraser Mode", false)
             {
                 TextColor = new SKColor(51, 65, 85),
-                Transform = new Transform(20, optionsHeaderY + 85f, sidebarWidth - 40f, 24)
+                Transform = new Transform(20, optionsHeaderY + 77f, sidebarWidth - 40f, 24)
                 {
                     Anchor = Anchor.Top | Anchor.Left | Anchor.Right
                 }
@@ -265,8 +267,8 @@ namespace Blossom.Testing.Views
             sidebar.AddChild(_eraserCheckbox);
 
             // Color mixing selection
-            float mixHeaderY = 455f;
-            sidebar.AddChild(new VisualElement
+            float mixHeaderY = 430f;
+            _mixHeader = new VisualElement
             {
                 Name = "MixHeader",
                 Text = "COLOR MIXING",
@@ -275,7 +277,8 @@ namespace Blossom.Testing.Views
                     Text = new TextStyle { Color = new SKColor(100, 116, 139), Size = 12, Weight = 700, Alignment = TextAlign.Left, Padding = 20 }
                 },
                 Transform = new Transform(0, mixHeaderY, sidebarWidth, 20) { Anchor = Anchor.Top | Anchor.Left | Anchor.Right }
-            });
+            };
+            sidebar.AddChild(_mixHeader);
 
             // Mixing speed selector buttons (Flat buttons in a 2x2 grid, styled for white theme)
             float mixBtnW = 104f;
@@ -345,8 +348,8 @@ namespace Blossom.Testing.Views
                 _mixIndicators[i] = btn;
             }
 
-            // Brush Type Selection (MARKER / BRUSH)
-            float brushModeHeaderY = 575f;
+            // Brush Type Selection (MARKER / BRUSH / MIXER)
+            float brushModeHeaderY = 550f;
             var brushModeHeader = new VisualElement
             {
                 Name = "BrushModeHeader",
@@ -365,11 +368,14 @@ namespace Blossom.Testing.Views
             float brushModeBtnY = brushModeHeaderY + 25f;
             float brushModeGapX = 12f;
 
-            string[] brushModeLabels = { "MARKER", "BRUSH" };
-            bool[] brushModeValues = { false, true };
+            string[] brushModeLabels = { "MARKER", "BRUSH", "MIXER" };
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 3; i++)
             {
+                float btnX = (i < 2) ? (brushModeBtnStartX + i * (brushModeBtnW + brushModeGapX)) : brushModeBtnStartX;
+                float btnY = (i < 2) ? brushModeBtnY : (brushModeBtnY + brushModeBtnH + 10f);
+                float btnW = (i < 2) ? brushModeBtnW : (sidebarWidth - 40f);
+
                 var btn = new VisualElement
                 {
                     Name = $"BrushModeBtn_{i}",
@@ -380,7 +386,7 @@ namespace Blossom.Testing.Views
                         Border = new BorderStyle { Roundness = 8, Width = i == 0 ? 0 : 1, Color = i == 0 ? SKColors.Transparent : new SKColor(226, 232, 240) },
                         Text = new TextStyle { Color = i == 0 ? SKColors.White : new SKColor(71, 85, 105), Size = 11, Weight = 700, Alignment = TextAlign.Left, Padding = 36 }
                     },
-                    Transform = new Transform(brushModeBtnStartX + i * (brushModeBtnW + brushModeGapX), brushModeBtnY, brushModeBtnW, brushModeBtnH) { Anchor = Anchor.Top | Anchor.Left }
+                    Transform = new Transform(btnX, btnY, btnW, brushModeBtnH) { Anchor = Anchor.Top | Anchor.Left }
                 };
 
                 var icon = new VisualElement
@@ -396,19 +402,22 @@ namespace Blossom.Testing.Views
                     BackgroundImageTintBlendMode = SKBlendMode.SrcIn
                 };
                 if (i == 0) icon.LoadSvgFromFile("assets/marker.svg");
-                else icon.LoadSvgFromFile("assets/brush.svg");
+                else if (i == 1) icon.LoadSvgFromFile("assets/brush.svg");
+                else icon.LoadSvgFromFile("assets/mixer.svg");
                 btn.AddChild(icon);
                 _brushTypeIcons[i] = icon;
 
-                bool isBrush = brushModeValues[i];
                 int index = i;
                 btn.Events.OnMouseDown += (s, e) =>
                 {
-                    SelectBrushType(index, isBrush);
+                    SelectBrushType(index);
                 };
                 btn.Events.OnMouseEnter += (s) =>
                 {
-                    if (_isBrushMode != isBrush)
+                    bool isActive = (index == 0 && !_isBrushMode && !_isMixerMode) ||
+                                    (index == 1 && _isBrushMode) ||
+                                    (index == 2 && _isMixerMode);
+                    if (!isActive)
                     {
                         btn.Style.BackColor = new SKColor(248, 250, 252);
                         btn.Style.Border.Color = new SKColor(203, 213, 225);
@@ -421,7 +430,10 @@ namespace Blossom.Testing.Views
                 };
                 btn.Events.OnMouseLeave += (s) =>
                 {
-                    if (_isBrushMode != isBrush)
+                    bool isActive = (index == 0 && !_isBrushMode && !_isMixerMode) ||
+                                    (index == 1 && _isBrushMode) ||
+                                    (index == 2 && _isMixerMode);
+                    if (!isActive)
                     {
                         btn.Style.BackColor = new SKColor(255, 255, 255);
                         btn.Style.Border.Color = new SKColor(226, 232, 240);
@@ -596,6 +608,8 @@ namespace Blossom.Testing.Views
                     UpdateCanvasLayout(lastFrameW, lastFrameH);
                 }
             };
+
+            SelectBrushType(0);
         }
 
         private void UpdateCanvasLayout(float frameW, float frameH)
@@ -699,15 +713,17 @@ namespace Blossom.Testing.Views
             }
         }
 
-        private void SelectBrushType(int btnIndex, bool isBrush)
+        private void SelectBrushType(int btnIndex)
         {
-            _isBrushMode = isBrush;
+            _isBrushMode = (btnIndex == 1);
+            _isMixerMode = (btnIndex == 2);
             if (_drawingCanvas != null)
             {
-                _drawingCanvas.IsBrushMode = isBrush;
+                _drawingCanvas.IsBrushMode = _isBrushMode;
+                _drawingCanvas.IsMixerMode = _isMixerMode;
             }
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 3; i++)
             {
                 var ind = _brushTypeIndicators[i];
                 if (ind == null) continue;
@@ -739,6 +755,98 @@ namespace Blossom.Testing.Views
                     }
                 }
                 ind.ScheduleRender();
+            }
+
+            // Adjust Mix / Strength panel based on mode
+            float mixBtnW = 104f;
+            float mixBtnH = 34f;
+            float mixBtnStartX = 20f;
+            float mixHeaderY = 430f;
+            float mixBtnStartY = mixHeaderY + 25f;
+            float mixGapX = 12f;
+            float mixGapY = 12f;
+
+            if (_isMixerMode)
+            {
+                if (_mixHeader != null) _mixHeader.Text = "MIXER STRENGTH";
+                
+                // Hide button 0 ("NONE")
+                if (_mixIndicators[0] != null) _mixIndicators[0].Visible = false;
+
+                // Adjust positions and text of buttons 1, 2, 3
+                string[] mixerLabels = { "", "LOW", "MEDIUM", "HIGH" };
+                float mixerBtnW = 65f;
+                float mixerGap = 12.5f;
+                float startX = 20f;
+                
+                for (int i = 1; i < 4; i++)
+                {
+                    var btn = _mixIndicators[i];
+                    if (btn != null)
+                    {
+                        btn.Visible = true;
+                        btn.Text = mixerLabels[i];
+                        btn.Transform.X = startX + (i - 1) * (mixerBtnW + mixerGap);
+                        btn.Transform.Y = mixBtnStartY;
+                        btn.Transform.Width = mixerBtnW;
+                        btn.Transform.Height = mixBtnH;
+                        btn.Style.Text.Padding = 0;
+                    }
+                }
+                
+                // If mix rate was 0, select Medium (index 2)
+                if (_currentMixRate == 0f)
+                {
+                    SelectMixRate(2, 0.55f);
+                }
+                else
+                {
+                    // Update selection style
+                    int activeIdx = 2; // Default to medium
+                    if (_currentMixRate == 0.25f) activeIdx = 1;
+                    else if (_currentMixRate == 0.85f) activeIdx = 3;
+                    SelectMixRate(activeIdx, _currentMixRate);
+                }
+            }
+            else
+            {
+                if (_mixHeader != null) _mixHeader.Text = "COLOR MIXING";
+                
+                // Show button 0 ("NONE")
+                if (_mixIndicators[0] != null)
+                {
+                    _mixIndicators[0].Visible = true;
+                    _mixIndicators[0].Text = "NONE";
+                    _mixIndicators[0].Transform.X = mixBtnStartX;
+                    _mixIndicators[0].Transform.Y = mixBtnStartY;
+                    _mixIndicators[0].Transform.Width = mixBtnW;
+                    _mixIndicators[0].Transform.Height = mixBtnH;
+                }
+
+                string[] mixLabels = { "NONE", "SLOW", "MEDIUM", "FAST" };
+                for (int i = 1; i < 4; i++)
+                {
+                    var btn = _mixIndicators[i];
+                    if (btn != null)
+                    {
+                        btn.Visible = true;
+                        btn.Text = mixLabels[i];
+                        int row = i / 2;
+                        int col = i % 2;
+                        btn.Transform.X = mixBtnStartX + col * (mixBtnW + mixGapX);
+                        btn.Transform.Y = mixBtnStartY + row * (mixBtnH + mixGapY);
+                        btn.Transform.Width = mixBtnW;
+                        btn.Transform.Height = mixBtnH;
+                        btn.Style.Text.Padding = 0;
+                    }
+                }
+
+                // Update selection style
+                int activeIdx = 1; // Default to SLOW
+                if (_currentMixRate == 0f) activeIdx = 0;
+                else if (_currentMixRate == 0.55f) activeIdx = 2;
+                else if (_currentMixRate == 0.85f) activeIdx = 3;
+                SelectMixRate(activeIdx, _currentMixRate);
             }
         }
     }

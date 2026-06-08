@@ -24,11 +24,11 @@ We implemented a series of UI updates, drawing quality improvements, and physica
 *   **src/Testing/Components/DrawingCanvas.cs**:
     *   Added `RecreateBackingBitmap` method to allow disposing and reconstructing the high-resolution backing bitmap to fit the parent container's updated dimensions.
     *   Added `BlendColors` helper implementing subtractive CMY mixing to interpolate between brush active pigment and canvas paint based on the brush's dryness.
+    *   Added `LerpColors` helper to support linear color interpolation.
     *   Updated `DrawPaintDot` to accept a custom color.
-    *   Wired `OnMouseUp` and `OnMouseMove` to draw a starting dot cap on first drag segment and an ending dot cap on mouse release to round out the ends of butt-cap segments.
-    *   Configured `DrawPaintStroke` to use `SKStrokeCap.Butt` for line drawings to prevent overlapping joint blobs.
-    *   Enhanced CMY mixing to scale by the sampled canvas paint's alpha channel.
-    *   Implemented independent start/end opacities (`opacityAtFrom` and `opacityAtTo`) during segment drawing to support dry-brush smearing and fade-out.
+    *   Implemented a minimum segment distance threshold of `3.0f` in `DrawPaintStroke` to prevent sub-pixel jitter from generating degenerate/zero-length segments.
+    *   Replaced the hard color reset in Marker mode with a distance-based LERP color replenishment to enable smooth, continuous smearing.
+    *   Optimized stroke segment rendering: if start and end colors are identical, draws with `paint.Color` instead of creating a linear gradient shader.
     *   Updated `DrawBrushCursorCommand` to draw the hover circle cursor in semi-transparent black (`new SKColor(9, 9, 11, 150)`) instead of white.
 *   **src/Testing/Components/Checkbox.cs**:
     *   Updated active check state, shadow, and hover border styling to use `new SKColor(9, 9, 11)` (Midnight Black).
