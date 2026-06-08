@@ -357,10 +357,17 @@ public class VisualElement : IDisposable
 
             _Parent = value;
 
-            Transform.Parent = value.Transform;
-            _Parent.TransformChanged += ParentTransformChanged;
-
-            RootParent = value != null ? _Parent.RootParent : null;
+            if (value != null)
+            {
+                Transform.Parent = value.Transform;
+                _Parent.TransformChanged += ParentTransformChanged;
+                RootParent = _Parent.RootParent;
+            }
+            else
+            {
+                Transform.DetachParent();
+                RootParent = null;
+            }
 
             ScheduleRender();
         }
@@ -386,6 +393,20 @@ public class VisualElement : IDisposable
             _Transform.OnChanged += OnTransformChanged;
 
             _Transform.ParentElement = this;
+
+            // Update parent of children's transforms
+            var children = Children;
+            if (children != null)
+            {
+                for (int i = 0; i < children.Length; i++)
+                {
+                    var child = children[i];
+                    if (child != null && child.Transform != null)
+                    {
+                        child.Transform.Parent = _Transform;
+                    }
+                }
+            }
         }
     }
 
@@ -646,6 +667,7 @@ public class VisualElement : IDisposable
 
     private void RegisterSubtree(VisualElement element, View view)
     {
+        element.ParentView = view;
         view.TrackElement(ref element);
         
         // Recursively track children
@@ -662,10 +684,18 @@ public class VisualElement : IDisposable
 
     public void RemoveChild(VisualElement child)
     {
+        var view = ParentView;
+        if (view != null)
+        {
+            child.ParentView = view;
+        }
         child.Parent = null!;
         ChildElements.RemoveElement(child);
-        ParentView.UntrackElement(ref child);
-        ParentView.MarkHierarchyDirty();
+        if (view != null)
+        {
+            view.UntrackElement(ref child);
+            view.MarkHierarchyDirty();
+        }
     }
 
     public Rect BoundingRect
@@ -682,6 +712,7 @@ public class VisualElement : IDisposable
     }
 
     private readonly StringBuilder _Text = new("");
+    [BuilderProperty("Text", "Content")]
     public string Text
     {
         get => _Text.ToString();
@@ -1268,7 +1299,7 @@ public class VisualElement : IDisposable
         _BackgroundSvg?.Picture?.Dispose();
         OnDisposing?.Invoke(this);
 
-        ParentView.Elements.RemoveElement(this);
+        ParentView?.Elements.RemoveElement(this);
 
         foreach (var Child in Children)
         {

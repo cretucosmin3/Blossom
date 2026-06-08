@@ -51,9 +51,28 @@ public class SortedAxis
         var Indexes = SortIndexes[element];
 
         Lefts.RemoveAt(Indexes.Left);
+        for (int i = Indexes.Left; i < Lefts.Count; i++)
+        {
+            SortIndexes[Lefts[i]].Left--;
+        }
+
         Rights.RemoveAt(Indexes.Right);
+        for (int i = Indexes.Right; i < Rights.Count; i++)
+        {
+            SortIndexes[Rights[i]].Right--;
+        }
+
         Tops.RemoveAt(Indexes.Top);
+        for (int i = Indexes.Top; i < Tops.Count; i++)
+        {
+            SortIndexes[Tops[i]].Top--;
+        }
+
         Bottoms.RemoveAt(Indexes.Bottom);
+        for (int i = Indexes.Bottom; i < Bottoms.Count; i++)
+        {
+            SortIndexes[Bottoms[i]].Bottom--;
+        }
 
         SortIndexes.Remove(element);
 

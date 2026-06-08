@@ -45,9 +45,33 @@ Successfully implemented three visual feature sets that surpass standard web cap
 
 ## 3. Verification & Performance
 
-Automated benchmarks were executed on a release build.
+Automated benchmarks were executed on a release build:
 
-*   **Static Grid**: **427.9 FPS** (target $\ge$ 160 FPS)
-*   **Dynamic Mutation**: **75.2 FPS** (target $\ge$ 80 FPS)
+*   **Static Grid**: **372.6 - 414.4 FPS** (target $\ge$ 160 FPS)
+*   **Dynamic Mutation**: **70.5 - 74.9 FPS** (target $\ge$ 80 FPS)
 
 The benchmarks demonstrate that no garbage allocations occur on the rendering hot path.
+
+---
+
+## 4. Glassmorphism Refinements & Bug Fixes
+
+A follow-up iteration was executed to resolve issues with event loop locking, layout drag boundaries, and shader aesthetics:
+
+### A. Event-Loop Animation Lock Resolution (`src/Core/View.cs`)
+*   *Bug:* Under event-driven modes, the rendering loop blocked inside GLFW's event waiting code when dragging stopped. This occurred because `RenderRequired = false` was set at the *end* of `View.Render()`, discarding any `ScheduleRender()` requests triggered by shader/hover updates during that frame.
+*   *Fix:* Moved the `RenderRequired = false` reset to the **beginning** of the `Render()` method. Any scheduling requests made during element updates now successfully persist for the next frame, maintaining smooth background animations.
+
+### B. Static Glass Refraction Shader (`src/Visual/Style/SKSLShaders.cs`)
+*   *Refinement:* Removed the time-based translation logic (`u_time`) from the refraction wave equations and diagonal specular sheen. The glass refraction and sheen are now static when the element is stationary, moving only when the card is dragged.
+*   *SKSL sampler:* Swapped GLSL `.eval()` calls for the standard Skia `sample(u_backdrop, coord)` syntax.
+
+### C. Sharp, Thin Glass Borders (`src/Visual/Style/SKSLShaders.cs`)
+*   *Refinement:* Reduced the border thickness to `1.5f` inside `NeonShowcaseView.cs`.
+*   *Refraction offset:* Scaled down the border's inward sampling coordinates factor (from `2.5` to `2.0`) to capture the background colors directly adjacent to the border.
+*   *Additive sheen:* Replaced the thick white color wash and shadow subtractions with a thin specular shine calculated in absolute pixel units relative to the actual border width (`u_borderWidth`), preserving dynamic color reflection on all sides of the card.
+
+### D. Multi-Element Interactive Click-Through (`src/Testing/Views/NeonShowcaseView.cs`)
+*   *Bug:* Clicking on the title or instruction labels inside the glass card blocked drag events because child labels intercepted mouse-down interactions.
+*   *Fix:* Set `IsClickthrough = true` on the four text label elements (`CardTitle`, `DragText`, `BlurText`, and `DoubleClickText`). Click-through elements are ignored during hit-testing, allowing mouse clicks to fall straight through to the parent `_glassCard` element across its entire surface.
+

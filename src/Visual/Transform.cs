@@ -1,5 +1,6 @@
 using System;
 using SkiaSharp;
+using Blossom.Core;
 
 namespace Blossom.Core.Visual;
 
@@ -180,8 +181,8 @@ public class Transform : IDisposable
         }
     }
 
-    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : Browser.window.Size.X);
-    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : Browser.window.Size.Y);
+    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : (float)Browser.RenderRect.Width);
+    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : (float)Browser.RenderRect.Height);
 
     internal float FixedLeft;
     internal float FixedRight;
@@ -216,6 +217,7 @@ public class Transform : IDisposable
     /// </summary>
     public Action<Transform> OnChanged;
 
+    [BuilderProperty("Position X", "Layout", min: -1000f, max: 3000f, step: 1f)]
     public float X
     {
         get => ComputedTransform.X;
@@ -236,6 +238,7 @@ public class Transform : IDisposable
         }
     }
 
+    [BuilderProperty("Position Y", "Layout", min: -1000f, max: 3000f, step: 1f)]
     public float Y
     {
         get => ComputedTransform.Y;
@@ -256,6 +259,7 @@ public class Transform : IDisposable
         }
     }
 
+    [BuilderProperty("Width", "Layout", min: 0f, max: 3000f, step: 1f)]
     public float Width
     {
         get => ComputedTransform.Width;
@@ -273,6 +277,7 @@ public class Transform : IDisposable
         }
     }
 
+    [BuilderProperty("Height", "Layout", min: 0f, max: 3000f, step: 1f)]
     public float Height
     {
         get => ComputedTransform.Height;
@@ -387,7 +392,7 @@ public class Transform : IDisposable
 
     private void ComputeHorizontalTransform()
     {
-        float ParentWidth = ParentElement?.ParentView != null ? ParentElement.ParentView.Width : Browser.window.Size.X;
+        float ParentWidth = ParentElement?.ParentView != null ? ParentElement.ParentView.Width : (float)Browser.RenderRect.Width;
 
         if (Parent is not null)
             ParentWidth = Parent.ComputedTransform.Width;
@@ -436,7 +441,7 @@ public class Transform : IDisposable
 
     private void ComputeVerticalTransform()
     {
-        float ParentHeight = ParentElement?.ParentView != null ? ParentElement.ParentView.Height : Browser.window.Size.Y;
+        float ParentHeight = ParentElement?.ParentView != null ? ParentElement.ParentView.Height : (float)Browser.RenderRect.Height;
 
         if (Parent != null)
             ParentHeight = Parent.Computed.Height;

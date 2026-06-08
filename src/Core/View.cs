@@ -94,17 +94,36 @@ namespace Blossom.Core
 
             if (element != null)
             {
-                element.Events.HandleMouseDown(args.Button, args.Global, element);
-
-                if (FocusedElement != null && FocusedElement != element)
+                // Bubble mouse down event
+                var current = element;
+                while (current != null)
                 {
-                    FocusedElement.OnFocusLost?.Invoke(FocusedElement);
+                    current.Events.HandleMouseDown(args.Button, args.Global, current);
+                    current = current.Parent;
                 }
 
-                if (element.Focusable)
+                // Find first focusable element walking up the parent chain
+                var focusTarget = element;
+                while (focusTarget != null && !focusTarget.Focusable)
                 {
-                    element.GetFocus();
-                    element.OnFocused?.Invoke(element);
+                    focusTarget = focusTarget.Parent;
+                }
+
+                if (focusTarget != null)
+                {
+                    if (FocusedElement != null && FocusedElement != focusTarget)
+                    {
+                        FocusedElement.OnFocusLost?.Invoke(FocusedElement);
+                    }
+
+                    focusTarget.GetFocus();
+                    focusTarget.OnFocused?.Invoke(focusTarget);
+                    FocusedElement = focusTarget;
+                }
+                else
+                {
+                    FocusedElement?.OnFocusLost?.Invoke(FocusedElement);
+                    FocusedElement = null!;
                 }
             }
             else
@@ -120,30 +139,84 @@ namespace Blossom.Core
         {
             if (mouseDownElement != null)
             {
-                mouseDownElement.Events.HandleMouseUp(args.Button, args.Global, mouseDownElement);
+                var current = mouseDownElement;
+                while (current != null)
+                {
+                    current.Events.HandleMouseUp(args.Button, args.Global, current);
+                    current = current.Parent;
+                }
                 mouseDownElement = null;
                 return;
             }
 
             var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-            element?.Events.HandleMouseUp(args.Button, args.Global, element);
+            if (element != null)
+            {
+                var current = element;
+                while (current != null)
+                {
+                    current.Events.HandleMouseUp(args.Button, args.Global, current);
+                    current = current.Parent;
+                }
+            }
         }
 
         private void OnMouseMove(object _, MouseEventArgs args)
         {
             var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-            element?.Events.HandleMouseMove(args.Global, element);
+            if (element != null)
+            {
+                var current = element;
+                while (current != null)
+                {
+                    current.Events.HandleMouseMove(args.Global, current);
+                    current = current.Parent;
+                }
+            }
 
             if (hoveredElement != element)
             {
-                hoveredElement?.Events.HandleMouseLeave(hoveredElement);
-                element?.Events.HandleMouseEnter(element);
+                // Gather parent chains
+                var oldChain = new List<VisualElement>();
+                var curOld = hoveredElement;
+                while (curOld != null)
+                {
+                    oldChain.Add(curOld);
+                    curOld = curOld.Parent;
+                }
+
+                var newChain = new List<VisualElement>();
+                var curNew = element;
+                while (curNew != null)
+                {
+                    newChain.Add(curNew);
+                    curNew = curNew.Parent;
+                }
+
+                // Trigger MouseLeave for elements in oldChain that are NOT in newChain
+                foreach (var el in oldChain)
+                {
+                    if (!newChain.Contains(el))
+                    {
+                        el.Events.HandleMouseLeave(el);
+                    }
+                }
+
+                // Trigger MouseEnter for elements in newChain that are NOT in oldChain
+                foreach (var el in newChain)
+                {
+                    if (!oldChain.Contains(el))
+                    {
+                        el.Events.HandleMouseEnter(el);
+                    }
+                }
+
+                hoveredElement = element;
             }
             else if (element == hoveredElement)
             {
                 element?.Events.HandleMouseHover(element, args.Global);
             }
-
             hoveredElement = element;
         }
 
