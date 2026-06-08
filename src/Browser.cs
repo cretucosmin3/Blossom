@@ -123,24 +123,13 @@ public static class Browser
         options.IsEventDriven = true;
         options.PreferredDepthBufferBits = null;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-{
-    options.API = new GraphicsAPI(
-        ContextAPI.OpenGL,
-        ContextProfile.Core,
-        ContextFlags.ForwardCompatible,
-        new APIVersion(3, 2));
-}
-else
-{
-    // Linux/macOS – still using desktop OpenGL to avoid EGL loading
-    options.API = new GraphicsAPI(
-        ContextAPI.OpenGL,
-        ContextProfile.Core,
-        ContextFlags.ForwardCompatible,
-        new APIVersion(3, 2));
-}
+        options.API = new GraphicsAPI(
+    ContextAPI.OpenGL,
+    ContextProfile.Core,
+    ContextFlags.ForwardCompatible,
+    new APIVersion(3, 2));
 
+        SetGlfwWindowHints();
         GlfwWindowing.Use();
         // SdlWindowing.Use();
 
