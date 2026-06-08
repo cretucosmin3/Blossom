@@ -29,6 +29,7 @@ namespace Blossom.Testing.Components
         public float PaintOpacity { get; set; } = 1.0f;
         public bool IsEraserMode { get; set; } = false;
         public bool IsBrushMode { get; set; } = false;
+        public bool IsMixerMode { get; set; } = false;
         private float _paintRemaining = 1.0f;
 
         public DrawingCanvas(float width, float height)
@@ -65,6 +66,10 @@ namespace Blossom.Testing.Components
                 _lastMousePos = new SKPoint(e.Relative.X * scaleX, e.Relative.Y * scaleY);
                 _lastDrawTime = DateTime.Now;
                 _activeStrokeColor = DrawColor;
+                if (IsMixerMode && _cachedGridBitmap != null)
+                {
+                    _activeStrokeColor = SampleFootprintColor(_cachedGridBitmap, _lastMousePos, BrushSize / 2f);
+                }
 
                 // Take a snapshot of the current canvas bitmap to sample from during this stroke
                 // to avoid feedback loops where the brush mixes with its own newly painted color.
@@ -198,18 +203,131 @@ namespace Blossom.Testing.Components
             return new SKColor(r, g, b, a);
         }
 
+        private SKColor SampleFootprintColor(SKBitmap sampleSource, SKPoint p, float R)
+        {
+            if (sampleSource == null) return SKColors.Transparent;
+
+            float sampleOffset = Math.Max(1f, R * 0.6f);
+            
+            SKPoint[] samplePoints = new[]
+            {
+                p,
+                new SKPoint(p.X - sampleOffset, p.Y),
+                new SKPoint(p.X + sampleOffset, p.Y),
+                new SKPoint(p.X, p.Y - sampleOffset),
+                new SKPoint(p.X, p.Y + sampleOffset)
+            };
+
+            float sumC = 0f, sumM = 0f, sumY = 0f;
+            float sumAlpha = 0f;
+            int validSamples = 0;
+
+            for (int s = 0; s < 5; s++)
+            {
+                SKPoint sp = samplePoints[s];
+                int px = (int)Math.Clamp(sp.X, 0, sampleSource.Width - 1);
+                int py = (int)Math.Clamp(sp.Y, 0, sampleSource.Height - 1);
+                SKColor col = sampleSource.GetPixel(px, py);
+
+                if (col.Alpha > 0)
+                {
+                    // Convert to CMY
+                    float c = 1f - (col.Red / 255f);
+                    float m = 1f - (col.Green / 255f);
+                    float y = 1f - (col.Blue / 255f);
+                    
+                    sumC += c * (col.Alpha / 255f);
+                    sumM += m * (col.Alpha / 255f);
+                    sumY += y * (col.Alpha / 255f);
+                    sumAlpha += col.Alpha;
+                    validSamples++;
+                }
+            }
+
+            if (validSamples > 0)
+            {
+                float avgAlpha = sumAlpha / 5f; // relative to whole footprint
+                float w = sumAlpha > 0 ? sumAlpha / 255f : 1f;
+                float avgC = sumC / w;
+                float avgM = sumM / w;
+                float avgY = sumY / w;
+
+                byte r = (byte)Math.Clamp((1f - avgC) * 255f, 0, 255);
+                byte g = (byte)Math.Clamp((1f - avgM) * 255f, 0, 255);
+                byte b = (byte)Math.Clamp((1f - avgY) * 255f, 0, 255);
+                byte a = (byte)Math.Clamp(avgAlpha, 0, 255);
+
+                return new SKColor(r, g, b, a);
+            }
+
+            return SKColors.Transparent;
+        }
+
+        private SKColor LerpColors(SKColor colorA, SKColor colorB, float t)
+        {
+            byte r = (byte)Math.Clamp(colorA.Red + (colorB.Red - colorA.Red) * t, 0, 255);
+            byte g = (byte)Math.Clamp(colorA.Green + (colorB.Green - colorA.Green) * t, 0, 255);
+            byte b = (byte)Math.Clamp(colorA.Blue + (colorB.Blue - colorA.Blue) * t, 0, 255);
+            byte a = (byte)Math.Clamp(colorA.Alpha + (colorB.Alpha - colorA.Alpha) * t, 0, 255);
+            return new SKColor(r, g, b, a);
+        }
+
         private void DrawPaintDot(SKPoint pos, float width, SKColor color)
         {
             if (_cachedBitmapCanvas == null) return;
 
+            float R = width / 2f;
+            float bufferScale = 1.1f;
+            if (IsBrushMode) bufferScale = 1.5f;
+            else if (IsMixerMode) bufferScale = 1.7f;
+
+            float R_outer = Math.Max(0.5f, R * bufferScale);
+            float midPos = 1.0f / bufferScale;
+
             using var paint = new SKPaint
             {
-                Color = color,
                 Style = SKPaintStyle.Fill,
                 IsAntialias = true,
                 BlendMode = IsEraserMode ? SKBlendMode.Clear : SKBlendMode.SrcOver
             };
-            _cachedBitmapCanvas.DrawCircle(pos.X, pos.Y, width / 2f, paint);
+
+            var sampleSource = _strokeStartBitmap ?? _cachedGridBitmap;
+            SKColor colorAtP = SampleFootprintColor(sampleSource, pos, R);
+
+            float opacity = PaintOpacity;
+
+            if (IsEraserMode)
+            {
+                SKColor C_center = SKColors.Black.WithAlpha((byte)(255 * opacity));
+                SKColor C_mid = SKColors.Black.WithAlpha((byte)(128 * opacity));
+                SKColor C_edge = SKColors.Black.WithAlpha(0);
+
+                paint.Shader = SKShader.CreateRadialGradient(
+                    pos,
+                    R_outer,
+                    new[] { C_center, C_mid, C_edge },
+                    new[] { 0.0f, midPos, 1.0f },
+                    SKShaderTileMode.Clamp);
+            }
+            else
+            {
+                SKColor C_center = color.WithAlpha((byte)(color.Alpha * opacity));
+                
+                float mixFactor = ShaderMixingRate * 0.5f;
+                SKColor mixedColor = BlendColors(color, colorAtP, mixFactor);
+                SKColor C_mid = mixedColor.WithAlpha((byte)(mixedColor.Alpha * opacity * 0.5f));
+                
+                SKColor C_edge = colorAtP.WithAlpha(0);
+
+                paint.Shader = SKShader.CreateRadialGradient(
+                    pos,
+                    R_outer,
+                    new[] { C_center, C_mid, C_edge },
+                    new[] { 0.0f, midPos, 1.0f },
+                    SKShaderTileMode.Clamp);
+            }
+
+            _cachedBitmapCanvas.DrawCircle(pos.X, pos.Y, R_outer, paint);
             InvalidateCanvas();
         }
 
@@ -219,19 +337,10 @@ namespace Blossom.Testing.Components
 
             float distance = SKPoint.Distance(from, to);
             
-            // Ignore tiny initial movements to prevent mouse jitter from starting the stroke as a slow blob
-            if (!_hasDrawn && distance < 1.5f)
+            // Ignore tiny movements to prevent mouse jitter and degenerate zero-length segments
+            if (distance < 1.0f)
             {
                 return false;
-            }
-
-            if (IsBrushMode)
-            {
-                _paintRemaining = Math.Max(0f, _paintRemaining - (distance / 1200f));
-            }
-            else
-            {
-                _activeStrokeColor = DrawColor;
             }
 
             var now = DateTime.Now;
@@ -273,108 +382,133 @@ namespace Blossom.Testing.Components
             }
             _lastBrushWidth = strokeWidth;
 
-            SKColor startColor = _activeStrokeColor;
-            SKColor colorAtFrom = SKColors.Transparent;
-            SKColor colorAtTo = SKColors.Transparent;
+            float bufferScale = 1.1f; // Marker default
+            if (IsBrushMode) bufferScale = 1.5f;
+            else if (IsMixerMode) bufferScale = 1.7f;
 
-            // Sample from the snapshot of the canvas taken at the start of the stroke
-            // to avoid feedback loops where the brush mixes with its own newly painted color.
             var sampleSource = _strokeStartBitmap ?? _cachedGridBitmap;
-            if (sampleSource != null)
+            if (sampleSource == null) return false;
+
+            float stepSize = Math.Max(1.0f, strokeWidth * 0.08f);
+            int numSteps = (int)Math.Ceiling(distance / stepSize);
+
+            for (int i = 0; i <= numSteps; i++)
             {
-                int fx = (int)Math.Clamp(from.X, 0, sampleSource.Width - 1);
-                int fy = (int)Math.Clamp(from.Y, 0, sampleSource.Height - 1);
-                colorAtFrom = sampleSource.GetPixel(fx, fy);
-
-                int tx = (int)Math.Clamp(to.X, 0, sampleSource.Width - 1);
-                int ty = (int)Math.Clamp(to.Y, 0, sampleSource.Height - 1);
-                colorAtTo = sampleSource.GetPixel(tx, ty);
-            }
-
-            // Smear/Oil mixing simulation: Brush absorbs paint colors already on the canvas along the path
-            if (!IsEraserMode && colorAtTo.Alpha > 10)
-            {
-                float mixingRate = ShaderMixingRate;
-                if (mixingRate > 0.01f)
-                {
-                    // Subtractive mixing in CMY space
-                    float c1 = 1f - (_activeStrokeColor.Red / 255f);
-                    float m1 = 1f - (_activeStrokeColor.Green / 255f);
-                    float y1 = 1f - (_activeStrokeColor.Blue / 255f);
-
-                    float c2 = 1f - (colorAtTo.Red / 255f);
-                    float m2 = 1f - (colorAtTo.Green / 255f);
-                    float y2 = 1f - (colorAtTo.Blue / 255f);
-
-                    // Absorb existing color slowly per stroke segment, scaled by the canvas paint's alpha
-                    float blendFactor = mixingRate * 0.15f * (colorAtTo.Alpha / 255f); 
-                    float c_mix = c1 + (c2 - c1) * blendFactor;
-                    float m_mix = m1 + (m2 - m1) * blendFactor;
-                    float y_mix = y1 + (y2 - y1) * blendFactor;
-
-                    byte r = (byte)Math.Clamp((1f - c_mix) * 255f, 0, 255);
-                    byte g = (byte)Math.Clamp((1f - m_mix) * 255f, 0, 255);
-                    byte b = (byte)Math.Clamp((1f - y_mix) * 255f, 0, 255);
-
-                    _activeStrokeColor = new SKColor(r, g, b, _activeStrokeColor.Alpha);
-                }
-            }
-
-            float opacityAtFrom = PaintOpacity;
-            float opacityAtTo = PaintOpacity;
-            if (IsBrushMode)
-            {
-                // Dry brush: contribution of fresh paint decays, but smearing opacity remains active if over existing paint
-                float smearFactor = 0.1f + ShaderMixingRate * 0.4f;
+                float t = numSteps == 0 ? 1.0f : (float)i / numSteps;
+                SKPoint p = new SKPoint(from.X + (to.X - from.X) * t, from.Y + (to.Y - from.Y) * t);
                 
-                float smearOpacityFrom = PaintOpacity * smearFactor * (colorAtFrom.Alpha / 255f);
-                opacityAtFrom = PaintOpacity * _paintRemaining;
-                opacityAtFrom = Math.Max(opacityAtFrom, smearOpacityFrom);
+                float R = strokeWidth / 2f;
+                // Sample color from footprint snapshot
+                SKColor colorAtP = SampleFootprintColor(sampleSource, p, R);
 
-                float smearOpacityTo = PaintOpacity * smearFactor * (colorAtTo.Alpha / 255f);
-                opacityAtTo = PaintOpacity * _paintRemaining;
-                opacityAtTo = Math.Max(opacityAtTo, smearOpacityTo);
+                // Update active brush color and remaining paint based on actual movement per step
+                float stepDist = distance / (numSteps == 0 ? 1 : numSteps);
+                
+                if (IsBrushMode || IsMixerMode)
+                {
+                    float stepDecay = IsMixerMode ? 500f : 1200f;
+                    _paintRemaining = Math.Max(0f, _paintRemaining - (stepDist / stepDecay));
+                }
+                else
+                {
+                    float replenishmentRate = Math.Clamp(stepDist / 150f, 0f, 1f);
+                    _activeStrokeColor = LerpColors(_activeStrokeColor, DrawColor, replenishmentRate);
+                }
+
+                if (!IsEraserMode && colorAtP.Alpha > 10)
+                {
+                    float mixingRate = ShaderMixingRate;
+                    if (mixingRate > 0.01f)
+                    {
+                        // Scale blend factor by step distance to keep it uniform regardless of mouse speed
+                        float blendFactor = mixingRate * 0.15f * (colorAtP.Alpha / 255f) * (stepDist / 15f);
+                        blendFactor = Math.Clamp(blendFactor, 0f, 1f);
+                        
+                        if (IsMixerMode && _activeStrokeColor.Alpha < 30)
+                        {
+                            blendFactor = 0.8f;
+                        }
+
+                        // Subtractive mixing in CMY space
+                        float c1 = 1f - (_activeStrokeColor.Red / 255f);
+                        float m1 = 1f - (_activeStrokeColor.Green / 255f);
+                        float y1 = 1f - (_activeStrokeColor.Blue / 255f);
+
+                        float c2 = 1f - (colorAtP.Red / 255f);
+                        float m2 = 1f - (colorAtP.Green / 255f);
+                        float y2 = 1f - (colorAtP.Blue / 255f);
+
+                        float c_mix = c1 + (c2 - c1) * blendFactor;
+                        float m_mix = m1 + (m2 - m1) * blendFactor;
+                        float y_mix = y1 + (y2 - y1) * blendFactor;
+
+                        byte r = (byte)Math.Clamp((1f - c_mix) * 255f, 0, 255);
+                        byte g = (byte)Math.Clamp((1f - m_mix) * 255f, 0, 255);
+                        byte b = (byte)Math.Clamp((1f - y_mix) * 255f, 0, 255);
+
+                        byte a = _activeStrokeColor.Alpha;
+                        if (IsMixerMode)
+                        {
+                            a = (byte)Math.Clamp(_activeStrokeColor.Alpha + (colorAtP.Alpha - _activeStrokeColor.Alpha) * blendFactor, 0, 255);
+                        }
+
+                        _activeStrokeColor = new SKColor(r, g, b, a);
+                    }
+                }
+
+                float opacity = PaintOpacity;
+                if (IsBrushMode || IsMixerMode)
+                {
+                    float smearFactor = 0.1f + ShaderMixingRate * 0.4f;
+                    float smearOpacity = PaintOpacity * smearFactor * (colorAtP.Alpha / 255f);
+                    opacity = PaintOpacity * _paintRemaining;
+                    opacity = Math.Max(opacity, smearOpacity);
+                }
+
+                float R_outer = Math.Max(0.5f, R * bufferScale);
+                float midPos = 1.0f / bufferScale;
+
+                using var paint = new SKPaint
+                {
+                    Style = SKPaintStyle.Fill,
+                    IsAntialias = true,
+                    BlendMode = IsEraserMode ? SKBlendMode.Clear : SKBlendMode.SrcOver
+                };
+
+                if (IsEraserMode)
+                {
+                    SKColor C_center = SKColors.Black.WithAlpha((byte)(255 * opacity));
+                    SKColor C_mid = SKColors.Black.WithAlpha((byte)(128 * opacity));
+                    SKColor C_edge = SKColors.Black.WithAlpha(0);
+
+                    paint.Shader = SKShader.CreateRadialGradient(
+                        p,
+                        R_outer,
+                        new[] { C_center, C_mid, C_edge },
+                        new[] { 0.0f, midPos, 1.0f },
+                        SKShaderTileMode.Clamp);
+                }
+                else
+                {
+                    SKColor C_center = _activeStrokeColor.WithAlpha((byte)(_activeStrokeColor.Alpha * opacity));
+                    
+                    float mixFactor = ShaderMixingRate * 0.5f;
+                    SKColor mixedColor = BlendColors(_activeStrokeColor, colorAtP, mixFactor);
+                    SKColor C_mid = mixedColor.WithAlpha((byte)(mixedColor.Alpha * opacity * 0.5f));
+                    
+                    SKColor C_edge = colorAtP.WithAlpha(0);
+
+                    paint.Shader = SKShader.CreateRadialGradient(
+                        p,
+                        R_outer,
+                        new[] { C_center, C_mid, C_edge },
+                        new[] { 0.0f, midPos, 1.0f },
+                        SKShaderTileMode.Clamp);
+                }
+
+                _cachedBitmapCanvas.DrawCircle(p.X, p.Y, R_outer, paint);
             }
 
-            // Blend colors at start and end based on how dry the brush is (_paintRemaining)
-            SKColor blendedStartColor = startColor;
-            SKColor blendedEndColor = _activeStrokeColor;
-
-            if (IsBrushMode && !IsEraserMode)
-            {
-                blendedStartColor = BlendColors(startColor, colorAtFrom, 1f - _paintRemaining);
-                blendedEndColor = BlendColors(_activeStrokeColor, colorAtTo, 1f - _paintRemaining);
-            }
-
-            var finalStartColor = IsEraserMode ? SKColors.Transparent : blendedStartColor.WithAlpha((byte)(blendedStartColor.Alpha * opacityAtFrom));
-            var finalEndColor = IsEraserMode ? SKColors.Transparent : blendedEndColor.WithAlpha((byte)(blendedEndColor.Alpha * opacityAtTo));
-
-            // Draw line on the offscreen canvas with round caps and joins (linear gradient to prevent color segment blobs)
-            using var paint = new SKPaint
-            {
-                Style = SKPaintStyle.Stroke,
-                StrokeCap = SKStrokeCap.Round,
-                StrokeJoin = SKStrokeJoin.Round,
-                StrokeWidth = strokeWidth,
-                IsAntialias = true,
-                BlendMode = IsEraserMode ? SKBlendMode.Clear : SKBlendMode.SrcOver
-            };
-
-            if (!IsEraserMode)
-            {
-                paint.Shader = SKShader.CreateLinearGradient(
-                    from,
-                    to,
-                    new[] { finalStartColor, finalEndColor },
-                    null,
-                    SKShaderTileMode.Clamp);
-            }
-            else
-            {
-                paint.Color = SKColors.Transparent;
-            }
-
-            _cachedBitmapCanvas.DrawLine(from, to, paint);
             InvalidateCanvas();
             return true;
         }
