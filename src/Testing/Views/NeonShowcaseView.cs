@@ -11,6 +11,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchView;
         public Action? OnSwitchToPaint;
         public Action? OnSwitchToKanban;
+        public Action? OnSwitchToGlass;
 
         private VisualElement _showcaseBg = null!;
         private VisualElement _glassCard = null!;
@@ -489,10 +490,10 @@ namespace Blossom.Testing.Views
             AddElement(btnTransType);
 
             // Bottom Navigation Links
-            float backBtnWidth = 240f;
+            float backBtnWidth = 220f; // Slightly narrower to fit 4 buttons easily
             float backBtnHeight = 50f;
-            float centerGap = 20f;
-            float totalNavWidth = (3f * backBtnWidth) + (2f * centerGap);
+            float centerGap = 15f;
+            float totalNavWidth = (4f * backBtnWidth) + (3f * centerGap);
             float startNavX = (Width / 2f) - (totalNavWidth / 2f);
             float navY = row4Y + ctrlBtnH + 30f;
 
@@ -516,6 +517,13 @@ namespace Blossom.Testing.Views
                 OnClick = () => OnSwitchToKanban?.Invoke()
             };
             AddElement(kanbanBtn);
+
+            var glassBtn = new NeonButton("➜ GLASS SHOWCASE", new SKColor(56, 189, 248), backBtnWidth, backBtnHeight)
+            {
+                Transform = { X = startNavX + (backBtnWidth + centerGap) * 3f, Y = navY, Anchor = Anchor.Top },
+                OnClick = () => OnSwitchToGlass?.Invoke()
+            };
+            AddElement(glassBtn);
 
             // Register sliding animation to View loop
             Loop += UpdateAnimation;

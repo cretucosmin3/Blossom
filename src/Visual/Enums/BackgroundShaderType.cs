@@ -6,5 +6,7 @@ public enum BackgroundShaderType
     Scanlines,
     SynthwaveGrid,
     LiquidPlasma,
-    GlassRefraction
+    GlassRefraction,
+    HolographicLattice,
+    QuantumDots
 }

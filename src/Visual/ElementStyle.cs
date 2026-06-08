@@ -138,7 +138,10 @@ public class ElementStyle : IDisposable
     internal void ScheduleRender()
     {
         foreach (var element in AssignedElements)
+        {
+            element.ClearRenderCache();
             element.ScheduleRender();
+        }
     }
 
     public void Dispose()

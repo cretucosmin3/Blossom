@@ -384,8 +384,6 @@ public class DrawBackdropBlurCommand : DrawCommand
     private readonly float _rBottomLeft;
     private readonly VisualElement _element;
     private readonly EffectRenderMode _renderMode;
-    private SKImage? _cachedImage;
-    private SKRect _cachedBounds;
 
     public DrawBackdropBlurCommand(
         float blurSigma,
@@ -410,12 +408,12 @@ public class DrawBackdropBlurCommand : DrawCommand
         if (_blurSigma <= 0) return;
 
         // If cached and in OnDemand mode, draw the cached snapshot directly in screen-space
-        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        if (_renderMode == EffectRenderMode.OnDemand && _element.CachedBackdropBlur != null)
         {
             using (new SKAutoCanvasRestore(canvas))
             {
                 canvas.SetMatrix(SKMatrix.Identity);
-                canvas.DrawImage(_cachedImage, _cachedBounds.Left, _cachedBounds.Top);
+                canvas.DrawImage(_element.CachedBackdropBlur, _element.CachedBackdropBlurBounds.Left, _element.CachedBackdropBlurBounds.Top);
             }
             return;
         }
@@ -468,8 +466,8 @@ public class DrawBackdropBlurCommand : DrawCommand
                 // Draw snapshot offset so the element's screen location aligns with 0, 0 in cached image
                 tempCanvas.DrawImage(snapshot, -globalBounds.Left, -globalBounds.Top, paint);
 
-                _cachedImage = tempSurface.Snapshot();
-                _cachedBounds = globalBounds;
+                _element.CachedBackdropBlur = tempSurface.Snapshot();
+                _element.CachedBackdropBlurBounds = globalBounds;
             }
         }
 
@@ -490,9 +488,9 @@ public class DrawBackdropBlurCommand : DrawCommand
             };
 
             // Draw the snapshot portion onto the canvas
-            if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+            if (_renderMode == EffectRenderMode.OnDemand && _element.CachedBackdropBlur != null)
             {
-                canvas.DrawImage(_cachedImage, globalBounds.Left, globalBounds.Top);
+                canvas.DrawImage(_element.CachedBackdropBlur, globalBounds.Left, globalBounds.Top);
             }
             else
             {
@@ -503,8 +501,6 @@ public class DrawBackdropBlurCommand : DrawCommand
 
     public override void Dispose()
     {
-        _cachedImage?.Dispose();
-        _cachedImage = null;
         base.Dispose();
     }
 }
@@ -523,8 +519,6 @@ public class DrawShaderBackgroundCommand : DrawCommand
     private readonly VisualElement _element;
     private readonly SKRoundRect _roundRect;
     private readonly EffectRenderMode _renderMode;
-    private SKImage? _cachedImage;
-
     public DrawShaderBackgroundCommand(
         Blossom.Core.Visual.BackgroundShaderType type,
         SKColor baseColor,
@@ -556,9 +550,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
-        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        if (_renderMode == EffectRenderMode.OnDemand && _element.CachedShaderBackground != null)
         {
-            canvas.DrawImage(_cachedImage, 0, 0);
+            canvas.DrawImage(_element.CachedShaderBackground, 0, 0);
             return;
         }
 
@@ -606,12 +600,12 @@ public class DrawShaderBackgroundCommand : DrawCommand
                     var tempCanvas = tempSurface.Canvas;
                     tempCanvas.Clear(SKColors.Transparent);
                     tempCanvas.DrawRoundRect(_roundRect, paint);
-                    _cachedImage = tempSurface.Snapshot();
+                    _element.CachedShaderBackground = tempSurface.Snapshot();
                 }
 
-                if (_cachedImage != null)
+                if (_element.CachedShaderBackground != null)
                 {
-                    canvas.DrawImage(_cachedImage, 0, 0);
+                    canvas.DrawImage(_element.CachedShaderBackground, 0, 0);
                 }
             }
             else
@@ -627,7 +621,6 @@ public class DrawShaderBackgroundCommand : DrawCommand
 
     public override void Dispose()
     {
-        _cachedImage?.Dispose();
         _roundRect.Dispose();
         base.Dispose();
     }
@@ -650,7 +643,6 @@ public class DrawBorderCommand : DrawCommand
     private readonly VisualElement _element;
     private readonly SKRoundRect _roundRect;
     private readonly EffectRenderMode _renderMode;
-    private SKImage? _cachedImage;
     private SKRect _localBounds;
 
     public DrawBorderCommand(
@@ -693,9 +685,9 @@ public class DrawBorderCommand : DrawCommand
     public override void Execute(SKCanvas canvas)
     {
         float margin = 24f;
-        if (_renderMode == EffectRenderMode.OnDemand && _cachedImage != null)
+        if (_renderMode == EffectRenderMode.OnDemand && _element.CachedBorder != null)
         {
-            canvas.DrawImage(_cachedImage, _localBounds.Left - margin, _localBounds.Top - margin);
+            canvas.DrawImage(_element.CachedBorder, _element.CachedBorderBounds.Left - margin, _element.CachedBorderBounds.Top - margin);
             return;
         }
 
@@ -762,14 +754,15 @@ public class DrawBorderCommand : DrawCommand
                     }
                 }
 
-                _cachedImage = tempSurface.Snapshot();
+                _element.CachedBorder = tempSurface.Snapshot();
+                _element.CachedBorderBounds = _localBounds;
             }
 
             effect?.Dispose();
 
-            if (_cachedImage != null)
+            if (_element.CachedBorder != null)
             {
-                canvas.DrawImage(_cachedImage, _localBounds.Left - margin, _localBounds.Top - margin);
+                canvas.DrawImage(_element.CachedBorder, _localBounds.Left - margin, _localBounds.Top - margin);
             }
             return;
         }
@@ -802,7 +795,6 @@ public class DrawBorderCommand : DrawCommand
 
     public override void Dispose()
     {
-        _cachedImage?.Dispose();
         _roundRect.Dispose();
         base.Dispose();
     }

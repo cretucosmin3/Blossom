@@ -523,6 +523,7 @@ public class Transform : IDisposable
         bool changed = prevX != Computed.X || prevY != Computed.Y || prevW != Computed.Width || prevH != Computed.Height;
         if (changed)
         {
+            ParentElement?.ClearRenderCache();
             var children = ParentElement?.Children;
             if (children != null)
             {

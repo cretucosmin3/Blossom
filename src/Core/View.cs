@@ -292,6 +292,11 @@ namespace Blossom.Core
                     DirtyRects.Clear();
                     DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
                     FullRenderRequired = false;
+
+                    foreach (var element in Elements.Items)
+                    {
+                        element.ClearRenderCache();
+                    }
                 }
                 else if (RenderRequired && DirtyRects.Count == 0)
                 {

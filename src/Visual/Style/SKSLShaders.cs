@@ -212,6 +212,192 @@ namespace Blossom.Core.Visual
             }
         ";
 
+        public const string HolographicLatticeShaderSource = @"
+            uniform float u_time;
+            uniform float2 u_resolution;
+            uniform float4 u_color;
+            uniform float u_hover;
+
+            float my_smoothstep(float edge0, float edge1, float x) {
+                float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                return t * t * (3.0 - 2.0 * t);
+            }
+
+            float my_atan2(float y, float x) {
+                if (x == 0.0) {
+                    return y > 0.0 ? 1.57079632679 : (y < 0.0 ? -1.57079632679 : 0.0);
+                }
+                float a = atan(y / x);
+                if (x < 0.0) {
+                    if (y >= 0.0) {
+                        a += 3.14159265359;
+                    } else {
+                        a -= 3.14159265359;
+                    }
+                }
+                return a;
+            }
+
+            half4 main(float2 fragCoord) {
+                float2 uv = fragCoord / u_resolution;
+                float2 p = (fragCoord - u_resolution * 0.5) / u_resolution.y;
+
+                // Dynamic coordinate warping for fluid/organic lattice distortion
+                float2 warp = float2(
+                    sin(p.y * 4.0 + u_time * 0.15) * 0.08,
+                    cos(p.x * 4.0 + u_time * 0.15) * 0.08
+                );
+                float2 warpedP = p + warp;
+
+                // Scale grid coordinates
+                float scale = 7.0 + u_hover * 3.0;
+                float2 ip = floor(warpedP * scale);
+                float2 fp = fract(warpedP * scale) - 0.5;
+
+                float d = length(fp);
+                float angle = my_atan2(fp.y, fp.x);
+
+                // Multi-fold kaleidoscope symmetry inside each cell
+                float folds = 6.0;
+                float radialSymmetry = cos(angle * folds + u_time * 0.5);
+
+                // Complex interference pattern
+                float w = sin(d * 30.0 - radialSymmetry * 5.0) * 0.5 + 0.5;
+                float cellBorder = my_smoothstep(0.44, 0.48, d);
+
+                // Holographic spectral separation (chromatic dispersion)
+                float3 rCol = float3(1.0, 0.0, 0.3) * (sin(d * 25.0 + radialSymmetry * 2.0 + 0.0) * 0.5 + 0.5);
+                float3 gCol = float3(0.0, 0.9, 0.6) * (sin(d * 25.0 + radialSymmetry * 2.0 + 2.0) * 0.5 + 0.5);
+                float3 bCol = float3(0.1, 0.4, 1.0) * (sin(d * 25.0 + radialSymmetry * 2.0 + 4.0) * 0.5 + 0.5);
+
+                float3 spectralCol = (rCol + gCol + bCol) * w;
+
+                // Background / base tint
+                float3 baseCol = u_color.xyz * 0.15;
+
+                // Combine cell pattern with base color
+                float3 finalCol = mix(baseCol, spectralCol, 1.0 - cellBorder);
+
+                // Center vignette / soft shade
+                float centerVignette = my_smoothstep(0.9, 0.2, length(p));
+                finalCol *= centerVignette;
+
+                // Add highlight based on hover
+                float glow = exp(-length(fp) * 4.0) * u_hover * 0.45;
+                finalCol += u_color.xyz * glow;
+
+                return half4(finalCol, u_color.w);
+            }
+        ";
+
+        public const string QuantumDotsShaderSource = @"
+            uniform float u_time;
+            uniform float2 u_resolution;
+            uniform float4 u_color;
+            uniform float u_hover;
+
+            float my_smoothstep(float edge0, float edge1, float x) {
+                float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                return t * t * (3.0 - 2.0 * t);
+            }
+
+            float2 hash22(float2 p) {
+                float3 p3 = fract(float3(p.xyx) * float3(443.897, 441.423, 437.195));
+                p3 += dot(p3, p3.yzx + 19.19);
+                return fract((p3.xx + p3.yz) * p3.zy);
+            }
+
+            // Distance from point p to line segment between a and b
+            float distToSegment(float2 p, float2 a, float2 b) {
+                float2 ap = p - a;
+                float2 ab = b - a;
+                float h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+                return length(ap - ab * h);
+            }
+
+            half4 main(float2 fragCoord) {
+                float2 uv = fragCoord / u_resolution;
+                float2 p = (fragCoord - u_resolution * 0.5) / u_resolution.y;
+
+                float3 finalColor = u_color.xyz * 0.04; // Very dark ambient background tint
+
+                // Scale for cell grid
+                float scale = 9.0;
+                float2 warpedP = p * scale;
+
+                float2 ip = floor(warpedP);
+                float2 fp = fract(warpedP) - 0.5;
+
+                // We will collect the positions of all particles in the 3x3 neighborhood
+                // local positions are relative to the current cell center
+                float2 positions[9];
+                int count = 0;
+
+                for (float y = -1.0; y <= 1.0; y++) {
+                    for (float x = -1.0; x <= 1.0; x++) {
+                        float2 neighbor = float2(x, y);
+                        float2 cellId = ip + neighbor;
+                        float2 rand = hash22(cellId);
+
+                        // Calculate particle position inside that cell
+                        float speedVal = 0.4 + rand.y * 0.6;
+                        float2 offset = float2(
+                            sin(u_time * speedVal + rand.x * 6.28318),
+                            cos(u_time * speedVal + rand.y * 6.28318)
+                        ) * 0.38;
+
+                        // Position relative to current fragment's cell center
+                        positions[count] = neighbor + offset;
+                        count++;
+                    }
+                }
+
+                // Draw connecting lines between close particles
+                float maxDist = 1.35; // Maximum distance to connect
+                float lineDraw = 0.0;
+
+                for (int i = 0; i < 9; i++) {
+                    for (int j = i + 1; j < 9; j++) {
+                        float distBetween = length(positions[i] - positions[j]);
+                        if (distBetween < maxDist) {
+                            // Distance from current fragment coord 'fp' to the segment connecting i and j
+                            float dSeg = distToSegment(fp, positions[i], positions[j]);
+                            
+                            // Line intensity fades out as they move apart
+                            float fade = 1.0 - (distBetween / maxDist);
+                            fade = fade * fade; // Satisfying exponential falloff for connection strength
+
+                            // Draw the line segment (sharp thin lines)
+                            float lineVal = exp(-dSeg * 65.0) * fade * 0.75;
+                            lineDraw = max(lineDraw, lineVal);
+                        }
+                    }
+                }
+
+                // Draw the particles themselves (white dots)
+                float dotDraw = 0.0;
+                for (int i = 0; i < 9; i++) {
+                    float dDot = length(fp - positions[i]);
+                    
+                    // Satisfying core size and ambient glow
+                    float core = my_smoothstep(0.045, 0.03, dDot);
+                    float glow = exp(-dDot * 25.0) * 0.4;
+                    
+                    dotDraw = max(dotDraw, core + glow);
+                }
+
+                // Combine: dots and lines are primarily pure white (constellation style)
+                float3 webColor = float3(0.95, 0.98, 1.0); // Clean slightly blueish white
+                finalColor += webColor * (dotDraw + lineDraw * (0.7 + u_hover * 0.3));
+
+                // Soft background vignette
+                float vignette = my_smoothstep(0.95, 0.25, length(p));
+                finalColor *= vignette;
+
+                return half4(finalColor, u_color.w);
+            }
+        ";
+
         private static SKRuntimeEffect GetOrCreateEffect(BackgroundShaderType type)
         {
             lock (_lock)
@@ -227,6 +413,8 @@ namespace Blossom.Core.Visual
                     BackgroundShaderType.SynthwaveGrid => GridShaderSource,
                     BackgroundShaderType.LiquidPlasma => PlasmaShaderSource,
                     BackgroundShaderType.GlassRefraction => GlassRefractionShaderSource,
+                    BackgroundShaderType.HolographicLattice => HolographicLatticeShaderSource,
+                    BackgroundShaderType.QuantumDots => QuantumDotsShaderSource,
                     _ => throw new ArgumentException("Unsupported shader type", nameof(type))
                 };
 
@@ -408,6 +596,12 @@ namespace Blossom.Core.Visual
 
                 var halftone = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string halftoneErrors);
                 Console.WriteLine("[SHADER TEST] Halftone Transition compilation: " + (halftone != null ? "SUCCESS" : "FAILED - " + halftoneErrors));
+
+                var holoLattice = SKRuntimeEffect.Create(HolographicLatticeShaderSource, out string holoLatticeErrors);
+                Console.WriteLine("[SHADER TEST] Holographic Lattice compilation: " + (holoLattice != null ? "SUCCESS" : "FAILED - " + holoLatticeErrors));
+
+                var quantumDots = SKRuntimeEffect.Create(QuantumDotsShaderSource, out string quantumDotsErrors);
+                Console.WriteLine("[SHADER TEST] Quantum Dots compilation: " + (quantumDots != null ? "SUCCESS" : "FAILED - " + quantumDotsErrors));
             }
             catch (Exception ex)
             {

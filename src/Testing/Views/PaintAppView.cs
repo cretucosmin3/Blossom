@@ -12,6 +12,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToNeonShowcase;
         public Action? OnSwitchToKanban;
         public Action? OnSwitchTo3D;
+        public Action? OnSwitchToGlass;
 
         private DrawingCanvas? _drawingCanvas;
         
@@ -174,7 +175,7 @@ namespace Blossom.Testing.Views
             sidebar.AddChild(clearBtn);
 
             // Unified Sidebar Navigation Items
-            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase" };
+            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase", "Glass Showcase" };
             float sidebarMenuY = navY + 60f;
             for (int i = 0; i < menuItems.Length; i++)
             {
@@ -191,6 +192,7 @@ namespace Blossom.Testing.Views
                     else if (idx == 1) OnSwitchToNeonShowcase?.Invoke();
                     else if (idx == 3) OnSwitchToKanban?.Invoke();
                     else if (idx == 4) OnSwitchTo3D?.Invoke();
+                    else if (idx == 5) OnSwitchToGlass?.Invoke();
                 };
 
                 sidebar.AddChild(btn);

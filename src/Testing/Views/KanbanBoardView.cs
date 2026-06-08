@@ -14,6 +14,8 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToDashboard;
         public Action? OnSwitchToNeonShowcase;
         public Action? OnSwitchToPaint;
+        public Action? OnSwitchTo3D;
+        public Action? OnSwitchToGlass;
 
         private readonly List<TaskItem> _tasks = new();
         private ScrollContainer? _todoScroll;
@@ -130,7 +132,7 @@ namespace Blossom.Testing.Views
             });
 
             // Navigation menu items
-            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board" };
+            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase", "Glass Showcase" };
             float menuY = 100f;
             for (int i = 0; i < menuItems.Length; i++)
             {
@@ -149,6 +151,8 @@ namespace Blossom.Testing.Views
                     if (idx == 0) OnSwitchToDashboard?.Invoke();
                     else if (idx == 1) OnSwitchToNeonShowcase?.Invoke();
                     else if (idx == 2) OnSwitchToPaint?.Invoke();
+                    else if (idx == 4) OnSwitchTo3D?.Invoke();
+                    else if (idx == 5) OnSwitchToGlass?.Invoke();
                 };
 
                 sidebar.AddChild(btn);
