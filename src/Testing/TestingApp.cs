@@ -13,6 +13,7 @@ namespace Blossom.Testing
         private readonly PaintAppView _paintAppView;
         private readonly KanbanBoardView _kanbanBoardView;
         private readonly Transform3DView _transform3DView;
+        private readonly GlassmorphismShowcaseView _glassShowcaseView;
 
         private readonly BenchmarkStaticView? _benchStaticView;
         private readonly BenchmarkDynamicView? _benchDynamicView;
@@ -44,12 +45,14 @@ namespace Blossom.Testing
             _paintAppView = new PaintAppView();
             _kanbanBoardView = new KanbanBoardView();
             _transform3DView = new Transform3DView();
+            _glassShowcaseView = new GlassmorphismShowcaseView();
 
             AddView(_dashboardView);
             AddView(_neonShowcaseView);
             AddView(_paintAppView);
             AddView(_kanbanBoardView);
             AddView(_transform3DView);
+            AddView(_glassShowcaseView);
 
             // Hook up view transition callback events
             _dashboardView.OnSwitchView += () =>
@@ -72,6 +75,10 @@ namespace Blossom.Testing
             {
                 SetActiveView(_transform3DView);
             };
+            _dashboardView.OnSwitchToGlass += () =>
+            {
+                SetActiveView(_glassShowcaseView);
+            };
 
             _neonShowcaseView.OnSwitchView += () =>
             {
@@ -84,6 +91,10 @@ namespace Blossom.Testing
             _neonShowcaseView.OnSwitchToKanban += () =>
             {
                 SetActiveView(_kanbanBoardView);
+            };
+            _neonShowcaseView.OnSwitchToGlass += () =>
+            {
+                SetActiveView(_glassShowcaseView);
             };
 
             _paintAppView.OnSwitchToDashboard += () =>
@@ -102,6 +113,10 @@ namespace Blossom.Testing
             {
                 SetActiveView(_transform3DView);
             };
+            _paintAppView.OnSwitchToGlass += () =>
+            {
+                SetActiveView(_glassShowcaseView);
+            };
 
             _kanbanBoardView.OnSwitchToDashboard += () =>
             {
@@ -115,10 +130,39 @@ namespace Blossom.Testing
             {
                 SetActiveView(_paintAppView);
             };
+            _kanbanBoardView.OnSwitchTo3D += () =>
+            {
+                SetActiveView(_transform3DView);
+            };
+            _kanbanBoardView.OnSwitchToGlass += () =>
+            {
+                SetActiveView(_glassShowcaseView);
+            };
 
             _transform3DView.OnSwitchToDashboard += () =>
             {
                 SetActiveView(_dashboardView);
+            };
+
+            _glassShowcaseView.OnSwitchToDashboard += () =>
+            {
+                SetActiveView(_dashboardView);
+            };
+            _glassShowcaseView.OnSwitchToNeon += () =>
+            {
+                SetActiveView(_neonShowcaseView);
+            };
+            _glassShowcaseView.OnSwitchToPaint += () =>
+            {
+                SetActiveView(_paintAppView);
+            };
+            _glassShowcaseView.OnSwitchToKanban += () =>
+            {
+                SetActiveView(_kanbanBoardView);
+            };
+            _glassShowcaseView.OnSwitchTo3D += () =>
+            {
+                SetActiveView(_transform3DView);
             };
 
             // Set the dashboard as the starting view
@@ -131,6 +175,7 @@ namespace Blossom.Testing
             // Key.Number3 = 51, Key.P = 80 -> Paint Canvas
             // Key.Number4 = 52, Key.K = 75 -> Kanban Task Board
             // Key.Number5 = 53, Key.T = 84 -> 3D Showcase
+            // Key.Number6 = 54, Key.G = 71 -> Glass Showcase
             Events.OnKeyUp += (int keyPressed) =>
             {
                 if (keyPressed == 49 || keyPressed == 68) // '1' or 'D'
@@ -157,6 +202,11 @@ namespace Blossom.Testing
                 {
                     Console.WriteLine("Hotkey: Switching to 3D Showcase View");
                     SetActiveView(_transform3DView);
+                }
+                else if (keyPressed == 54 || keyPressed == 71) // '6' or 'G'
+                {
+                    Console.WriteLine("Hotkey: Switching to Glass Showcase View");
+                    SetActiveView(_glassShowcaseView);
                 }
             };
         }

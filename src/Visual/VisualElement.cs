@@ -89,8 +89,8 @@ public class VisualElement : IDisposable
 
         // If the element has active shaders, animated border effects, or an active transition shader, keep scheduling redrawing frames
         if (Style != null && (
-            Style.BackgroundShader != BackgroundShaderType.None ||
-            Style.BorderEffect != BorderEffectType.None ||
+            (Style.BackgroundShader != BackgroundShaderType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
+            (Style.BorderEffect != BorderEffectType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
             (EffectiveTransitionType != TransitionEffectType.None && EffectiveTransitionProgress < 1.0f)))
         {
             ScheduleRender();
@@ -1290,8 +1290,25 @@ public class VisualElement : IDisposable
         );
     }
 
+    internal SKImage? CachedBackdropBlur;
+    internal SKRect CachedBackdropBlurBounds;
+    internal SKImage? CachedShaderBackground;
+    internal SKImage? CachedBorder;
+    internal SKRect CachedBorderBounds;
+
+    internal void ClearRenderCache()
+    {
+        CachedBackdropBlur?.Dispose();
+        CachedBackdropBlur = null;
+        CachedShaderBackground?.Dispose();
+        CachedShaderBackground = null;
+        CachedBorder?.Dispose();
+        CachedBorder = null;
+    }
+
     public void Dispose()
     {
+        ClearRenderCache();
         Transform.Dispose();
         paint.Dispose();
         _cachedRoundRect?.Dispose();
