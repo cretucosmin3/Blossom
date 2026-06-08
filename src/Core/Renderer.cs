@@ -62,12 +62,16 @@ internal static class Renderer
 
     public static void SetCanvas(IWindow window)
     {
-        grGlInterface = GRGlInterface.Create(name => {
+        grGlInterface = GRGlInterface.Create(name =>
+        {
+            // Try the window's GL context first (if available)
             if (window.GLContext != null)
             {
-                return window.GLContext.GetProcAddress(name);
+                var ptr = window.GLContext.GetProcAddress(name);
+                if (ptr != IntPtr.Zero) return ptr;
             }
-            return IntPtr.Zero;
+            // Fallback to Silk.NET's global OpenGL API (works on Windows)
+            return Silk.NET.OpenGL.GL.GetApi().GetProcAddress(name);
         });
 
         if (grGlInterface == null)
