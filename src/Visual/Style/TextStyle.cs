@@ -17,7 +17,7 @@ public class TextStyle : StyleProperty, IDisposable
     private SKPathEffect _PathEffect = null;
     private TextAlign _Alignment = TextAlign.Center;
     private SKColor _Color;
-    private string _FontName = "Arimo";
+    private string _FontName = "Roboto";
 
     public ShadowStyle _Shadow;
 
@@ -29,15 +29,13 @@ public class TextStyle : StyleProperty, IDisposable
             TextAlign = SKTextAlign.Left,
             TextSize = _Size,
             SubpixelText = true,
-            Typeface = SKTypeface.FromFamilyName(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
+            Typeface = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
         };
     }
 
     private void RedoFont()
     {
-        var typeFace = SKTypeface.FromFamilyName(_FontName,
-            new SKFontStyle(_Weight, _Width, SKFontStyleSlant.Upright)
-        );
+        var typeFace = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright);
 
         if (_Shadow?.Filter != null)
         {

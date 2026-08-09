@@ -367,6 +367,13 @@ namespace Blossom.Core
 
             using (new SKAutoCanvasRestore(Renderer.Canvas))
             {
+                float scaleX = Browser.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Browser.RenderRect.Width : 1f;
+                float scaleY = Browser.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Browser.RenderRect.Height : 1f;
+                if (scaleX > 0 && scaleY > 0 && (scaleX != 1f || scaleY != 1f))
+                {
+                    Renderer.Canvas.Scale(scaleX, scaleY);
+                }
+
                 if (_localDirtyRects.Count == 1)
                 {
                     var r = _localDirtyRects[0];

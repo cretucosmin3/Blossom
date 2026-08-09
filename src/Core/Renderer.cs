@@ -30,8 +30,14 @@ internal static class Renderer
         }
     }
 
+    public static int FramebufferWidth { get; private set; }
+    public static int FramebufferHeight { get; private set; }
+
     private static void RenewCanvas(int width, int height)
     {
+        FramebufferWidth = width;
+        FramebufferHeight = height;
+
         RenderTarget?.Dispose();
         _Canvas?.Dispose();
         Surface?.Dispose();
@@ -63,38 +69,39 @@ internal static class Renderer
 
     public static void SetCanvas(IWindow window)
     {
-        // Create GL interface using the window's GL context GetProcAddress
-        grGlInterface = GRGlInterface.Create(name =>
+        try
         {
-            // Attempt to get address via window's GL context
-            if (window.GLContext != null)
-            {
-                var ptr = window.GLContext.GetProcAddress(name);
-                if (ptr != IntPtr.Zero) return ptr;
-            }
-            // If not found, return zero pointer
-            return IntPtr.Zero;
-        });
-
-        if (grGlInterface == null)
-        {
-            Console.WriteLine("[ERROR] GRGlInterface creation failed.");
-            throw new InvalidOperationException("GRGlInterface creation failed.");
+            grGlInterface = GRGlInterface.Create();
+            grGlInterface.Validate();
         }
-
-        // Validate interface (may throw if missing functions)
-        grGlInterface.Validate();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARN] Default GRGlInterface.Create() failed ({ex.Message}), trying window GLContext...");
+            grGlInterface = GRGlInterface.Create(name =>
+            {
+                if (window.GLContext != null)
+                {
+                    try
+                    {
+                        var ptr = window.GLContext.GetProcAddress(name);
+                        if (ptr != IntPtr.Zero) return ptr;
+                    }
+                    catch { }
+                }
+                return IntPtr.Zero;
+            });
+            grGlInterface.Validate();
+        }
 
         grContext = GRContext.CreateGl(grGlInterface);
 
-        RenewCanvas(window.Size.X, window.Size.Y);
-        // Ensure RenderRect matches actual window size immediately
+        RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
         Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
 
-        window.FramebufferResize += newSize =>
+        window.FramebufferResize += _ =>
         {
-            RenewCanvas(newSize.X, newSize.Y);
-            Browser.RenderRect = new(0, 0, newSize.X, newSize.Y);
+            RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
+            Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
             Browser.WasResized = true;
 
             if (Browser.BrowserApp?.ActiveView != null)

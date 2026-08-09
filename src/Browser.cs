@@ -359,7 +359,7 @@ public static class Browser
         FakeBoldText = true,
         Color = SKColors.IndianRed,
         Style = SKPaintStyle.Fill,
-        Typeface = SKTypeface.FromFamilyName("Arimo", 100, 2, SKFontStyleSlant.Upright),
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Roboto", 500),
     };
 
     private static readonly SKPaint InfoBackgroundPaint = new()
