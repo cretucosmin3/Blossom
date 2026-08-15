@@ -12,6 +12,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToPaint;
         public Action? OnSwitchToKanban;
         public Action? OnSwitchToGlass;
+        public Action? OnSwitchToPhotoEditor;
 
         private VisualElement _showcaseBg = null!;
         private VisualElement _glassCard = null!;

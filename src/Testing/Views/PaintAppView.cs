@@ -13,6 +13,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToKanban;
         public Action? OnSwitchTo3D;
         public Action? OnSwitchToGlass;
+        public Action? OnSwitchToPhotoEditor;
 
         private DrawingCanvas? _drawingCanvas;
         

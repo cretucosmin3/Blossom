@@ -6,9 +6,14 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}\\bin\\Debug\\net8.0\\Blossom.dll",
+            "program": "${workspaceFolder}/bin/Debug/net10.0/Blossom.dll",
+            "dotnetPath": "/home/kozmo/.dotnet/dotnet",
             "args": [],
             "cwd": "${workspaceFolder}",
+            "env": {
+                "PATH": "/home/kozmo/.dotnet:/home/kozmo/.local/bin:${env:PATH}",
+                "DOTNET_ROOT": "/home/kozmo/.dotnet"
+            },
             "console": "internalConsole",
             "stopAtEntry": false
         }

@@ -1,6 +1,11 @@
-// Tasks
 {
     "version": "2.0.0",
+    "options": {
+        "env": {
+            "PATH": "/home/kozmo/.dotnet:/home/kozmo/.local/bin:${env:PATH}",
+            "DOTNET_ROOT": "/home/kozmo/.dotnet"
+        }
+    },
     "tasks": [
         {
             "label": "build",

@@ -16,6 +16,7 @@ namespace Blossom.Testing.Views
         public Action? OnSwitchToKanban;
         public Action? OnSwitchTo3D;
         public Action? OnSwitchToGlass;
+        public Action? OnSwitchToPhotoEditor;
 
         // Interactive Fields
         private VisualElement? _mainContent;
@@ -81,7 +82,7 @@ namespace Blossom.Testing.Views
             sidebar.AddChild(brand);
 
             // Navigation Menu Items (shifted down to start at Y = 130f)
-            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase", "Glass Showcase" };
+            string[] menuItems = { "Overview", "Neon Showcase", "Neon Paint", "Task Board", "3D Showcase", "Glass Showcase", "Photo Editor" };
             float menuY = 130f;
             for (int i = 0; i < menuItems.Length; i++)
             {
@@ -99,6 +100,7 @@ namespace Blossom.Testing.Views
                     else if (idx == 3) OnSwitchToKanban?.Invoke();
                     else if (idx == 4) OnSwitchTo3D?.Invoke();
                     else if (idx == 5) OnSwitchToGlass?.Invoke();
+                    else if (idx == 6) OnSwitchToPhotoEditor?.Invoke();
                 };
 
                 sidebar.AddChild(btn);

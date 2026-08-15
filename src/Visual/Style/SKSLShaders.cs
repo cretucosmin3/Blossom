@@ -10,6 +10,7 @@ namespace Blossom.Core.Visual
         private static readonly Dictionary<BorderEffectType, SKRuntimeEffect> _borderEffects = new();
         private static readonly object _lock = new();
         private static SKRuntimeEffect? _halftoneEffect;
+        private static SKRuntimeEffect? _photoEditorEffect;
 
         public const string CrtShaderSource = @"
             uniform float u_time;
@@ -705,6 +706,178 @@ namespace Blossom.Core.Visual
             return _halftoneEffect.ToShader(false, uniforms);
         }
 
+        public const string PhotoEditorShaderSource = @"
+            uniform shader u_image;
+            uniform float2 u_resolution;
+            uniform float u_exposure;
+            uniform float u_contrast;
+            uniform float u_brightness;
+            uniform float u_saturation;
+            uniform float u_temperature;
+            uniform float u_tint;
+            uniform float u_highlights;
+            uniform float u_shadows;
+            uniform float u_vignette;
+            uniform float u_sepia;
+            uniform float u_grain;
+            uniform float u_sharpen;
+            uniform float u_hue;
+            uniform float u_redBoost;
+            uniform float u_greenBoost;
+            uniform float u_blueBoost;
+            uniform float u_splitPos;
+            uniform float u_time;
+
+            half4 main(float2 fragCoord) {
+                float2 uv = fragCoord / u_resolution;
+                half4 origColor = sample(u_image, fragCoord);
+                
+                if (u_splitPos > 0.001) {
+                    if (uv.x < u_splitPos) {
+                        if (abs(uv.x - u_splitPos) < 0.003) {
+                            return half4(1.0, 1.0, 1.0, 1.0);
+                        }
+                        return origColor;
+                    }
+                    if (abs(uv.x - u_splitPos) < 0.003) {
+                        return half4(1.0, 1.0, 1.0, 1.0);
+                    }
+                }
+                
+                float3 col = float3(origColor.rgb);
+                
+                // 1. White Balance (Temperature & Tint)
+                col.r += u_temperature * 0.18;
+                col.b -= u_temperature * 0.18;
+                col.g -= u_tint * 0.18;
+                col.r += u_tint * 0.09;
+                col.b += u_tint * 0.09;
+                
+                // 2. Exposure & Brightness
+                col *= pow(2.0, u_exposure);
+                col += u_brightness;
+                
+                // 3. Contrast
+                col = (col - float3(0.5)) * (u_contrast + 1.0) + float3(0.5);
+                
+                // 4. Highlights & Shadows
+                float lum = dot(col, float3(0.299, 0.587, 0.114));
+                float highWeight = clamp((lum - 0.5) * 2.0, 0.0, 1.0);
+                col += highWeight * u_highlights * 0.35;
+                float shadowWeight = clamp((0.5 - lum) * 2.0, 0.0, 1.0);
+                col += shadowWeight * u_shadows * 0.35;
+                
+                // 5. Channel Boosts
+                col.r *= (1.0 + u_redBoost);
+                col.g *= (1.0 + u_greenBoost);
+                col.b *= (1.0 + u_blueBoost);
+                
+                // 6. Hue Shift
+                if (abs(u_hue) > 0.01) {
+                    float angle = u_hue;
+                    float c = cos(angle);
+                    float s = sin(angle);
+                    mat3 hueMat = mat3(
+                        0.213 + c * 0.787 - s * 0.213,
+                        0.715 - c * 0.715 - s * 0.715,
+                        0.072 - c * 0.072 + s * 0.928,
+                        0.213 - c * 0.213 + s * 0.143,
+                        0.715 + c * 0.285 + s * 0.140,
+                        0.072 - c * 0.072 - s * 0.283,
+                        0.213 - c * 0.213 - s * 0.787,
+                        0.715 - c * 0.715 + s * 0.715,
+                        0.072 + c * 0.928 + s * 0.072
+                    );
+                    col = clamp(hueMat * col, 0.0, 1.0);
+                }
+                
+                // 7. Saturation & Sepia
+                lum = dot(col, float3(0.299, 0.587, 0.114));
+                col = mix(float3(lum), col, u_saturation);
+                
+                if (u_sepia > 0.001) {
+                    float3 sepiaColor = float3(
+                        dot(col, float3(0.393, 0.769, 0.189)),
+                        dot(col, float3(0.349, 0.686, 0.168)),
+                        dot(col, float3(0.272, 0.534, 0.131))
+                    );
+                    col = mix(col, sepiaColor, u_sepia);
+                }
+                
+                // 8. Vignette
+                if (u_vignette > 0.001) {
+                    float dist = distance(uv, float2(0.5));
+                    float vig = clamp(1.0 - dist * dist * u_vignette * 2.2, 0.0, 1.0);
+                    col *= vig;
+                }
+                
+                // 9. Film Grain
+                if (u_grain > 0.001) {
+                    float n = fract(sin(dot(uv * u_resolution + float2(u_time * 10.0), float2(12.9898, 78.233))) * 43758.5453);
+                    col += (n - 0.5) * u_grain * 0.22;
+                }
+                
+                // 10. Sharpen
+                if (u_sharpen > 0.001) {
+                    float2 step = float2(1.5);
+                    half4 cUp = sample(u_image, fragCoord + float2(0.0, -step.y));
+                    half4 cDown = sample(u_image, fragCoord + float2(0.0, step.y));
+                    half4 cLeft = sample(u_image, fragCoord + float2(-step.x, 0.0));
+                    half4 cRight = sample(u_image, fragCoord + float2(step.x, 0.0));
+                    float3 sharp = col * 5.0 - (cUp.rgb + cDown.rgb + cLeft.rgb + cRight.rgb);
+                    col = mix(col, sharp, u_sharpen * 0.6);
+                }
+                
+                col = clamp(col, 0.0, 1.0);
+                return half4(col, origColor.a);
+            }
+        ";
+
+        public static SKShader CreatePhotoEditorShader(SKShader imageShader, float width, float height, PhotoEditorParams p)
+        {
+            if (_photoEditorEffect == null)
+            {
+                lock (_lock)
+                {
+                    if (_photoEditorEffect == null)
+                    {
+                        _photoEditorEffect = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string errors);
+                        if (_photoEditorEffect == null)
+                        {
+                            Console.WriteLine("[SHADER ERROR] Photo Editor Shader compilation failed: " + errors);
+                            return null!;
+                        }
+                    }
+                }
+            }
+
+            var uniforms = new SKRuntimeEffectUniforms(_photoEditorEffect);
+            TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_exposure", p.Exposure);
+            TrySetUniform(uniforms, "u_contrast", p.Contrast);
+            TrySetUniform(uniforms, "u_brightness", p.Brightness);
+            TrySetUniform(uniforms, "u_saturation", p.Saturation);
+            TrySetUniform(uniforms, "u_temperature", p.Temperature);
+            TrySetUniform(uniforms, "u_tint", p.Tint);
+            TrySetUniform(uniforms, "u_highlights", p.Highlights);
+            TrySetUniform(uniforms, "u_shadows", p.Shadows);
+            TrySetUniform(uniforms, "u_vignette", p.Vignette);
+            TrySetUniform(uniforms, "u_sepia", p.Sepia);
+            TrySetUniform(uniforms, "u_grain", p.Grain);
+            TrySetUniform(uniforms, "u_sharpen", p.Sharpen);
+            TrySetUniform(uniforms, "u_hue", p.Hue);
+            TrySetUniform(uniforms, "u_redBoost", p.RedBoost);
+            TrySetUniform(uniforms, "u_greenBoost", p.GreenBoost);
+            TrySetUniform(uniforms, "u_blueBoost", p.BlueBoost);
+            TrySetUniform(uniforms, "u_splitPos", p.SplitPos);
+            TrySetUniform(uniforms, "u_time", p.Time);
+
+            var children = new SKRuntimeEffectChildren(_photoEditorEffect);
+            children.Add("u_image", imageShader);
+
+            return _photoEditorEffect.ToShader(true, uniforms, children);
+        }
+
         public static void TestCompilation()
         {
             try
@@ -735,6 +908,9 @@ namespace Blossom.Core.Visual
 
                 var liquidPaint = SKRuntimeEffect.Create(LiquidPaintShaderSource, out string liquidPaintErrors);
                 Console.WriteLine("[SHADER TEST] Liquid Paint compilation: " + (liquidPaint != null ? "SUCCESS" : "FAILED - " + liquidPaintErrors));
+
+                var photoEditor = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string photoEditorErrors);
+                Console.WriteLine("[SHADER TEST] Photo Editor Shader compilation: " + (photoEditor != null ? "SUCCESS" : "FAILED - " + photoEditorErrors));
             }
             catch (Exception ex)
             {
@@ -760,8 +936,55 @@ namespace Blossom.Core.Visual
 
                 _halftoneEffect?.Dispose();
                 _halftoneEffect = null;
+
+                _photoEditorEffect?.Dispose();
+                _photoEditorEffect = null;
             }
         }
+    }
+
+    public struct PhotoEditorParams
+    {
+        public float Exposure { get; set; }     // -2.0 to 2.0
+        public float Contrast { get; set; }     // -1.0 to 1.0
+        public float Brightness { get; set; }   // -1.0 to 1.0
+        public float Saturation { get; set; }   // 0.0 to 2.0 (default 1.0)
+        public float Temperature { get; set; }  // -1.0 to 1.0
+        public float Tint { get; set; }         // -1.0 to 1.0
+        public float Highlights { get; set; }   // -1.0 to 1.0
+        public float Shadows { get; set; }      // -1.0 to 1.0
+        public float Vignette { get; set; }     // 0.0 to 1.0
+        public float Sepia { get; set; }        // 0.0 to 1.0
+        public float Grain { get; set; }        // 0.0 to 1.0
+        public float Sharpen { get; set; }      // 0.0 to 1.0
+        public float Hue { get; set; }          // -3.14 to 3.14
+        public float RedBoost { get; set; }     // -1.0 to 1.0
+        public float GreenBoost { get; set; }   // -1.0 to 1.0
+        public float BlueBoost { get; set; }    // -1.0 to 1.0
+        public float SplitPos { get; set; }     // 0.0 to 1.0 (split comparison)
+        public float Time { get; set; }
+
+        public static PhotoEditorParams Default => new PhotoEditorParams
+        {
+            Exposure = 0f,
+            Contrast = 0f,
+            Brightness = 0f,
+            Saturation = 1.0f,
+            Temperature = 0f,
+            Tint = 0f,
+            Highlights = 0f,
+            Shadows = 0f,
+            Vignette = 0f,
+            Sepia = 0f,
+            Grain = 0f,
+            Sharpen = 0f,
+            Hue = 0f,
+            RedBoost = 0f,
+            GreenBoost = 0f,
+            BlueBoost = 0f,
+            SplitPos = 0f,
+            Time = 0f
+        };
     }
 
     public static class SKSLShaderTimeTracker
