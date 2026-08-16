@@ -691,7 +691,7 @@ namespace Blossom.Core.Visual
                         _halftoneEffect = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string errors);
                         if (_halftoneEffect == null)
                         {
-                            Console.WriteLine("[SHADER ERROR] Halftone Transition Shader compilation failed: " + errors);
+                            Log.Error("[SHADER ERROR] Halftone Transition Shader compilation failed: " + errors);
                             return null!;
                         }
                     }
@@ -844,7 +844,7 @@ namespace Blossom.Core.Visual
                         _photoEditorEffect = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string errors);
                         if (_photoEditorEffect == null)
                         {
-                            Console.WriteLine("[SHADER ERROR] Photo Editor Shader compilation failed: " + errors);
+                            Log.Error("[SHADER ERROR] Photo Editor Shader compilation failed: " + errors);
                             return null!;
                         }
                     }
@@ -883,38 +883,38 @@ namespace Blossom.Core.Visual
             try
             {
                 var crt = SKRuntimeEffect.Create(CrtShaderSource, out string crtErrors);
-                Console.WriteLine("[SHADER TEST] CRT Scanlines compilation: " + (crt != null ? "SUCCESS" : "FAILED - " + crtErrors));
+                Log.Info("[SHADER TEST] CRT Scanlines compilation: " + (crt != null ? "SUCCESS" : "FAILED - " + crtErrors));
 
                 var grid = SKRuntimeEffect.Create(GridShaderSource, out string gridErrors);
-                Console.WriteLine("[SHADER TEST] Synthwave Grid compilation: " + (grid != null ? "SUCCESS" : "FAILED - " + gridErrors));
+                Log.Info("[SHADER TEST] Synthwave Grid compilation: " + (grid != null ? "SUCCESS" : "FAILED - " + gridErrors));
 
                 var plasma = SKRuntimeEffect.Create(PlasmaShaderSource, out string plasmaErrors);
-                Console.WriteLine("[SHADER TEST] Liquid Plasma compilation: " + (plasma != null ? "SUCCESS" : "FAILED - " + plasmaErrors));
+                Log.Info("[SHADER TEST] Liquid Plasma compilation: " + (plasma != null ? "SUCCESS" : "FAILED - " + plasmaErrors));
 
                 var glassRef = SKRuntimeEffect.Create(GlassRefractionShaderSource, out string glassRefErrors);
-                Console.WriteLine("[SHADER TEST] Glass Refraction compilation: " + (glassRef != null ? "SUCCESS" : "FAILED - " + glassRefErrors));
+                Log.Info("[SHADER TEST] Glass Refraction compilation: " + (glassRef != null ? "SUCCESS" : "FAILED - " + glassRefErrors));
 
                 var glassBorder = SKRuntimeEffect.Create(GlassBorderShaderSource, out string glassBorderErrors);
-                Console.WriteLine("[SHADER TEST] Glass Border compilation: " + (glassBorder != null ? "SUCCESS" : "FAILED - " + glassBorderErrors));
+                Log.Info("[SHADER TEST] Glass Border compilation: " + (glassBorder != null ? "SUCCESS" : "FAILED - " + glassBorderErrors));
 
                 var halftone = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string halftoneErrors);
-                Console.WriteLine("[SHADER TEST] Halftone Transition compilation: " + (halftone != null ? "SUCCESS" : "FAILED - " + halftoneErrors));
+                Log.Info("[SHADER TEST] Halftone Transition compilation: " + (halftone != null ? "SUCCESS" : "FAILED - " + halftoneErrors));
 
                 var holoLattice = SKRuntimeEffect.Create(HolographicLatticeShaderSource, out string holoLatticeErrors);
-                Console.WriteLine("[SHADER TEST] Holographic Lattice compilation: " + (holoLattice != null ? "SUCCESS" : "FAILED - " + holoLatticeErrors));
+                Log.Info("[SHADER TEST] Holographic Lattice compilation: " + (holoLattice != null ? "SUCCESS" : "FAILED - " + holoLatticeErrors));
 
                 var quantumDots = SKRuntimeEffect.Create(QuantumDotsShaderSource, out string quantumDotsErrors);
-                Console.WriteLine("[SHADER TEST] Quantum Dots compilation: " + (quantumDots != null ? "SUCCESS" : "FAILED - " + quantumDotsErrors));
+                Log.Info("[SHADER TEST] Quantum Dots compilation: " + (quantumDots != null ? "SUCCESS" : "FAILED - " + quantumDotsErrors));
 
                 var liquidPaint = SKRuntimeEffect.Create(LiquidPaintShaderSource, out string liquidPaintErrors);
-                Console.WriteLine("[SHADER TEST] Liquid Paint compilation: " + (liquidPaint != null ? "SUCCESS" : "FAILED - " + liquidPaintErrors));
+                Log.Info("[SHADER TEST] Liquid Paint compilation: " + (liquidPaint != null ? "SUCCESS" : "FAILED - " + liquidPaintErrors));
 
                 var photoEditor = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string photoEditorErrors);
-                Console.WriteLine("[SHADER TEST] Photo Editor Shader compilation: " + (photoEditor != null ? "SUCCESS" : "FAILED - " + photoEditorErrors));
+                Log.Info("[SHADER TEST] Photo Editor Shader compilation: " + (photoEditor != null ? "SUCCESS" : "FAILED - " + photoEditorErrors));
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[SHADER TEST] Check exception: " + ex.Message);
+                Log.Error("[SHADER TEST] Check exception: " + ex.Message);
             }
         }
 

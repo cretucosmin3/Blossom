@@ -103,7 +103,7 @@ namespace Blossom.Core
             // Simple state machine: if we were on BenchmarkStatic, switch to BenchmarkDynamic
             if (app.ActiveView.Name == "Benchmark - Static Grid")
             {
-                Console.WriteLine("\n[BENCHMARK] Switching to Dynamic Mutation View...");
+                Log.Info("[BENCHMARK] Switching to Dynamic Mutation View...");
                 
                 // Find dynamic view in app Views (we will set it up in TestingApp.cs)
                 var nextView = app.ActiveView.Application.ActiveView; 
@@ -128,30 +128,19 @@ namespace Blossom.Core
 
         private static void PrintSummaryTable()
         {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n==========================================================================");
-            Console.WriteLine("                      BLOSSOM OS RENDERING BENCHMARK                      ");
-            Console.WriteLine("==========================================================================");
-            Console.ResetColor();
-
-            Console.WriteLine(string.Format("{0,-30} | {1,8} | {2,10} | {3,10} | {4,10} | {5,8}", 
+            Log.Info("==========================================================================");
+            Log.Info("                      BLOSSOM OS RENDERING BENCHMARK                      ");
+            Log.Info("==========================================================================");
+            Log.Info(string.Format("{0,-30} | {1,8} | {2,10} | {3,10} | {4,10} | {5,8}", 
                 "View Name", "Frames", "Avg (ms)", "Min (ms)", "Max (ms)", "Avg FPS"));
-            Console.WriteLine(new string('-', 85));
+            Log.Info(new string('-', 85));
 
             foreach (var result in ViewResults.Values)
             {
-                if (result.Fps > 60) Console.ForegroundColor = ConsoleColor.Green;
-                else if (result.Fps > 30) Console.ForegroundColor = ConsoleColor.Yellow;
-                else Console.ForegroundColor = ConsoleColor.Red;
-
-                Console.WriteLine(string.Format("{0,-30} | {1,8} | {2,10:F2} | {3,10:F2} | {4,10:F2} | {5,8:F1}",
+                Log.Info(string.Format("{0,-30} | {1,8} | {2,10:F2} | {3,10:F2} | {4,10:F2} | {5,8:F1}",
                     result.Name, result.TotalFrames, result.AvgMs, result.MinMs, result.MaxMs, result.Fps));
             }
-            Console.ResetColor();
-
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("==========================================================================\n");
-            Console.ResetColor();
+            Log.Info("==========================================================================");
         }
     }
 }

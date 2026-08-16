@@ -49,7 +49,7 @@ namespace Blossom.Utils
             }
             catch (Exception x)
             {
-                Console.WriteLine($"Error while reading from url : {x.Message}");
+                Log.Error($"Error while reading from url: {x.Message}");
             }
 
             return bytes;

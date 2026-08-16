@@ -10,7 +10,8 @@ namespace Blossom.Core;
 
 public class ElementTree : IDisposable
 {
-    private readonly Dictionary<string, (VisualElement, ElementTracker)> Map = new();
+    private readonly Dictionary<Guid, (VisualElement, ElementTracker)> _byId = new();
+    private readonly Dictionary<string, VisualElement> _byName = new();
     internal readonly SortedAxis BoundAxis = new();
 
     private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
@@ -18,9 +19,21 @@ public class ElementTree : IDisposable
         float.MaxValue, float.MaxValue
     );
 
-    public VisualElement[] Items { get => Map.Values.Select(x => x.Item1).ToArray(); }
+    public VisualElement[] Items { get => _byId.Values.Select(x => x.Item1).ToArray(); }
 
     internal ElementTree() { }
+
+    public VisualElement? FindById(Guid id)
+    {
+        return _byId.TryGetValue(id, out var entry) ? entry.Item1 : null;
+    }
+
+    public VisualElement? FindByName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        if (_byName.TryGetValue(name, out var elem)) return elem;
+        return _byId.Values.FirstOrDefault(x => x.Item1.Name == name).Item1;
+    }
 
     public List<VisualElement> ComponentsFromPoint(PointF point)
     {
@@ -56,7 +69,7 @@ public class ElementTree : IDisposable
 
     private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
     {
-        var sortedChildren = root.Children.Where(c => c != null).OrderByDescending(c => c.ZIndex).ToList();
+        var sortedChildren = root.GetVisualChildren().Where(c => c != null).OrderByDescending(c => c.ZIndex).ToList();
         foreach (var child in sortedChildren)
         {
             CollectElementsForHitTest(child, list);
@@ -66,7 +79,7 @@ public class ElementTree : IDisposable
 
     public VisualElement FirstFromPoint(float x, float y)
     {
-        var rootElements = Map.Values.Select(x => x.Item1)
+        var rootElements = _byId.Values.Select(x => x.Item1)
             .Where(e => e.Parent == null)
             .Reverse()
             .OrderByDescending(e => e.ZIndex)
@@ -81,6 +94,9 @@ public class ElementTree : IDisposable
         foreach (var elementFromPoint in elements)
         {
             if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
+                continue;
+
+            if (!elementFromPoint.EffectiveInteractive)
                 continue;
 
             SKMatrix44 globalMatrix = elementFromPoint.Transform.GetGlobalM44();
@@ -125,7 +141,7 @@ public class ElementTree : IDisposable
             if (w <= 1e-6f)
                 continue;
 
-            if (!elementFromPoint.IsPointInside(localX, localY))
+            if (!elementFromPoint.HitTestLocal(localX, localY))
             {
                 continue;
             }
@@ -144,7 +160,7 @@ public class ElementTree : IDisposable
                         if (ancestorGlobal.Invert(invAncestorGlobal))
                         {
                             var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
-                            if (!ancestor.IsPointInside(ancestorLocalPt.X, ancestorLocalPt.Y))
+                            if (!ancestor.HitTestLocal(ancestorLocalPt.X, ancestorLocalPt.Y))
                             {
                                 insideClipping = false;
                                 break;
@@ -203,9 +219,9 @@ public class ElementTree : IDisposable
         return NewTracker;
     }
 
-    private void RemoveTracker(VisualElement Element)
+    private void RemoveTracker(VisualElement element)
     {
-        if (Map.TryGetValue(Element.Name, out var entry))
+        if (_byId.TryGetValue(element.Id, out var entry))
         {
             QuadTree.Remove(entry.Item2);
         }
@@ -213,16 +229,20 @@ public class ElementTree : IDisposable
 
     public void AddElement(ref VisualElement element)
     {
-        if (Map.ContainsKey(element.Name))
+        if (_byId.ContainsKey(element.Id))
         {
-            Log.Error($"A component with name {element.Name} already exists.");
             return;
         }
 
         var tracker = AddTracker(ref element);
 
         // Add element and tracker to the map
-        Map.Add(element.Name, (element, tracker));
+        _byId.Add(element.Id, (element, tracker));
+
+        if (!string.IsNullOrEmpty(element.Name))
+        {
+            _byName[element.Name] = element;
+        }
 
         if (element.Name != "Bounding Area")
             BoundAxis.AddElement(element);
@@ -230,12 +250,24 @@ public class ElementTree : IDisposable
         element.OnDisposing += Element_OnDispose;
     }
 
+    public void AddElement(VisualElement element)
+    {
+        AddElement(ref element);
+    }
+
     public void RemoveElement(VisualElement element)
     {
-        if (element == null || !Map.ContainsKey(element.Name)) return;
-        RemoveTracker(element);
-        Map.Remove(element.Name);
+        if (element == null || !_byId.TryGetValue(element.Id, out var entry)) return;
+        QuadTree.Remove(entry.Item2);
+        _byId.Remove(element.Id);
+
+        if (!string.IsNullOrEmpty(element.Name) && _byName.TryGetValue(element.Name, out var named) && named == element)
+        {
+            _byName.Remove(element.Name);
+        }
+
         BoundAxis.RemoveElement(element);
+        element.OnDisposing -= Element_OnDispose;
     }
 
     private void Element_OnDispose(VisualElement e)
@@ -245,12 +277,8 @@ public class ElementTree : IDisposable
 
     public void Dispose()
     {
-        foreach (var (element, _) in Map.Values)
-        {
-            element.Dispose();
-        }
-
+        _byId.Clear();
+        _byName.Clear();
         QuadTree.Clear();
-        Map.Clear();
     }
 }

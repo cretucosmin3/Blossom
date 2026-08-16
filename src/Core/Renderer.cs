@@ -76,7 +76,7 @@ internal static class Renderer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARN] Default GRGlInterface.Create() failed ({ex.Message}), trying window GLContext...");
+            Log.Warning($"Default GRGlInterface.Create() failed ({ex.Message}), trying window GLContext...");
             grGlInterface = GRGlInterface.Create(name =>
             {
                 if (window.GLContext != null)
@@ -98,17 +98,39 @@ internal static class Renderer
         RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
         Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
 
-        window.FramebufferResize += _ =>
+        void OnWindowResized()
         {
-            RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
-            Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
+            int fbW = Math.Max(1, window.FramebufferSize.X);
+            int fbH = Math.Max(1, window.FramebufferSize.Y);
+            int winW = Math.Max(1, window.Size.X);
+            int winH = Math.Max(1, window.Size.Y);
+
+            // Rebuild GPU surfaces for new size (clears offscreen buffer)
+            if (fbW != FramebufferWidth || fbH != FramebufferHeight)
+            {
+                RenewCanvas(fbW, fbH);
+            }
+
+            Browser.RenderRect = new(0, 0, winW, winH);
             Browser.WasResized = true;
 
             if (Browser.BrowserApp?.ActiveView != null)
             {
+                Browser.BrowserApp.ActiveView.FullRenderRequired = true;
                 Browser.BrowserApp.ActiveView.RenderRequired = true;
+                Browser.BrowserApp.ActiveView.ForceLayoutEvaluation();
             }
-        };
+
+            // Event-driven loop may be waiting; wake it so the frame paints immediately
+            try
+            {
+                Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent();
+            }
+            catch { /* GLFW may not be ready during teardown */ }
+        }
+
+        window.FramebufferResize += _ => OnWindowResized();
+        window.Resize += _ => OnWindowResized();
     }
 
     public static void ResetContext()

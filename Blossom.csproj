@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
+        <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <ApplicationIcon>icon64.ico</ApplicationIcon>
         <RootNamespace>Blossom</RootNamespace>
@@ -8,14 +8,18 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <!-- Adding assets to bin folder -->
-    <Target Name="CopyAssets" AfterTargets="AfterBuild">
+    <!-- Adding assets to bin and publish folders -->
+    <Target Name="CopyAssets" AfterTargets="AfterBuild;Publish">
         <ItemGroup>
             <_AssetFiles Include="$(MSBuildProjectDirectory)\assets\**" />
             <_GlfwFiles Include="$(MSBuildProjectDirectory)\glfw\**" />
         </ItemGroup>
-        <Copy SourceFiles="@(_AssetFiles)" DestinationFolder="$(OutDir)assets\%(RecursiveDir)" />
-        <Copy SourceFiles="@(_GlfwFiles)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
+        <PropertyGroup>
+            <_DestinationFolder Condition="'$(PublishDir)' != ''">$(PublishDir)</_DestinationFolder>
+            <_DestinationFolder Condition="'$(PublishDir)' == ''">$(OutDir)</_DestinationFolder>
+        </PropertyGroup>
+        <Copy SourceFiles="@(_AssetFiles)" DestinationFolder="$(_DestinationFolder)assets\%(RecursiveDir)" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(_GlfwFiles)" DestinationFolder="$(_DestinationFolder)%(RecursiveDir)" SkipUnchangedFiles="true" />
     </Target>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />

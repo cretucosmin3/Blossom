@@ -55,7 +55,7 @@ namespace Blossom.Utils
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WARN] Could not load bundled fonts: {ex.Message}");
+                Log.Warning($"Could not load bundled fonts: {ex.Message}");
             }
         }
 

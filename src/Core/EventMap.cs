@@ -27,6 +27,12 @@ public class EventMap : IDisposable
     private readonly DateTime[] lastClicks = new DateTime[15];
     private readonly bool[] wasDoubleClick = new bool[15];
     private readonly bool[] keysDown = new bool[20];
+    private readonly HashSet<Key> _keysDown = new();
+
+    public bool IsKeyDown(Key key) => _keysDown.Contains(key);
+    public bool IsShiftDown => _keysDown.Contains(Key.ShiftLeft) || _keysDown.Contains(Key.ShiftRight);
+    public bool IsControlDown => _keysDown.Contains(Key.ControlLeft) || _keysDown.Contains(Key.ControlRight);
+    public bool IsAltDown => _keysDown.Contains(Key.AltLeft) || _keysDown.Contains(Key.AltRight);
 
     public int DoubleClickTime = 200;
 
@@ -39,9 +45,18 @@ public class EventMap : IDisposable
     // Mouse
     public event Action<object, MouseEventArgs> OnMouseMove;
     public event Action<object, Vector2> OnMouseScroll;
+    public event Action<object, MouseScrollEventArgs> OnScroll;
     public event Action<object, MouseEventArgs> OnMouseDown;
     public event Action<object, MouseEventArgs> OnMouseUp;
-    public event Action<object, MouseEventArgs> OnMouseClick;
+    public event Action<object, MouseEventArgs> OnClick;
+
+    [Obsolete("Use OnClick instead.")]
+    public event Action<object, MouseEventArgs> OnMouseClick
+    {
+        add => OnClick += value;
+        remove => OnClick -= value;
+    }
+
     public event Action<object, MouseEventArgs> OnMouseDoubleClick;
 
     /// <summary>
@@ -70,6 +85,7 @@ public class EventMap : IDisposable
     #region Keyboard
     internal bool HandleKeyDown(Key key, int i)
     {
+        _keysDown.Add(key);
         bool FoundEvent = false;
 
         // Start keybind
@@ -110,7 +126,7 @@ public class EventMap : IDisposable
         {
             if (OnKeyDown != null)
             {
-                OnKeyDown.Invoke(i);
+                OnKeyDown.Invoke((int)key);
                 FoundEvent = true;
             }
         }
@@ -120,6 +136,7 @@ public class EventMap : IDisposable
 
     internal void HandleKeyUp(Key key, int i)
     {
+        _keysDown.Remove(key);
         if (CtrlKeys.Contains(key))
         {
             IsCommand = false;
@@ -132,7 +149,7 @@ public class EventMap : IDisposable
         }
         else
         {
-            OnKeyUp?.Invoke(i);
+            OnKeyUp?.Invoke((int)key);
         }
     }
 
@@ -142,71 +159,89 @@ public class EventMap : IDisposable
     #endregion
 
     #region Mouse
+    internal void HandleMouseMove(MouseEventArgs args, VisualElement el = default)
+    {
+        OnMouseMove?.Invoke(el, args);
+    }
+
     internal void HandleMouseMove(Vector2 pos, VisualElement el = default)
     {
         var relative = el != null ? el.PointToClient(pos.X, pos.Y) : pos;
-
-        OnMouseMove?.Invoke(el, new()
+        HandleMouseMove(new MouseEventArgs
         {
             Global = pos,
             Relative = relative
-        });
+        }, el);
+    }
+
+    internal void HandleMouseDown(MouseEventArgs args, VisualElement target = default)
+    {
+        if (args.Button >= 0 && args.Button < keysDown.Length)
+            keysDown[args.Button] = true;
+        OnMouseDown?.Invoke(target, args);
     }
 
     internal void HandleMouseDown(int btn, Vector2 pos, VisualElement target = default)
     {
-        keysDown[btn] = true;
         var relative = target != null ? target.PointToClient(pos.X, pos.Y) : pos;
-        OnMouseDown?.Invoke(target, new()
+        HandleMouseDown(new MouseEventArgs
         {
             Button = btn,
             Global = pos,
             Relative = relative
-        });
+        }, target);
+    }
 
-        OnMouseClick?.Invoke(target, new()
-        {
-            Button = btn,
-            Global = pos,
-            Relative = relative
-        });
-
-        DateTime now = DateTime.Now;
-        bool isWithinTimeWindow = DateTime.Now - lastClicks[btn] < TimeSpan.FromMilliseconds(DoubleClickTime);
-        bool isDoubleClick = isWithinTimeWindow && !wasDoubleClick[btn];
-
-        if (isDoubleClick)
-        {
-            OnMouseDoubleClick?.Invoke(target, new()
-            {
-                Button = btn,
-                Global = pos,
-                Relative = relative
-            });
-        }
-
-        wasDoubleClick[btn] = isDoubleClick;
-
-        lastClicks[btn] = now;
+    internal void HandleMouseUp(MouseEventArgs args, VisualElement target = default)
+    {
+        if (args.Button >= 0 && args.Button < keysDown.Length)
+            keysDown[args.Button] = false;
+        OnMouseUp?.Invoke(target, args);
     }
 
     internal void HandleMouseUp(int btn, Vector2 pos, VisualElement target = default)
     {
-        keysDown[btn] = false;
         var relative = target != null ? target.PointToClient(pos.X, pos.Y) : pos;
-        OnMouseUp?.Invoke(target, new()
+        HandleMouseUp(new MouseEventArgs
         {
             Button = btn,
             Global = pos,
             Relative = relative
-        });
+        }, target);
     }
 
-    internal void HandleMouseScroll(Vector2 pos, VisualElement target = default) =>
+    internal void HandleClick(MouseEventArgs args, VisualElement target = default)
+    {
+        OnClick?.Invoke(target, args);
+
+        DateTime now = DateTime.Now;
+        int btn = args.Button;
+        if (btn >= 0 && btn < lastClicks.Length)
+        {
+            bool isWithinTimeWindow = DateTime.Now - lastClicks[btn] < TimeSpan.FromMilliseconds(DoubleClickTime);
+            bool isDoubleClick = isWithinTimeWindow && !wasDoubleClick[btn];
+
+            if (isDoubleClick)
+            {
+                OnMouseDoubleClick?.Invoke(target, args);
+            }
+
+            wasDoubleClick[btn] = isDoubleClick;
+            lastClicks[btn] = now;
+        }
+    }
+
+    internal void HandleMouseScroll(Vector2 pos, VisualElement target = default, MouseScrollEventArgs args = null)
+    {
         OnMouseScroll?.Invoke(target, pos);
+        if (args != null)
+        {
+            OnScroll?.Invoke(target, args);
+        }
+    }
     #endregion
 
-    internal bool IsMouseDown(int key) => keysDown[key];
+    internal bool IsMouseDown(int key) => key >= 0 && key < keysDown.Length && keysDown[key];
 
     public void Dispose()
     {
@@ -214,11 +249,19 @@ public class EventMap : IDisposable
     }
 }
 
-public struct MouseEventArgs
+public class MouseEventArgs
 {
-    public int Button;
-    public Vector2 Global;
-    public Vector2 Relative;
+    public int Button { get; set; }
+    public Vector2 Global { get; set; }
+    public Vector2 Relative { get; set; }
+    public bool Handled { get; set; }
+}
+
+public class MouseScrollEventArgs
+{
+    public Vector2 Offset { get; set; }
+    public Vector2 Global { get; set; }
+    public bool Handled { get; set; }
 }
 
 public enum EventAccess

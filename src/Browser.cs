@@ -42,15 +42,85 @@ public static class Browser
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
 
+    private static readonly System.Collections.Concurrent.ConcurrentQueue<Action> _postQueue = new();
+
+    public static void Post(Action action)
+    {
+        if (action == null) return;
+        _postQueue.Enqueue(action);
+        if (IsLoaded)
+        {
+            try
+            {
+                GlfwProvider.GLFW.Value.PostEmptyEvent();
+            }
+            catch { }
+        }
+    }
+
+    public static string GetClipboardText()
+    {
+        try
+        {
+            unsafe
+            {
+                if (window != null)
+                {
+                    var glfw = GlfwProvider.GLFW.Value;
+                    var glfwWin = (Silk.NET.GLFW.WindowHandle*)window.Handle;
+                    return glfw.GetClipboardString(glfwWin) ?? "";
+                }
+            }
+        }
+        catch { }
+        return "";
+    }
+
+    public static void SetClipboardText(string text)
+    {
+        try
+        {
+            unsafe
+            {
+                if (window != null)
+                {
+                    var glfw = GlfwProvider.GLFW.Value;
+                    var glfwWin = (Silk.NET.GLFW.WindowHandle*)window.Handle;
+                    glfw.SetClipboardString(glfwWin, text ?? "");
+                }
+            }
+        }
+        catch { }
+    }
+
+    internal static void DrainPostQueue()
+    {
+        while (_postQueue.TryDequeue(out var action))
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Exception executing posted action:\n{ex}");
+            }
+        }
+    }
+
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
     private static readonly List<(SKRect, SKColor)> PostMarkers = new();
-    private static bool DrawDebugMarkers = true;
+#if DEBUG
+    public static bool ShowDebugOverlay { get; set; } = true;
+#else
+    public static bool ShowDebugOverlay { get; set; } = false;
+#endif
 
     private static Glfw _glfw = null!;
 
     internal static void AddVisualMarker(SKRect marker, SKColor color)
     {
-        if (!DrawDebugMarkers) return;
+        if (!ShowDebugOverlay) return;
 
         marker.Inflate(3, 3);
         PostMarkers.Add((marker, color));
@@ -58,25 +128,7 @@ public static class Browser
 
     internal static void Initialize()
     {
-        bool launchBuilder = false;
-        var cmdArgs = Environment.GetCommandLineArgs();
-        foreach (var arg in cmdArgs)
-        {
-            if (arg == "--builder")
-            {
-                launchBuilder = true;
-                break;
-            }
-        }
-
-        if (launchBuilder)
-        {
-            BrowserApp = new Testing.UiBuilderApplication();
-        }
-        else
-        {
-            BrowserApp = new TestingApplication();
-        }
+        BrowserApp = new TestingApplication();
 
         OnLoaded = () =>
         {
@@ -92,7 +144,7 @@ public static class Browser
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("[CRITICAL ERROR] Exception during ActiveView.Init():\n" + ex.ToString());
+                    Log.Fatal("Exception during ActiveView.Init():\n" + ex.ToString());
                     throw;
                 }
                 finally
@@ -103,7 +155,7 @@ public static class Browser
             }
             else
             {
-                Console.WriteLine("-- No active view --");
+                Log.Warning("No active view");
             }
         };
 
@@ -150,6 +202,8 @@ public static class Browser
                 Browser.WasResized = true;
                 BrowserApp.ActiveView.FullRenderRequired = true;
                 BrowserApp.ActiveView.RenderRequired = true;
+                BrowserApp.ActiveView.ForceLayoutEvaluation();
+                try { GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
             }
         };
 
@@ -198,9 +252,11 @@ public static class Browser
         {
             while (!window.IsClosing)
             {
+                DrainPostQueue();
                 BrowserApp.ActiveView?.TriggerLoop();
                 window.DoEvents();
                 window.ContinueEvents();
+                DrainPostQueue();
 
                 if (BrowserApp.ActiveView?.RenderRequired == true)
                 {
@@ -222,7 +278,7 @@ public static class Browser
         }
         catch (Exception ex)
         {
-            Console.WriteLine("[CRITICAL ERROR] Exception in StartWindow main loop:\n" + ex.ToString());
+            Log.Fatal("Exception in StartWindow main loop:\n" + ex.ToString());
             throw;
         }
         finally
@@ -233,9 +289,14 @@ public static class Browser
 
     internal static void ChangeCursor(StandardCursor cursor)
     {
+        if (input == null || input.Mice == null) return;
         foreach (IMouse mouse in input.Mice)
         {
-            mouse.Cursor.StandardCursor = cursor;
+            try
+            {
+                mouse.Cursor.StandardCursor = cursor;
+            }
+            catch { }
         }
     }
 
@@ -250,23 +311,40 @@ public static class Browser
             keyboard.KeyDown += (IKeyboard _, Key key, int i) =>
             {
                 if (i == 0) return;
-                var BrowserHandled = BrowserApp.Events.HandleKeyDown(key, i);
-                var ViewHandled = BrowserApp.ActiveView?.Events.HandleKeyDown(key, i);
-                BrowserApp.ActiveView?.FocusedElement?.Events?.HandleKeyDown(key, i);
+                if (key == Key.F12)
+                {
+                    ShowDebugOverlay = !ShowDebugOverlay;
+                    if (BrowserApp.ActiveView != null)
+                    {
+                        BrowserApp.ActiveView.FullRenderRequired = true;
+                        BrowserApp.ActiveView.RenderRequired = true;
+                    }
+                    return;
+                }
+
+                bool browserHandled = BrowserApp.Events.HandleKeyDown(key, i);
+                if (!browserHandled && BrowserApp.ActiveView != null)
+                {
+                    bool viewHandled = BrowserApp.ActiveView.Events.HandleKeyDown(key, i);
+                    if (!viewHandled)
+                    {
+                        BrowserApp.ActiveView.ActiveKeyboardElement?.Events?.HandleKeyDown(key, i);
+                    }
+                }
             };
 
             keyboard.KeyUp += (IKeyboard _, Key key, int i) =>
             {
                 BrowserApp.Events.HandleKeyUp(key, i);
                 BrowserApp.ActiveView?.Events.HandleKeyUp(key, i);
-                BrowserApp.ActiveView?.FocusedElement?.Events.HandleKeyUp(key, i);
+                BrowserApp.ActiveView?.ActiveKeyboardElement?.Events.HandleKeyUp(key, i);
             };
 
             keyboard.KeyChar += (IKeyboard _, char ch) =>
             {
                 BrowserApp.Events.HandleKeyChar(ch);
                 BrowserApp.ActiveView?.Events.HandleKeyChar(ch);
-                BrowserApp.ActiveView?.FocusedElement?.Events.HandleKeyChar(ch);
+                BrowserApp.ActiveView?.ActiveKeyboardElement?.Events.HandleKeyChar(ch);
             };
         }
 
@@ -323,7 +401,7 @@ public static class Browser
 
             var icon = new RawImage(image.Width, image.Height, array);
             window.SetWindowIcon(ref icon);
-            Console.WriteLine("Logo loaded");
+            Log.Info("Logo loaded");
         }
     }
 
@@ -338,7 +416,6 @@ public static class Browser
         LoadLogo();
 
         Browser.WasResized = true; // Ensure full render on startup
-        Console.Clear();
         StartWindow();
     }
 
@@ -377,6 +454,7 @@ public static class Browser
 
     private static void Render(double time)
     {
+        DrainPostQueue();
         Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = (float)time;
         Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += (float)time;
 
@@ -412,7 +490,7 @@ public static class Browser
         foreach (double t in frameTimes)
             AverageFrame += t;
 
-        if (DrawDebugMarkers)
+        if (ShowDebugOverlay)
         {
             // Draw informational markers
             foreach (var (rect, color) in PostMarkers)
@@ -440,6 +518,10 @@ public static class Browser
             Renderer.Canvas.DrawText(msText, textX, textY, InfoTextPaint);
             
             // Clean-up
+            PostMarkers.Clear();
+        }
+        else if (PostMarkers.Count > 0)
+        {
             PostMarkers.Clear();
         }
 

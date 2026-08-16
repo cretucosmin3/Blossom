@@ -5,6 +5,7 @@ using Blossom.Core.Delegates.Common;
 using System.Collections.Generic;
 using System.Linq;
 using SkiaSharp;
+using Silk.NET.Input;
 
 namespace Blossom.Core
 {
@@ -27,10 +28,53 @@ namespace Blossom.Core
         internal bool IsLoaded { get; set; }
         public bool RenderRequired { get; internal set; } = true;
         public bool FullRenderRequired { get; set; } = true;
+        public bool LayoutRequired { get; internal set; } = true;
 
-        private VisualElement hoveredElement;
-        private VisualElement mouseDownElement;
-        public VisualElement HoveredElement => hoveredElement;
+        private VisualElement? hoveredElement;
+        public VisualElement? HoveredElement => hoveredElement;
+
+        public VisualElement? PointerCaptureElement { get; private set; }
+        public VisualElement? ActiveKeyboardElement { get; private set; }
+
+        // Legacy compatibility
+        public VisualElement? FocusedElement
+        {
+            get => ActiveKeyboardElement;
+            set => SetActiveKeyboardElement(value);
+        }
+
+        public void SetPointerCapture(VisualElement element)
+        {
+            if (element != null && !element.EffectiveInteractive) return;
+            if (PointerCaptureElement == element) return;
+            PointerCaptureElement = element;
+        }
+
+        public void ReleasePointerCapture(VisualElement? element = null)
+        {
+            if (element == null || PointerCaptureElement == element)
+            {
+                PointerCaptureElement = null;
+            }
+        }
+
+        public void SetActiveKeyboardElement(VisualElement? element)
+        {
+            if (element != null && !element.EffectiveInteractive) return;
+            if (ActiveKeyboardElement == element) return;
+            var old = ActiveKeyboardElement;
+            ActiveKeyboardElement = element;
+            old?.OnFocusLost?.Invoke(old);
+            element?.OnFocused?.Invoke(element);
+        }
+
+        public VisualElement? FindById(Guid id) => Elements.FindById(id);
+        public VisualElement? FindByName(string name) => Elements.FindByName(name);
+
+        private VisualElement? _clickCandidateElement;
+        private System.Numerics.Vector2 _mouseDownPos;
+        private int _mouseDownButton;
+        private const float ClickDistanceThreshold = 4.0f;
 
         private readonly object _dirtyRectsLock = new();
         internal readonly List<SKRect> DirtyRects = new();
@@ -71,11 +115,14 @@ namespace Blossom.Core
         }
 
         public Application Application { get; internal set; }
-        public VisualElement FocusedElement { get; set; }
 
         public abstract void Init();
         public virtual void OnActivated() { }
-        public virtual void OnDeactivated() { }
+        public virtual void OnDeactivated()
+        {
+            ReleasePointerCapture();
+            UpdateCursorForTarget(null);
+        }
 
         internal View(string name)
         {
@@ -87,94 +134,30 @@ namespace Blossom.Core
             Events.OnMouseScroll += OnMouseScroll;
         }
 
-        private void OnMouseDown(object _, MouseEventArgs args)
+        private void UpdateCursorForTarget(VisualElement? target)
         {
-            VisualElement element = Elements.FirstFromPoint(
-                new(args.Global.X, args.Global.Y));
-
-            if (element != null)
+            var cursorElem = target;
+            StandardCursor? effectiveCursor = null;
+            while (cursorElem != null)
             {
-                // Bubble mouse down event
-                var current = element;
-                while (current != null)
+                if (cursorElem.Cursor.HasValue)
                 {
-                    current.Events.HandleMouseDown(args.Button, args.Global, current);
-                    current = current.Parent;
+                    effectiveCursor = cursorElem.Cursor.Value;
+                    break;
                 }
-
-                // Find first focusable element walking up the parent chain
-                var focusTarget = element;
-                while (focusTarget != null && !focusTarget.Focusable)
-                {
-                    focusTarget = focusTarget.Parent;
-                }
-
-                if (focusTarget != null)
-                {
-                    if (FocusedElement != null && FocusedElement != focusTarget)
-                    {
-                        FocusedElement.OnFocusLost?.Invoke(FocusedElement);
-                    }
-
-                    focusTarget.GetFocus();
-                    focusTarget.OnFocused?.Invoke(focusTarget);
-                    FocusedElement = focusTarget;
-                }
-                else
-                {
-                    FocusedElement?.OnFocusLost?.Invoke(FocusedElement);
-                    FocusedElement = null!;
-                }
-            }
-            else
-            {
-                FocusedElement?.OnFocusLost?.Invoke(FocusedElement);
-                FocusedElement = null!;
+                cursorElem = cursorElem.Parent;
             }
 
-            mouseDownElement = element ?? null!;
+            try
+            {
+                Browser.ChangeCursor(effectiveCursor ?? StandardCursor.Default);
+            }
+            catch { }
         }
 
-        private void OnMouseUp(object _, MouseEventArgs args)
+        private void UpdateHoverTarget(VisualElement? target, System.Numerics.Vector2 mousePos)
         {
-            if (mouseDownElement != null)
-            {
-                var current = mouseDownElement;
-                while (current != null)
-                {
-                    current.Events.HandleMouseUp(args.Button, args.Global, current);
-                    current = current.Parent;
-                }
-                mouseDownElement = null;
-                return;
-            }
-
-            var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-            if (element != null)
-            {
-                var current = element;
-                while (current != null)
-                {
-                    current.Events.HandleMouseUp(args.Button, args.Global, current);
-                    current = current.Parent;
-                }
-            }
-        }
-
-        private void OnMouseMove(object _, MouseEventArgs args)
-        {
-            var element = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
-            if (element != null)
-            {
-                var current = element;
-                while (current != null)
-                {
-                    current.Events.HandleMouseMove(args.Global, current);
-                    current = current.Parent;
-                }
-            }
-
-            if (hoveredElement != element)
+            if (hoveredElement != target)
             {
                 // Gather parent chains
                 var oldChain = new List<VisualElement>();
@@ -186,7 +169,7 @@ namespace Blossom.Core
                 }
 
                 var newChain = new List<VisualElement>();
-                var curNew = element;
+                var curNew = target;
                 while (curNew != null)
                 {
                     newChain.Add(curNew);
@@ -211,25 +194,173 @@ namespace Blossom.Core
                     }
                 }
 
-                hoveredElement = element;
+                hoveredElement = target;
+                UpdateCursorForTarget(target);
             }
-            else if (element == hoveredElement)
+            else if (target != null && target == hoveredElement)
             {
-                element?.Events.HandleMouseHover(element, args.Global);
+                UpdateCursorForTarget(target);
+                target.Events.HandleMouseHover(target, mousePos);
             }
-            hoveredElement = element;
+        }
+
+        private void OnMouseDown(object _, MouseEventArgs args)
+        {
+            VisualElement element = Elements.FirstFromPoint(
+                new(args.Global.X, args.Global.Y));
+
+            // Find first element walking up the parent chain with ReceivesKeyboard and EffectiveInteractive
+            var focusTarget = element;
+            while (focusTarget != null && (!focusTarget.ReceivesKeyboard || !focusTarget.EffectiveInteractive))
+            {
+                focusTarget = focusTarget.Parent;
+            }
+            SetActiveKeyboardElement(focusTarget);
+
+            // Record candidate for Click policy
+            _clickCandidateElement = element;
+            _mouseDownPos = args.Global;
+            _mouseDownButton = args.Button;
+
+            if (element != null)
+            {
+                // Bubble mouse down event
+                var current = element;
+                while (current != null)
+                {
+                    var relative = current.PointToClient(args.Global.X, args.Global.Y);
+                    var elemArgs = new MouseEventArgs
+                    {
+                        Button = args.Button,
+                        Global = args.Global,
+                        Relative = relative,
+                        Handled = args.Handled
+                    };
+                    current.Events.HandleMouseDown(elemArgs, current);
+                    if (elemArgs.Handled)
+                    {
+                        args.Handled = true;
+                        break;
+                    }
+                    current = current.Parent;
+                }
+            }
+        }
+
+        private void OnMouseUp(object _, MouseEventArgs args)
+        {
+            var target = PointerCaptureElement ?? Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+
+            if (target != null)
+            {
+                var current = target;
+                while (current != null)
+                {
+                    var relative = current.PointToClient(args.Global.X, args.Global.Y);
+                    var elemArgs = new MouseEventArgs
+                    {
+                        Button = args.Button,
+                        Global = args.Global,
+                        Relative = relative,
+                        Handled = args.Handled
+                    };
+                    current.Events.HandleMouseUp(elemArgs, current);
+                    if (elemArgs.Handled)
+                    {
+                        args.Handled = true;
+                        break;
+                    }
+                    current = current.Parent;
+                }
+            }
+
+            // Click policy: primary button down + up on same element with distance within threshold
+            if (args.Button == 0 && _clickCandidateElement != null && target != null)
+            {
+                bool sameElement = (target == _clickCandidateElement);
+                float distance = System.Numerics.Vector2.Distance(_mouseDownPos, args.Global);
+                if (sameElement && distance <= ClickDistanceThreshold)
+                {
+                    var current = target;
+                    while (current != null)
+                    {
+                        var relative = current.PointToClient(args.Global.X, args.Global.Y);
+                        var clickArgs = new MouseEventArgs
+                        {
+                            Button = args.Button,
+                            Global = args.Global,
+                            Relative = relative
+                        };
+                        current.Events.HandleClick(clickArgs, current);
+                        if (clickArgs.Handled)
+                            break;
+                        current = current.Parent;
+                    }
+                }
+            }
+            _clickCandidateElement = null;
+
+            // Release pointer capture on mouse up (default)
+            if (PointerCaptureElement != null)
+            {
+                ReleasePointerCapture();
+            }
+
+            var currentUnderCursor = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            UpdateHoverTarget(currentUnderCursor, args.Global);
+        }
+
+        private void OnMouseMove(object _, MouseEventArgs args)
+        {
+            var target = PointerCaptureElement ?? Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+
+            if (target != null)
+            {
+                var current = target;
+                while (current != null)
+                {
+                    var relative = current.PointToClient(args.Global.X, args.Global.Y);
+                    var elemArgs = new MouseEventArgs
+                    {
+                        Button = args.Button,
+                        Global = args.Global,
+                        Relative = relative,
+                        Handled = args.Handled
+                    };
+                    current.Events.HandleMouseMove(elemArgs, current);
+                    if (elemArgs.Handled)
+                    {
+                        args.Handled = true;
+                        break;
+                    }
+                    current = current.Parent;
+                }
+            }
+
+            if (PointerCaptureElement != null)
+            {
+                // Freeze hover to capture target during capture
+                UpdateHoverTarget(PointerCaptureElement, args.Global);
+            }
+            else
+            {
+                UpdateHoverTarget(target, args.Global);
+            }
         }
 
         private void OnMouseScroll(object sender, System.Numerics.Vector2 offset)
         {
-            var el = hoveredElement;
+            var target = PointerCaptureElement ?? hoveredElement;
+            var el = target;
+            var args = new MouseScrollEventArgs { Offset = offset, Handled = false };
             while (el != null)
             {
-                el.Events.HandleMouseScroll(offset, el);
-                if (el is ScrollContainer)
-                {
+                el.Events.HandleMouseScroll(offset, el, args);
+                // Prefer Handled; still stop at ScrollContainer for backward compatibility with old OnMouseScroll handlers.
+                if (args.Handled)
                     break;
-                }
+                if (el is ScrollContainer)
+                    break;
                 el = el.Parent;
             }
         }
@@ -238,19 +369,24 @@ namespace Blossom.Core
 
         public void AddElement(VisualElement element)
         {
+            if (element == null) return;
             element.ParentView = this;
-            Elements.AddElement(ref element);
-
-            element.AddedToView();
+            TrackElement(ref element);
+            foreach (var child in element.Children)
+            {
+                VisualElement.RegisterSubtree(child, this);
+            }
             _hierarchyDirty = true;
-            Browser.BrowserApp.ActiveView.RenderRequired = true;
+            RenderRequired = true;
         }
 
         public void RemoveElement(VisualElement element)
         {
-            Elements.RemoveElement(element);
+            if (element == null) return;
+            VisualElement.UnregisterSubtree(element, this);
+            element.ParentView = null!;
             _hierarchyDirty = true;
-            Browser.BrowserApp.ActiveView.RenderRequired = true;
+            RenderRequired = true;
         }
 
         public void TrackElement(ref VisualElement element)
@@ -258,20 +394,35 @@ namespace Blossom.Core
             Elements.AddElement(ref element);
             element.AddedToView();
             _hierarchyDirty = true;
-            Browser.BrowserApp.ActiveView.RenderRequired = true;
+            RenderRequired = true;
         }
 
         public void UntrackElement(ref VisualElement element)
         {
+            if (PointerCaptureElement != null && element.ContainsElement(PointerCaptureElement))
+            {
+                ReleasePointerCapture(PointerCaptureElement);
+            }
+            if (ActiveKeyboardElement != null && element.ContainsElement(ActiveKeyboardElement))
+            {
+                SetActiveKeyboardElement(null);
+            }
+            if (hoveredElement != null && element.ContainsElement(hoveredElement))
+            {
+                hoveredElement = null;
+                UpdateCursorForTarget(null);
+            }
+
             Elements.RemoveElement(element);
+            element.RemovedFromView();
             _hierarchyDirty = true;
-            Browser.BrowserApp.ActiveView.RenderRequired = true;
+            RenderRequired = true;
         }
 
         private void CollectElements(VisualElement root, List<VisualElement> list)
         {
             list.Add(root);
-            var sortedChildren = root.Children.Where(c => c != null).OrderBy(c => c.ZIndex).ToList();
+            var sortedChildren = root.GetVisualChildren().Where(c => c != null).OrderBy(c => c.ZIndex).ToList();
             foreach (var child in sortedChildren)
             {
                 CollectElements(child, list);
@@ -280,7 +431,21 @@ namespace Blossom.Core
 
         internal void Render()
         {
-            if (Browser.WasResized) FullRenderRequired = true;
+            if (Browser.WasResized)
+            {
+                FullRenderRequired = true;
+                // Anchors re-evaluate on resize, but LayoutChildren only runs when layout-dirty.
+                // Without this, manual layouts (Kanban columns, modals) stay at old coordinates.
+                foreach (var element in Elements.Items)
+                {
+                    if (element == null) continue;
+                    element.InvalidateLayout();
+                    element.Transform._transformDirty = true;
+                    element.MarkVisibilityClippingDirty();
+                    element.ClearRenderCache();
+                }
+                _hierarchyDirty = true;
+            }
 
             lock (_dirtyRectsLock)
             {
@@ -290,7 +455,10 @@ namespace Blossom.Core
                 {
                     // Full redraw required (e.g. view switch or resize)
                     DirtyRects.Clear();
-                    DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
+                    // Use framebuffer-sized dirty in logical pixels (RenderRect)
+                    float rw = Math.Max(1, Browser.RenderRect.Width);
+                    float rh = Math.Max(1, Browser.RenderRect.Height);
+                    DirtyRects.Add(new SKRect(0, 0, rw, rh));
                     FullRenderRequired = false;
 
                     foreach (var element in Elements.Items)
@@ -300,7 +468,9 @@ namespace Blossom.Core
                 }
                 else if (RenderRequired && DirtyRects.Count == 0)
                 {
-                    DirtyRects.Add(new SKRect(0, 0, (int)Browser.RenderRect.Width, (int)Browser.RenderRect.Height));
+                    float rw = Math.Max(1, Browser.RenderRect.Width);
+                    float rh = Math.Max(1, Browser.RenderRect.Height);
+                    DirtyRects.Add(new SKRect(0, 0, rw, rh));
                 }
 
                 _localDirtyRects.Clear();
@@ -310,14 +480,14 @@ namespace Blossom.Core
 
             RenderRequired = false;
 
-            // Union dirty rects to simplify clipping path and minimize element overlap checks
-            if (_localDirtyRects.Count > 10)
+            // Always union dirty rects into one region. Multiple separate clips cause
+            // Windows-XP-style trails: background is cleared in a rect but only part of
+            // the z-stack is restored under complex multi-path scissors.
+            if (_localDirtyRects.Count > 1)
             {
                 var unionRect = _localDirtyRects[0];
                 for (int i = 1; i < _localDirtyRects.Count; i++)
-                {
                     unionRect = SKRect.Union(unionRect, _localDirtyRects[i]);
-                }
                 _localDirtyRects.Clear();
                 _localDirtyRects.Add(unionRect);
             }
@@ -346,7 +516,11 @@ namespace Blossom.Core
                 _hierarchyDirty = false;
             }
 
-            // Evaluate transform and visibility in hierarchical order (parents first)
+            // Layout and evaluation pass in hierarchical order (parents before children):
+            // 1. Evaluate transforms (anchors, relative positions, min/max bounds)
+            // 2. Perform layout on dirty nodes (LayoutChildren hook)
+            // 3. Evaluate visibility and clipping
+            // Layout can produce additional dirty rects (children moving) — merge those before paint.
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
@@ -358,11 +532,48 @@ namespace Blossom.Core
                     element.MarkVisibilityClippingDirty();
                 }
 
+                if (element.IsLayoutDirty)
+                {
+                    element.PerformLayout();
+                }
+
                 if (element._visibilityClippingDirty)
                 {
                     element.EvaluateVisibilityAndClipping();
                     element._visibilityClippingDirty = false;
                 }
+            }
+
+            LayoutRequired = false;
+
+            // Fold dirty rects generated during layout/evaluate into this frame's paint set
+            lock (_dirtyRectsLock)
+            {
+                if (DirtyRects.Count > 0)
+                {
+                    _localDirtyRects.AddRange(DirtyRects);
+                    DirtyRects.Clear();
+                }
+            }
+
+            if (_localDirtyRects.Count == 0)
+                return;
+
+            // Final union + padding (shadows, AA, sub-pixel movement)
+            {
+                var unionRect = _localDirtyRects[0];
+                for (int i = 1; i < _localDirtyRects.Count; i++)
+                    unionRect = SKRect.Union(unionRect, _localDirtyRects[i]);
+                unionRect.Inflate(8, 8);
+                // Clamp to view
+                float rw = Math.Max(1, Browser.RenderRect.Width);
+                float rh = Math.Max(1, Browser.RenderRect.Height);
+                unionRect.Intersect(new SKRect(0, 0, rw, rh));
+                _localDirtyRects.Clear();
+                if (unionRect.Width > 0 && unionRect.Height > 0)
+                    _localDirtyRects.Add(unionRect);
+                else
+                    return;
             }
 
             using (new SKAutoCanvasRestore(Renderer.Canvas))
@@ -374,50 +585,34 @@ namespace Blossom.Core
                     Renderer.Canvas.Scale(scaleX, scaleY);
                 }
 
-                if (_localDirtyRects.Count == 1)
-                {
-                    var r = _localDirtyRects[0];
-                    var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
-                    Renderer.Canvas.ClipRect(rounded, SKClipOperation.Intersect, true);
-                }
-                else
-                {
-                    using var dirtyPath = new SKPath();
-                    for (int i = 0; i < _localDirtyRects.Count; i++)
-                    {
-                        var r = _localDirtyRects[i];
-                        var rounded = SKRect.Create((int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Width) + 1, (int)Math.Ceiling(r.Height) + 1);
-                        dirtyPath.AddRect(rounded);
-                    }
-                    Renderer.Canvas.ClipPath(dirtyPath, SKClipOperation.Intersect, true);
-                }
-                
+                var r = _localDirtyRects[0];
+                var rounded = SKRect.Create(
+                    (int)Math.Floor(r.Left),
+                    (int)Math.Floor(r.Top),
+                    (int)Math.Ceiling(r.Width) + 2,
+                    (int)Math.Ceiling(r.Height) + 2);
+                Renderer.Canvas.ClipRect(rounded, SKClipOperation.Intersect, false);
+
                 // Clear dirty region to background
                 Renderer.Canvas.DrawColor(BackColor);
 
+                // Painter's algorithm: every visible element that intersects the damage region
+                // must redraw (including scroll panels under the cards — not only the top card).
                 for (int idx = 0; idx < CachedSortedElements.Count; idx++)
                 {
                     var element = CachedSortedElements[idx];
                     if (!element.Visible) continue;
+                    // Still draw Clipped elements; only skip fully hidden
                     if (element.ComputedVisibility == Visibility.Hidden) continue;
 
                     var elementRect = element.RenderBounds;
+                    elementRect.Inflate(4, 4);
 
-                    bool overlapsDirty = false;
-                    for (int i = 0; i < _localDirtyRects.Count; i++)
-                    {
-                        if (_localDirtyRects[i].IntersectsWith(elementRect))
-                        {
-                            overlapsDirty = true;
-                            break;
-                        }
-                    }
+                    if (!rounded.IntersectsWith(elementRect))
+                        continue;
 
-                    if (overlapsDirty)
-                    {
-                        element.RenderSingle(Renderer.Canvas);
-                        element.IsDirty = false;
-                    }
+                    element.RenderSingle(Renderer.Canvas);
+                    element.IsDirty = false;
                 }
             }
         }
@@ -437,12 +632,13 @@ namespace Blossom.Core
             _hierarchyDirty = true;
             FullRenderRequired = true;
             RenderRequired = true;
+            LayoutRequired = true;
 
             foreach (var element in Elements.Items)
             {
-                if (element?.Transform != null)
+                if (element != null)
                 {
-                    element.Transform._transformDirty = true;
+                    element.InvalidateLayout();
                     element.MarkVisibilityClippingDirty();
                 }
             }
@@ -450,7 +646,35 @@ namespace Blossom.Core
 
         public void Dispose()
         {
-            // Not implemented yet
+            ReleasePointerCapture();
+            SetActiveKeyboardElement(null);
+            hoveredElement = null;
+            UpdateCursorForTarget(null);
+            _clickCandidateElement = null;
+
+            var roots = Elements.Items.Where(e => e.Parent == null).ToList();
+            foreach (var root in roots)
+            {
+                root.Dispose();
+            }
+
+            var remaining = Elements.Items;
+            foreach (var element in remaining)
+            {
+                element.Dispose();
+            }
+
+            Elements.Dispose();
+            Events.Dispose();
+
+            lock (_dirtyRectsLock)
+            {
+                DirtyRects.Clear();
+                _localDirtyRects.Clear();
+            }
+
+            CachedRenderQueue.Clear();
+            CachedSortedElements.Clear();
         }
     }
 }

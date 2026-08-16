@@ -4,14 +4,302 @@ using System;
 using System.Collections.Generic;
 using SkiaSharp;
 using Blossom.Core;
+using Blossom.Core.Visual.Enums;
+using Silk.NET.Input;
 
 namespace Blossom.Core.Visual;
 
 public class VisualElement : IDisposable
 {
-    public virtual void AddedToView() { }
+    public Guid Id { get; } = Guid.NewGuid();
+    public string? Name { get; set; }
 
-    public string Name { get; set; }
+    /// <summary>Stable key for the command ledger (never null). Prefer Id so unnamed elements still render.</summary>
+    internal string DrawCommandKey => Id.ToString("N");
+
+    public virtual void AddedToView() { }
+    public virtual void RemovedFromView() { }
+
+    public event Action<VisualElement, float, float>? SizeChanged;
+    protected virtual void OnSizeChanged(float width, float height) { }
+    internal void NotifySizeChanged(float width, float height)
+    {
+        OnSizeChanged(width, height);
+        SizeChanged?.Invoke(this, width, height);
+    }
+
+    #region Layout & Box Model
+    private Thickness _padding = new(0);
+    public Thickness Padding
+    {
+        get => _padding;
+        set
+        {
+            if (_padding != value)
+            {
+                _padding = value;
+                _localBoundsDirty = true;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private Thickness _margin = new(0);
+    public Thickness Margin
+    {
+        get => _margin;
+        set
+        {
+            if (_margin != value)
+            {
+                _margin = value;
+                _localBoundsDirty = true;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private float? _minWidth;
+    public float? MinWidth
+    {
+        get => _minWidth;
+        set
+        {
+            if (_minWidth != value)
+            {
+                _minWidth = value;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private float? _maxWidth;
+    public float? MaxWidth
+    {
+        get => _maxWidth;
+        set
+        {
+            if (_maxWidth != value)
+            {
+                _maxWidth = value;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private float? _minHeight;
+    public float? MinHeight
+    {
+        get => _minHeight;
+        set
+        {
+            if (_minHeight != value)
+            {
+                _minHeight = value;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private float? _maxHeight;
+    public float? MaxHeight
+    {
+        get => _maxHeight;
+        set
+        {
+            if (_maxHeight != value)
+            {
+                _maxHeight = value;
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private bool _isLayoutDirty = true;
+    public bool IsLayoutDirty => _isLayoutDirty;
+
+    private bool _isPaintDirty = true;
+    public bool IsPaintDirty => _isPaintDirty;
+
+    /// <summary>
+    /// While &gt; 0, transform mutations (SetAbsoluteFrame, X/Y/…) must not re-enter layout/paint
+    /// invalidation — LayoutChildren is already running. Prevents continuous render loops.
+    /// </summary>
+    internal static int LayoutMutationDepth { get; private set; }
+
+    public void InvalidatePaint()
+    {
+        if (LayoutMutationDepth > 0)
+        {
+            // Defer: layout will request paint once if bounds actually changed
+            _isPaintDirty = true;
+            _localBoundsDirty = true;
+            _renderBoundsDirty = true;
+            return;
+        }
+
+        _isPaintDirty = true;
+        IsDirty = true;
+        _localBoundsDirty = true;
+        _renderBoundsDirty = true;
+
+        if (ParentView is not null)
+        {
+            ParentView.RenderRequired = true;
+            try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+        }
+    }
+
+    public void InvalidateLayout()
+    {
+        // Nested invalidation during LayoutChildren would schedule infinite frames
+        if (LayoutMutationDepth > 0)
+        {
+            _isLayoutDirty = true;
+            Transform._transformDirty = true;
+            return;
+        }
+
+        _isLayoutDirty = true;
+        Transform._transformDirty = true;
+
+        var current = Parent;
+        while (current != null)
+        {
+            current._isLayoutDirty = true;
+            current = current.Parent;
+        }
+
+        if (ParentView is not null)
+        {
+            ParentView.LayoutRequired = true;
+        }
+
+        InvalidatePaint();
+    }
+
+    /// <summary>
+    /// Called during the layout pass after this element's computed size is known
+    /// (or when this node is layout-dirty). Override to position/size children
+    /// (e.g. stack, wrap, flex-like algorithms). Default: no-op (anchors only).
+    /// </summary>
+    protected virtual void LayoutChildren() { }
+
+    internal void PerformLayout()
+    {
+        if (!_isLayoutDirty) return;
+
+        LayoutMutationDepth++;
+        try
+        {
+            LayoutChildren();
+            _isLayoutDirty = false;
+        }
+        finally
+        {
+            LayoutMutationDepth--;
+        }
+    }
+
+    /// <summary>
+    /// Immediately re-run <see cref="LayoutChildren"/> on this element and descendants.
+    /// Use after programmatic moves (e.g. drag) so children track the parent in the same frame.
+    /// </summary>
+    public void ForceLayoutSubtree()
+    {
+        LayoutMutationDepth++;
+        try
+        {
+            _isLayoutDirty = true;
+            LayoutChildren();
+            _isLayoutDirty = false;
+
+            for (int i = 0; i < _children.Count; i++)
+            {
+                _children[i]?.ForceLayoutSubtreeCore();
+            }
+
+            foreach (var visual in GetVisualChildren())
+            {
+                if (visual == null || _children.Contains(visual)) continue;
+                visual.ForceLayoutSubtreeCore();
+            }
+        }
+        finally
+        {
+            LayoutMutationDepth--;
+        }
+
+        // One paint request for the whole subtree after layout settles
+        InvalidateSubtreePaint();
+    }
+
+    private void ForceLayoutSubtreeCore()
+    {
+        _isLayoutDirty = true;
+        LayoutChildren();
+        _isLayoutDirty = false;
+
+        for (int i = 0; i < _children.Count; i++)
+            _children[i]?.ForceLayoutSubtreeCore();
+
+        foreach (var visual in GetVisualChildren())
+        {
+            if (visual == null || _children.Contains(visual)) continue;
+            visual.ForceLayoutSubtreeCore();
+        }
+    }
+
+    /// <summary>
+    /// Mark this element and all descendants paint-dirty, including previous and current bounds
+    /// (needed when a whole subtree moves together).
+    /// </summary>
+    public void InvalidateSubtreePaint()
+    {
+        InvalidatePaint();
+        for (int i = 0; i < _children.Count; i++)
+        {
+            _children[i]?.InvalidateSubtreePaint();
+        }
+        foreach (var visual in GetVisualChildren())
+        {
+            if (visual == null || _children.Contains(visual)) continue;
+            visual.InvalidateSubtreePaint();
+        }
+    }
+
+    /// <summary>
+    /// Returns the size this element would like given max constraints.
+    /// Default: current Width/Height (or Local width/height).
+    /// Override for text, images, or custom content.
+    /// </summary>
+    public virtual SKSize GetPreferredSize(float maxWidth, float maxHeight)
+    {
+        float w = Transform.Width;
+        float h = Transform.Height;
+
+        if (!string.IsNullOrEmpty(Text) && Style?.Text?.Paint != null)
+        {
+            CalculateTextBounds();
+            var fontMetrics = Style.Text.Paint.FontMetrics;
+            float textH = fontMetrics.Descent - fontMetrics.Ascent;
+            float textW = TextBounds.Width;
+
+            w = textW + Padding.Horizontal + (Style.Text.Padding * 2);
+            h = Math.Max(textH, TextBounds.Height) + Padding.Vertical + (Style.Text.Padding * 2);
+        }
+
+        if (MinWidth.HasValue) w = Math.Max(w, MinWidth.Value);
+        if (MaxWidth.HasValue) w = Math.Min(w, MaxWidth.Value);
+        if (MinHeight.HasValue) h = Math.Max(h, MinHeight.Value);
+        if (MaxHeight.HasValue) h = Math.Min(h, MaxHeight.Value);
+
+        if (maxWidth > 0) w = Math.Min(w, maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+
+        return new SKSize(Math.Max(0, w), Math.Max(0, h));
+    }
+    #endregion
 
     #region Transitions
     public float EffectiveTransitionProgress
@@ -52,10 +340,108 @@ public class VisualElement : IDisposable
     #endregion
 
     #region User Interactions
-    public bool HasFocus { get { return ParentView.FocusedElement == this; } }
-    public bool Focusable { get; set; }
+    private bool _interactive = true;
+    /// <summary>
+    /// Whether this element responds to user interaction (hit-testing, mouse events, pointer capture, keyboard).
+    /// When false (or when any ancestor is false), this element is excluded from hit-testing and cannot receive pointer capture or active keyboard element.
+    /// Default is true.
+    /// </summary>
+    public bool Interactive
+    {
+        get => _interactive;
+        set
+        {
+            if (_interactive != value)
+            {
+                _interactive = value;
+                if (!_interactive)
+                {
+                    if (HasPointerCapture) ReleasePointer();
+                    if (ParentView?.ActiveKeyboardElement == this) ParentView.SetActiveKeyboardElement(null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cumulative interactive state: true only if this element and all ancestors have <see cref="Interactive"/> set to true.
+    /// </summary>
+    public bool EffectiveInteractive => Interactive && (Parent == null || Parent.EffectiveInteractive);
+
+    private float _opacity = 1f;
+    /// <summary>
+    /// Opacity factor between 0.0 (fully transparent) and 1.0 (fully opaque).
+    /// Subtrees render with cumulative <see cref="EffectiveOpacity"/>.
+    /// Note: Elements with Opacity 0 still participate in hit-testing unless <see cref="Interactive"/> is false or <see cref="IsClickthrough"/> is true.
+    /// Default is 1.0.
+    /// </summary>
+    public float Opacity
+    {
+        get => _opacity;
+        set
+        {
+            float clamped = Math.Clamp(value, 0f, 1f);
+            if (_opacity != clamped)
+            {
+                _opacity = clamped;
+                InvalidatePaint();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cumulative effective opacity multiplying this element's opacity by all ancestor opacities.
+    /// </summary>
+    public float EffectiveOpacity => Opacity * (Parent?.EffectiveOpacity ?? 1f);
+
+    /// <summary>
+    /// Standard mouse cursor displayed when hovering over this element.
+    /// If null, inherits cursor from the nearest ancestor with a non-null Cursor, or standard default.
+    /// </summary>
+    public StandardCursor? Cursor { get; set; }
+
+    /// <summary>
+    /// Opt-in flag: if true, this element can become the active keyboard target on mouse-down.
+    /// </summary>
+    public bool ReceivesKeyboard { get; set; }
+
+    /// <summary>
+    /// Legacy compatibility alias for <see cref="ReceivesKeyboard"/>.
+    /// </summary>
+    public bool Focusable
+    {
+        get => ReceivesKeyboard;
+        set => ReceivesKeyboard = value;
+    }
+    public bool HasFocus => ParentView != null && ParentView.ActiveKeyboardElement == this;
+
+    public void CapturePointer()
+    {
+        if (EffectiveInteractive)
+        {
+            ParentView?.SetPointerCapture(this);
+        }
+    }
+
+    public void ReleasePointer()
+    {
+        if (HasPointerCapture)
+        {
+            ParentView?.ReleasePointerCapture(this);
+        }
+    }
+
+    public bool HasPointerCapture => ParentView != null && ParentView.PointerCaptureElement == this;
+
+    /// <summary>
+    /// When true, this element is skipped as a hit-test target (events pass through to elements below).
+    /// </summary>
     public bool IsClickthrough { get; set; }
+
     private int _zIndex = 0;
+    /// <summary>
+    /// Rendering and hit-test stacking order. Higher ZIndex values are drawn on top and receive hit events first among siblings.
+    /// </summary>
     public int ZIndex
     {
         get => _zIndex;
@@ -193,49 +579,59 @@ public class VisualElement : IDisposable
     {
         if (_localBoundsDirty)
         {
-            var localRect = new SKRect(0, 0, Transform.Width, Transform.Height);
-
-            // Include text bounds if text is rendered
-            if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
-            {
-                CalculateText(); // Ensure local TextPosition is updated
-                var textRect = SKRect.Create(
-                    TextPosition.X + TextBounds.Left,
-                    TextPosition.Y + TextBounds.Top,
-                    TextBounds.Width,
-                    TextBounds.Height
-                );
-                localRect.Union(textRect);
-            }
-
-            // Include shadow bounds if shadow is valid
-            if (Style?.Shadow?.HasValidValues() == true)
-            {
-                var s = Style.Shadow;
-                var blurX = Math.Abs(s.SpreadX) * 3f;
-                var blurY = Math.Abs(s.SpreadY) * 3f;
-                
-                var shadowRect = new SKRect(
-                    s.OffsetX - blurX,
-                    s.OffsetY - blurY,
-                    Transform.Width + s.OffsetX + blurX,
-                    Transform.Height + s.OffsetY + blurY
-                );
-                localRect.Union(shadowRect);
-            }
-
-            // Include border width inflation
-            if (Style?.Border?.Width > 0)
-            {
-                var borderInflate = Style.Border.Width + 1.5f;
-                localRect.Inflate(borderInflate, borderInflate);
-            }
-
-            _cachedLocalBounds = localRect;
+            _cachedLocalBounds = GetLocalContentBounds();
             _localBoundsDirty = false;
         }
 
         return _cachedLocalBounds;
+    }
+
+    /// <summary>
+    /// Returns the bounding rectangle of this element's local content and style
+    /// (0, 0, Width, Height + text, shadow, border inflation).
+    /// Override in subclasses to expand dirty/render bounds for custom drawing or visual effects.
+    /// </summary>
+    protected virtual SKRect GetLocalContentBounds()
+    {
+        var localRect = new SKRect(0, 0, Transform.Width, Transform.Height);
+
+        // Include text bounds if text is rendered
+        if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+        {
+            CalculateText(); // Ensure local TextPosition is updated
+            var textRect = SKRect.Create(
+                TextPosition.X + TextBounds.Left,
+                TextPosition.Y + TextBounds.Top,
+                TextBounds.Width,
+                TextBounds.Height
+            );
+            localRect.Union(textRect);
+        }
+
+        // Include shadow bounds if shadow is valid
+        if (Style?.Shadow?.HasValidValues() == true)
+        {
+            var s = Style.Shadow;
+            var blurX = Math.Abs(s.SpreadX) * 3f;
+            var blurY = Math.Abs(s.SpreadY) * 3f;
+            
+            var shadowRect = new SKRect(
+                s.OffsetX - blurX,
+                s.OffsetY - blurY,
+                Transform.Width + s.OffsetX + blurX,
+                Transform.Height + s.OffsetY + blurY
+            );
+            localRect.Union(shadowRect);
+        }
+
+        // Include border width inflation
+        if (Style?.Border?.Width > 0)
+        {
+            var borderInflate = Style.Border.Width + 1.5f;
+            localRect.Inflate(borderInflate, borderInflate);
+        }
+
+        return localRect;
     }
 
     private SKRect GetRenderBounds()
@@ -288,18 +684,20 @@ public class VisualElement : IDisposable
 
     private void OnTransformChanged(Transform transform)
     {
-        // IsDirty setter will handle invalidation of the old _lastRenderBounds
-        
-        Transform.Evaluate();
+        if (LayoutMutationDepth > 0)
+            return; // LayoutChildren is applying frames — do not re-enter layout/paint here
+
+        // Paint only: re-layout is requested explicitly (parent size change, ForceLayoutSubtree, etc.)
         CalculateText();
         MarkVisibilityClippingDirty();
         TransformChanged?.Invoke(this, transform);
-
-        // This triggers IsDirty setter, which will mark the NEW position
-        ScheduleRender();
+        InvalidatePaint();
     }
 
     private bool _Visible = true;
+    /// <summary>
+    /// Gets or sets whether this element is visible. When false, the element and its subtree are hidden from rendering and hit-testing.
+    /// </summary>
     public bool Visible
     {
         get => _Visible;
@@ -339,8 +737,10 @@ public class VisualElement : IDisposable
         get => Parent != null ? Parent.Layer + 1 : 0;
     }
 
-    internal ElementTree ChildElements { get; } = new();
-    private VisualElement _Parent = null!;
+    private readonly List<VisualElement> _children = new();
+    public IReadOnlyList<VisualElement> Children => _children;
+
+    private VisualElement? _Parent;
 
     private VisualElement _RootParent = null!;
     public VisualElement RootParent
@@ -349,38 +749,51 @@ public class VisualElement : IDisposable
         private set => _RootParent = value;
     }
 
-    public VisualElement Parent
+    public VisualElement? Parent
     {
         get => _Parent;
         set
         {
-            if (_Parent != null)
-                _Parent.TransformChanged -= ParentTransformChanged;
+            if (_Parent == value) return;
 
-            _Parent = value;
+            if (_Parent != null)
+            {
+                _Parent.RemoveChild(this);
+            }
 
             if (value != null)
             {
-                Transform.Parent = value.Transform;
-                _Parent.TransformChanged += ParentTransformChanged;
-                RootParent = _Parent.RootParent;
+                value.AddChild(this);
             }
-            else
-            {
-                Transform.DetachParent();
-                RootParent = null;
-            }
-
-            ScheduleRender();
         }
     }
 
-    internal VisualElement[] Children { get => ChildElements.Items; }
+    internal void SetParentInternal(VisualElement? value)
+    {
+        if (_Parent != null)
+            _Parent.TransformChanged -= ParentTransformChanged;
+
+        _Parent = value;
+
+        if (value != null)
+        {
+            Transform.Parent = value.Transform;
+            _Parent.TransformChanged += ParentTransformChanged;
+            RootParent = _Parent.RootParent;
+        }
+        else
+        {
+            Transform.DetachParent();
+            RootParent = this;
+        }
+
+        ScheduleRender();
+    }
 
     internal bool TransformIsChanged = false;
     internal SKPoint TextPosition;
 
-    private Transform _Transform = new();
+    private Transform _Transform;
     public Transform Transform
     {
         get => _Transform;
@@ -391,25 +804,30 @@ public class VisualElement : IDisposable
                 _Transform.OnChanged -= OnTransformChanged;
 
             // Attach new
-            _Transform = value;
+            _Transform = value ?? new Transform();
             _Transform.OnChanged += OnTransformChanged;
-
             _Transform.ParentElement = this;
 
             // Update parent of children's transforms
-            var children = Children;
-            if (children != null)
+            for (int i = 0; i < _children.Count; i++)
             {
-                for (int i = 0; i < children.Length; i++)
+                var child = _children[i];
+                if (child != null && child.Transform != null)
                 {
-                    var child = children[i];
-                    if (child != null && child.Transform != null)
-                    {
-                        child.Transform.Parent = _Transform;
-                    }
+                    child.Transform.Parent = _Transform;
                 }
             }
         }
+    }
+
+    public VisualElement()
+    {
+        // Critical: default Transform must own this element and fire OnChanged.
+        // Without ParentElement, SetAbsoluteFrame/X/Y never InvalidateLayout — children
+        // stay put when a parent moves (empty drag shells, dirty-rect holes).
+        _Transform = new Transform();
+        _Transform.ParentElement = this;
+        _Transform.OnChanged += OnTransformChanged;
     }
 
     private ElementStyle _Style;
@@ -431,7 +849,62 @@ public class VisualElement : IDisposable
         }
     }
 
+    private OverflowMode _overflowX = OverflowMode.Visible;
+    /// <summary>
+    /// Gets or sets horizontal content overflow behavior (<see cref="OverflowMode.Visible"/>, <see cref="OverflowMode.Clip"/>, or <see cref="OverflowMode.Scroll"/>).
+    /// </summary>
+    public OverflowMode OverflowX
+    {
+        get => _overflowX;
+        set
+        {
+            if (_overflowX != value)
+            {
+                _overflowX = value;
+                _IsClipping = (_overflowX == OverflowMode.Clip || _overflowX == OverflowMode.Scroll || _overflowY == OverflowMode.Clip || _overflowY == OverflowMode.Scroll);
+                MarkVisibilityClippingDirty();
+                InvalidateLayout();
+            }
+        }
+    }
+
+    private OverflowMode _overflowY = OverflowMode.Visible;
+    /// <summary>
+    /// Gets or sets vertical content overflow behavior (<see cref="OverflowMode.Visible"/>, <see cref="OverflowMode.Clip"/>, or <see cref="OverflowMode.Scroll"/>).
+    /// </summary>
+    public OverflowMode OverflowY
+    {
+        get => _overflowY;
+        set
+        {
+            if (_overflowY != value)
+            {
+                _overflowY = value;
+                _IsClipping = (_overflowX == OverflowMode.Clip || _overflowX == OverflowMode.Scroll || _overflowY == OverflowMode.Clip || _overflowY == OverflowMode.Scroll);
+                MarkVisibilityClippingDirty();
+                InvalidateLayout();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Uniform shorthand for setting both <see cref="OverflowX"/> and <see cref="OverflowY"/>.
+    /// </summary>
+    public OverflowMode Overflow
+    {
+        get => _overflowY;
+        set
+        {
+            OverflowX = value;
+            OverflowY = value;
+        }
+    }
+
     private bool _IsClipping = false;
+    /// <summary>
+    /// Gets or sets whether child elements and content are clipped to this element's rounded bounds.
+    /// Setting this aligns with <see cref="Overflow"/> modes (<see cref="OverflowMode.Clip"/> when true, <see cref="OverflowMode.Visible"/> when false).
+    /// </summary>
     public bool IsClipping
     {
         get => _IsClipping;
@@ -440,6 +913,16 @@ public class VisualElement : IDisposable
             if (_IsClipping != value)
             {
                 _IsClipping = value;
+                if (!_IsClipping)
+                {
+                    _overflowX = OverflowMode.Visible;
+                    _overflowY = OverflowMode.Visible;
+                }
+                else if (_overflowX == OverflowMode.Visible && _overflowY == OverflowMode.Visible)
+                {
+                    _overflowX = OverflowMode.Clip;
+                    _overflowY = OverflowMode.Clip;
+                }
                 MarkVisibilityClippingDirty();
                 ScheduleRender();
             }
@@ -548,13 +1031,13 @@ public class VisualElement : IDisposable
             }
             else
             {
-                Console.WriteLine($"[ERROR] File not found: {filePath}");
+                Log.Error($"File not found: {filePath}");
                 BackgroundImage = null;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Failed to load image from file '{filePath}': {ex.Message}");
+            Log.Error($"Failed to load image from file '{filePath}': {ex.Message}");
             BackgroundImage = null;
         }
     }
@@ -575,12 +1058,20 @@ public class VisualElement : IDisposable
                 var bmp = SKBitmap.Decode(bytes);
                 if (bmp != null)
                 {
-                    BackgroundImage = bmp;
+                    Browser.Post(() =>
+                    {
+                        if (_isDisposed)
+                        {
+                            bmp.Dispose();
+                            return;
+                        }
+                        BackgroundImage = bmp;
+                    });
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Failed to load image from URL '{url}': {ex.Message}");
+                Log.Error($"Failed to load image from URL '{url}': {ex.Message}");
             }
         });
     }
@@ -617,13 +1108,13 @@ public class VisualElement : IDisposable
             }
             else
             {
-                Console.WriteLine($"[ERROR] Svg file not found: {filePath}");
+                Log.Error($"Svg file not found: {filePath}");
                 BackgroundSvg = null;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Failed to load SVG from file '{filePath}': {ex.Message}");
+            Log.Error($"Failed to load SVG from file '{filePath}': {ex.Message}");
             BackgroundSvg = null;
         }
     }
@@ -645,21 +1136,39 @@ public class VisualElement : IDisposable
                 {
                     var svg = new SkiaSharp.Extended.Svg.SKSvg();
                     svg.Load(ms);
-                    BackgroundSvg = svg;
+                    Browser.Post(() =>
+                    {
+                        if (_isDisposed)
+                        {
+                            svg.Picture?.Dispose();
+                            return;
+                        }
+                        BackgroundSvg = svg;
+                    });
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Failed to load SVG from URL '{url}': {ex.Message}");
+                Log.Error($"Failed to load SVG from URL '{url}': {ex.Message}");
             }
         });
     }
 
     public void AddChild(VisualElement child)
     {
-        child.Parent = this;
-        ChildElements.AddElement(ref child);
-        
+        if (child == null) throw new ArgumentNullException(nameof(child));
+        if (child == this) throw new InvalidOperationException("Cannot add an element as a child of itself.");
+        if (child.ContainsElement(this)) throw new InvalidOperationException("Cannot add an ancestor as a child.");
+
+        if (child._Parent != null)
+        {
+            if (child._Parent == this) return;
+            child._Parent.RemoveChild(child);
+        }
+
+        _children.Add(child);
+        child.SetParentInternal(this);
+
         if (ParentView != null)
         {
             RegisterSubtree(child, ParentView);
@@ -667,49 +1176,142 @@ public class VisualElement : IDisposable
         }
     }
 
-    private void RegisterSubtree(VisualElement element, View view)
+    public void InsertChild(int index, VisualElement child)
     {
-        element.ParentView = view;
-        view.TrackElement(ref element);
-        
-        // Recursively track children
-        var children = element.Children;
-        for (int i = 0; i < children.Length; i++)
+        if (child == null) throw new ArgumentNullException(nameof(child));
+        if (child == this) throw new InvalidOperationException("Cannot add an element as a child of itself.");
+        if (child.ContainsElement(this)) throw new InvalidOperationException("Cannot add an ancestor as a child.");
+
+        if (child._Parent != null)
         {
-            var c = children[i];
-            if (c != null)
+            if (child._Parent == this)
             {
-                RegisterSubtree(c, view);
+                SetChildIndex(child, index);
+                return;
             }
+            child._Parent.RemoveChild(child);
         }
+
+        if (index < 0) index = 0;
+        if (index > _children.Count) index = _children.Count;
+
+        _children.Insert(index, child);
+        child.SetParentInternal(this);
+
+        if (ParentView != null)
+        {
+            RegisterSubtree(child, ParentView);
+            ParentView.MarkHierarchyDirty();
+        }
+
+        InvalidateLayout();
     }
 
     public void RemoveChild(VisualElement child)
     {
+        if (child == null) return;
+        int index = _children.IndexOf(child);
+        if (index < 0) return;
+
+        _children.RemoveAt(index);
+
         var view = ParentView;
         if (view != null)
         {
-            child.ParentView = view;
-        }
-        child.Parent = null!;
-        ChildElements.RemoveElement(child);
-        if (view != null)
-        {
-            view.UntrackElement(ref child);
+            UnregisterSubtree(child, view);
             view.MarkHierarchyDirty();
         }
+
+        child.SetParentInternal(null);
+        InvalidateLayout();
+    }
+
+    public void ClearChildren()
+    {
+        var list = _children.ToArray();
+        _children.Clear();
+
+        var view = ParentView;
+        foreach (var child in list)
+        {
+            if (view != null)
+            {
+                UnregisterSubtree(child, view);
+            }
+            child.SetParentInternal(null);
+        }
+
+        if (view != null)
+        {
+            view.MarkHierarchyDirty();
+        }
+
+        InvalidateLayout();
+    }
+
+    public void SetChildIndex(VisualElement child, int index)
+    {
+        if (child == null) return;
+        int currentIndex = _children.IndexOf(child);
+        if (currentIndex < 0) return;
+
+        if (index < 0) index = 0;
+        if (index >= _children.Count) index = _children.Count - 1;
+        if (currentIndex == index) return;
+
+        _children.RemoveAt(currentIndex);
+        _children.Insert(index, child);
+
+        ParentView?.MarkHierarchyDirty();
+        InvalidateLayout();
+    }
+
+    internal virtual IEnumerable<VisualElement> GetVisualChildren() => Children;
+
+    internal static void RegisterSubtree(VisualElement element, View view)
+    {
+        element._ParentView = view;
+        view.TrackElement(ref element);
+
+        foreach (var child in element.GetVisualChildren())
+        {
+            RegisterSubtree(child, view);
+        }
+    }
+
+    internal static void UnregisterSubtree(VisualElement element, View view)
+    {
+        foreach (var child in element.GetVisualChildren())
+        {
+            UnregisterSubtree(child, view);
+        }
+
+        view.UntrackElement(ref element);
+        element._ParentView = null!;
     }
 
     public Rect BoundingRect
     {
         get
         {
-            if (Children.Length == 0)
+            if (_children.Count == 0)
                 return Transform.Computed;
 
-            var elementsRect = ChildElements.BoundAxis.GetBoundingRect();
+            float minX = Transform.Computed.X;
+            float minY = Transform.Computed.Y;
+            float maxX = minX + Transform.Computed.Width;
+            float maxY = minY + Transform.Computed.Height;
 
-            return Rect.Max(elementsRect, Transform.Computed);
+            foreach (var child in _children)
+            {
+                var childBounds = child.BoundingRect;
+                minX = Math.Min(minX, childBounds.X);
+                minY = Math.Min(minY, childBounds.Y);
+                maxX = Math.Max(maxX, childBounds.X + childBounds.Width);
+                maxY = Math.Max(maxY, childBounds.Y + childBounds.Height);
+            }
+
+            return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
     }
 
@@ -725,7 +1327,9 @@ public class VisualElement : IDisposable
                 _Text.Clear();
                 _Text.Append(value);
 
-                ScheduleRender();
+                _localBoundsDirty = true;
+                CalculateText();
+                InvalidateLayout();
             }
         }
     }
@@ -736,19 +1340,37 @@ public class VisualElement : IDisposable
         return 0;
     }
 
+    private float _lastRecordedWidth = float.NaN;
+    private float _lastRecordedHeight = float.NaN;
+
     internal void RenderSingle(SKCanvas targetCanvas)
     {
         if (ParentView == null) return;
 
-        // Ensure commands are recorded in the ledger
-        if (IsDirty || ParentView.Ledger.GetCommands(Name) == null)
+        // Ensure commands are recorded in the ledger (key by Id — Name may be null).
+        // Re-record when size changes so fills/borders match current bounds (scrolled cards
+        // often first recorded at 0×0 or stale size and kept empty backgrounds).
+        string drawKey = DrawCommandKey;
+        float w = Transform.Computed.Width;
+        float h = Transform.Computed.Height;
+        bool sizeChanged =
+            float.IsNaN(_lastRecordedWidth) ||
+            Math.Abs(_lastRecordedWidth - w) > 0.5f ||
+            Math.Abs(_lastRecordedHeight - h) > 0.5f;
+
+        if (IsDirty || sizeChanged || ParentView.Ledger.GetCommands(drawKey) == null)
         {
             RecordDrawCommands(ParentView.Ledger);
+            _lastRecordedWidth = w;
+            _lastRecordedHeight = h;
             _IsDirty = false;
         }
 
-        var cmds = ParentView.Ledger.GetCommands(Name);
+        var cmds = ParentView.Ledger.GetCommands(drawKey);
         if (cmds == null) return;
+
+        float opacity = EffectiveOpacity;
+        if (opacity <= 0.0001f) return;
 
         float transitionProgress = EffectiveTransitionProgress;
         TransitionEffectType transitionType = EffectiveTransitionType;
@@ -764,14 +1386,25 @@ public class VisualElement : IDisposable
             var globalMatrix2D = globalMatrix3D.Matrix;
             
             bool hasTransition = transitionType == TransitionEffectType.HalftoneDots && transitionProgress < 1.0f;
+            bool hasOpacity = opacity < 0.999f;
             int saveCount = -1;
 
-            if (hasTransition)
+            if (hasTransition || hasOpacity)
             {
                 float margin = 32f;
                 var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
                 targetCanvas.Concat(ref globalMatrix2D);
-                saveCount = targetCanvas.SaveLayer(localRect, null);
+
+                if (hasOpacity)
+                {
+                    byte alpha = (byte)Math.Clamp((int)(opacity * 255f), 0, 255);
+                    using var opacityPaint = new SKPaint { Color = new SKColor(255, 255, 255, alpha) };
+                    saveCount = targetCanvas.SaveLayer(localRect, opacityPaint);
+                }
+                else
+                {
+                    saveCount = targetCanvas.SaveLayer(localRect, null);
+                }
             }
             else
             {
@@ -785,24 +1418,27 @@ public class VisualElement : IDisposable
 
             if (saveCount != -1)
             {
-                var host = TransitionHost;
-                float hostW = host.Transform.Computed.Width;
-                float hostH = host.Transform.Computed.Height;
-                float screenX = globalMatrix2D.TransX;
-                float screenY = globalMatrix2D.TransY;
-
-                using var halftoneShader = SKSLShaderManager.CreateHalftoneShader(transitionProgress, hostW, hostH, screenX, screenY);
-                if (halftoneShader != null)
+                if (hasTransition)
                 {
-                    using var maskPaint = new SKPaint
+                    var host = TransitionHost;
+                    float hostW = host.Transform.Computed.Width;
+                    float hostH = host.Transform.Computed.Height;
+                    float screenX = globalMatrix2D.TransX;
+                    float screenY = globalMatrix2D.TransY;
+
+                    using var halftoneShader = SKSLShaderManager.CreateHalftoneShader(transitionProgress, hostW, hostH, screenX, screenY);
+                    if (halftoneShader != null)
                     {
-                        Shader = halftoneShader,
-                        BlendMode = SKBlendMode.DstIn,
-                        IsAntialias = true
-                    };
-                    float margin = 32f;
-                    var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
-                    targetCanvas.DrawRect(localRect, maskPaint);
+                        using var maskPaint = new SKPaint
+                        {
+                            Shader = halftoneShader,
+                            BlendMode = SKBlendMode.DstIn,
+                            IsAntialias = true
+                        };
+                        float margin = 32f;
+                        var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
+                        targetCanvas.DrawRect(localRect, maskPaint);
+                    }
                 }
                 targetCanvas.RestoreToCount(saveCount);
             }
@@ -873,12 +1509,17 @@ public class VisualElement : IDisposable
         return roundRect;
     }
 
-    public bool IsPointInside(float x, float y)
+    /// <summary>
+    /// Hit-tests a coordinate in this element's local space (0..Width, 0..Height).
+    /// Default implementation tests within the rectangle bounds taking border corner radii into account.
+    /// Override in subclasses for custom hit geometry (circles, ellipses, polygons, paths).
+    /// </summary>
+    public virtual bool HitTestLocal(float localX, float localY)
     {
         float w = Transform.Width;
         float h = Transform.Height;
         
-        if (x < 0 || x > w || y < 0 || y > h)
+        if (localX < 0 || localX > w || localY < 0 || localY > h)
             return false;
 
         float r1 = Style?.Border?.RoundnessTopLeft ?? 0;
@@ -887,36 +1528,41 @@ public class VisualElement : IDisposable
         float r4 = Style?.Border?.RoundnessBottomLeft ?? 0;
 
         // Top-Left corner
-        if (x < r1 && y < r1)
+        if (localX < r1 && localY < r1)
         {
-            float dx = x - r1;
-            float dy = y - r1;
+            float dx = localX - r1;
+            float dy = localY - r1;
             return (dx * dx + dy * dy) <= r1 * r1;
         }
         // Top-Right corner
-        if (x > w - r2 && y < r2)
+        if (localX > w - r2 && localY < r2)
         {
-            float dx = x - (w - r2);
-            float dy = y - r2;
+            float dx = localX - (w - r2);
+            float dy = localY - r2;
             return (dx * dx + dy * dy) <= r2 * r2;
         }
         // Bottom-Right corner
-        if (x > w - r3 && y > h - r3)
+        if (localX > w - r3 && localY > h - r3)
         {
-            float dx = x - (w - r3);
-            float dy = y - (h - r3);
+            float dx = localX - (w - r3);
+            float dy = localY - (h - r3);
             return (dx * dx + dy * dy) <= r3 * r3;
         }
         // Bottom-Left corner
-        if (x < r4 && y > h - r4)
+        if (localX < r4 && localY > h - r4)
         {
-            float dx = x - r4;
-            float dy = y - (h - r4);
+            float dx = localX - r4;
+            float dy = localY - (h - r4);
             return (dx * dx + dy * dy) <= r4 * r4;
         }
 
         return true;
     }
+
+    /// <summary>
+    /// Legacy compatibility alias for <see cref="HitTestLocal(float, float)"/>.
+    /// </summary>
+    public bool IsPointInside(float x, float y) => HitTestLocal(x, y);
 
     private void ApplyClippingHierarchy(SKCanvas canvas)
     {
@@ -1095,8 +1741,19 @@ public class VisualElement : IDisposable
             cmds.Add(new DrawTextCommand(Text, TextPosition, Style.Text.Paint));
         }
 
-        ledger.Record(Name, cmds);
+        OnAfterStyleDraw(cmds);
+
+        ledger.Record(DrawCommandKey, cmds);
     }
+
+    /// <summary>
+    /// Extension hook called during <see cref="RecordDrawCommands"/> after standard styling commands
+    /// (shadow, backdrop blur, background fill/shader/image/svg, border, text) have been generated.
+    /// Override in subclasses to append or prepend custom <see cref="DrawCommand"/> instances.
+    /// Alternatively, override <see cref="RecordDrawCommands"/> entirely for full control over command recording.
+    /// </summary>
+    /// <param name="cmds">The list of draw commands to be submitted to the ledger.</param>
+    protected virtual void OnAfterStyleDraw(List<DrawCommand> cmds) { }
 
     private SKRect TextBounds;
     private void CalculateTextBounds()
@@ -1118,19 +1775,24 @@ public class VisualElement : IDisposable
 
         CalculateTextBounds();
 
+        float padLeft = Padding.Left + Style.Text.Padding;
+        float padRight = Padding.Right + Style.Text.Padding;
+        float padTop = Padding.Top + Style.Text.Padding;
+        float padBottom = Padding.Bottom + Style.Text.Padding;
+
         TextPosition.X = Style.Text.Alignment switch
         {
             var x when
                 x == TextAlign.Left ||
                 x == TextAlign.TopLeft ||
                 x == TextAlign.BottomLeft
-                => cx + Style.Text.Padding,
+                => cx + padLeft,
             var x when
                 x == TextAlign.Right ||
                 x == TextAlign.TopRight ||
                 x == TextAlign.BottomRight
-                => cx + cw - TextBounds.Width - Style.Text.Padding,
-            _ => cx + (cw / 2f) - TextBounds.MidX // Center
+                => cx + cw - TextBounds.Width - padRight,
+            _ => cx + (padLeft - padRight) / 2f + (cw / 2f) - TextBounds.MidX // Center
         };
 
         TextPosition.Y = Style.Text.Alignment switch
@@ -1139,18 +1801,20 @@ public class VisualElement : IDisposable
                 x == TextAlign.Top ||
                 x == TextAlign.TopLeft ||
                 x == TextAlign.TopRight
-                => cy + TextBounds.Height + Style.Text.Padding - TextBounds.Bottom,
+                => cy + TextBounds.Height + padTop - TextBounds.Bottom,
             var x when
                 x == TextAlign.Bottom ||
                 x == TextAlign.BottomLeft ||
                 x == TextAlign.BottomRight
-                => cy + ch - Style.Text.Padding,
-            _ => cy + (ch / 2f) - TextBounds.MidY // Center
+                => cy + ch - padBottom,
+            _ => cy + (padTop - padBottom) / 2f + (ch / 2f) - TextBounds.MidY // Center
         };
     }
 
     public void EvaluateVisibilityAndClipping()
     {
+        var previous = ComputedVisibility;
+
         if (!Visible)
         {
             ComputedVisibility = Visibility.Hidden;
@@ -1185,6 +1849,9 @@ public class VisualElement : IDisposable
                     if (intersect.Width <= 0 || intersect.Height <= 0)
                     {
                         ComputedVisibility = Visibility.Hidden;
+                        // Became hidden: still dirty the last drawn area so it is erased cleanly
+                        if (previous != Visibility.Hidden)
+                            InvalidatePaint();
                         return;
                     }
                     clipRect = intersect;
@@ -1225,33 +1892,52 @@ public class VisualElement : IDisposable
         {
             ComputedVisibility = Visibility.Visible;
         }
+
+        // Scrolled into view: must repaint (including BackColor). Previously Hidden cards
+        // were skipped and never re-dirtied when becoming visible again.
+        if (previous == Visibility.Hidden && ComputedVisibility != Visibility.Hidden)
+        {
+            ClearRenderCache();
+            InvalidatePaint();
+        }
+        else if (previous != Visibility.Hidden && ComputedVisibility == Visibility.Hidden)
+        {
+            InvalidatePaint();
+        }
     }
 
     private void ParentTransformChanged(VisualElement e, Transform t)
     {
-        Transform.Evaluate();
+        if (LayoutMutationDepth > 0)
+            return;
+
+        Transform._transformDirty = true;
         CalculateText();
         MarkVisibilityClippingDirty();
-
-        ScheduleRender();
+        // Parent moved/resized: our LayoutChildren may need to re-run
+        InvalidateLayout();
     }
 
     internal void ScheduleRender()
     {
-        IsDirty = true;
-        _localBoundsDirty = true;
-
-        if (ParentView is not null)
-        {
-            ParentView.RenderRequired = true;
-            Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent();
-        }
+        InvalidatePaint();
     }
 
     public void GetFocus()
     {
-        if (ParentView != null)
-            ParentView.FocusedElement = this;
+        if (ParentView != null && EffectiveInteractive)
+            ParentView.SetActiveKeyboardElement(this);
+    }
+
+    public bool ContainsElement(VisualElement? element)
+    {
+        var cur = element;
+        while (cur != null)
+        {
+            if (cur == this) return true;
+            cur = cur.Parent;
+        }
+        return false;
     }
 
     public Vector2 PointToClient(float x, float y)
@@ -1308,8 +1994,43 @@ public class VisualElement : IDisposable
         CachedBorder = null;
     }
 
-    public void Dispose()
+    private bool _isDisposed = false;
+    public bool IsDisposed => _isDisposed;
+
+    public virtual void Dispose()
     {
+        if (_isDisposed) return;
+        _isDisposed = true;
+
+        if (HasPointerCapture)
+        {
+            ReleasePointer();
+        }
+        if (ParentView?.ActiveKeyboardElement == this)
+        {
+            ParentView.SetActiveKeyboardElement(null);
+        }
+
+        var childList = _children.ToArray();
+        _children.Clear();
+        foreach (var child in childList)
+        {
+            child.Dispose();
+        }
+
+        if (_Parent != null)
+        {
+            _Parent._children.Remove(this);
+            _Parent = null;
+        }
+
+        if (ParentView != null)
+        {
+            ParentView.Elements.RemoveElement(this);
+            RemovedFromView();
+            _ParentView = null!;
+        }
+
         ClearRenderCache();
         Transform.Dispose();
         paint.Dispose();
@@ -1317,15 +2038,6 @@ public class VisualElement : IDisposable
         _BackgroundImage?.Dispose();
         _BackgroundSvg?.Picture?.Dispose();
         OnDisposing?.Invoke(this);
-
-        ParentView?.Elements.RemoveElement(this);
-
-        foreach (var Child in Children)
-        {
-            Child.Dispose();
-        }
-
-        Parent?.ChildElements.RemoveElement(this);
     }
 }
 

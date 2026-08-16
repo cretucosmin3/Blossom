@@ -1,7 +1,6 @@
 using System;
-using Blossom.Core;
 using Blossom.Core.Visual;
-using Blossom.Core.Input;
+using Silk.NET.Input;
 using SkiaSharp;
 
 namespace Blossom.Testing.Components;
@@ -9,13 +8,14 @@ namespace Blossom.Testing.Components;
 public class Switch : VisualElement
 {
     private bool _isOn;
-    private readonly VisualElement _capsule;
-    private readonly VisualElement _knob;
-    private readonly VisualElement _labelText;
+    private string? _label;
+    private readonly VisualElement _track;
+    private readonly VisualElement _thumb;
+    private readonly VisualElement _labelElement;
 
+    public Action<bool>? Changed;
     public Action<bool>? OnToggled;
 
-    [BuilderProperty("Is On", "Switch")]
     public bool IsOn
     {
         get => _isOn;
@@ -25,15 +25,31 @@ public class Switch : VisualElement
             {
                 _isOn = value;
                 UpdateVisualState();
+                Changed?.Invoke(_isOn);
                 OnToggled?.Invoke(_isOn);
             }
         }
     }
 
-    public Switch(string label, bool initialOn = false)
+    public string? Label
     {
-        Name = $"Switch_{label}_{Guid.NewGuid().ToString().Substring(0, 4)}";
+        get => _label;
+        set
+        {
+            _label = value;
+            _labelElement.Text = value ?? "";
+            _labelElement.Visible = !string.IsNullOrEmpty(value);
+            InvalidateLayout();
+        }
+    }
+
+    public Switch(string? label = null, bool initialOn = false)
+    {
+        Name = $"Switch_{(string.IsNullOrEmpty(label) ? "Item" : label)}";
+        _label = label;
         _isOn = initialOn;
+
+        Cursor = StandardCursor.Hand;
 
         Style = new ElementStyle
         {
@@ -41,110 +57,136 @@ public class Switch : VisualElement
             Border = new BorderStyle { Width = 0, Color = SKColors.Transparent }
         };
 
-        // Text label
-        _labelText = new VisualElement
+        // Track capsule
+        _track = new VisualElement
+        {
+            Name = $"{Name}_Track",
+            IsClickthrough = true,
+            Style = new ElementStyle
+            {
+                BackColor = new SKColor(58, 58, 58), // Gray 700
+                Border = new BorderStyle
+                {
+                    Width = 1,
+                    Color = new SKColor(82, 82, 82), // Gray 600
+                    Roundness = 11
+                }
+            }
+        };
+
+        // Thumb knob
+        _thumb = new VisualElement
+        {
+            Name = $"{Name}_Thumb",
+            IsClickthrough = true,
+            Style = new ElementStyle
+            {
+                BackColor = new SKColor(220, 220, 220), // Gray 200
+                Border = new BorderStyle
+                {
+                    Width = 0,
+                    Roundness = 8
+                },
+                Shadow = new ShadowStyle
+                {
+                    Color = SKColors.Black.WithAlpha(60),
+                    SpreadX = 0,
+                    SpreadY = 1,
+                    OffsetX = 0,
+                    OffsetY = 1
+                }
+            }
+        };
+
+        _labelElement = new VisualElement
         {
             Name = $"{Name}_Label",
-            Text = label,
+            IsClickthrough = true,
+            Text = label ?? "",
+            Visible = !string.IsNullOrEmpty(label),
             Style = new ElementStyle
             {
                 Text = new TextStyle
                 {
-                    Color = new SKColor(226, 232, 240), // light slate
-                    Size = 14,
-                    Weight = 600,
+                    Color = new SKColor(220, 220, 220), // Gray 200
+                    Size = 13,
+                    Weight = 500,
                     Alignment = TextAlign.Left
                 }
-            },
-            Transform = new Transform(54, 0, 150, 24)
-            {
-                Anchor = Anchor.Top | Anchor.Bottom | Anchor.Left | Anchor.Right
             }
         };
 
-        // Capsule background (pill shape)
-        _capsule = new VisualElement
-        {
-            Name = $"{Name}_Capsule",
-            Style = new ElementStyle
-            {
-                BackColor = new SKColor(30, 41, 59),
-                Border = new BorderStyle
-                {
-                    Width = 1f,
-                    Color = new SKColor(71, 85, 105),
-                    Roundness = 12f
-                }
-            },
-            Transform = new Transform(0, 0, 44, 24)
-            {
-                FixedWidth = true,
-                FixedHeight = true
-            }
-        };
-
-        // Knob (circle shape)
-        _knob = new VisualElement
-        {
-            Name = $"{Name}_Knob",
-            Style = new ElementStyle
-            {
-                BackColor = new SKColor(226, 232, 240),
-                Border = new BorderStyle { Width = 0, Roundness = 9f }
-            },
-            Transform = new Transform(3, 3, 18, 18)
-            {
-                FixedWidth = true,
-                FixedHeight = true
-            }
-        };
-
-        AddChild(_capsule);
-        _capsule.AddChild(_knob);
-        AddChild(_labelText);
+        AddChild(_track);
+        AddChild(_thumb);
+        AddChild(_labelElement);
 
         UpdateVisualState();
 
         Events.OnMouseEnter += (s) =>
         {
-            _capsule.Style.Border.Color = new SKColor(56, 189, 248);
-            Transform.ScaleX = 1.02f;
-            Transform.ScaleY = 1.02f;
+            if (!EffectiveInteractive) return;
+            if (!_isOn)
+            {
+                _track.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
+                InvalidatePaint();
+            }
         };
 
         Events.OnMouseLeave += (s) =>
         {
-            _capsule.Style.Border.Color = new SKColor(71, 85, 105);
-            Transform.ScaleX = 1.0f;
-            Transform.ScaleY = 1.0f;
+            UpdateVisualState();
         };
 
-        Events.OnMouseUp += (s, e) =>
+        Events.OnClick += (target, args) =>
         {
+            if (!EffectiveInteractive) return;
             IsOn = !IsOn;
         };
     }
 
-    public override void AddedToView()
+    protected override void LayoutChildren()
     {
-        base.AddedToView();
-        UpdateVisualState();
-        Transform.OnChanged += (t) => UpdateVisualState();
+        float originX = Transform.Computed.X;
+        float originY = Transform.Computed.Y;
+
+        float trackW = 40f;
+        float trackH = 22f;
+        float trackY = originY + Math.Max(0, (Transform.Height - trackH) / 2f);
+
+        _track.Transform.SetAbsoluteFrame(originX + Padding.Left, trackY, trackW, trackH);
+
+        float thumbSize = 16f;
+        float thumbPad = 3f;
+        float thumbX = _isOn
+            ? (originX + Padding.Left + trackW - thumbSize - thumbPad)
+            : (originX + Padding.Left + thumbPad);
+        float thumbY = trackY + (trackH - thumbSize) / 2f;
+        _thumb.Transform.SetAbsoluteFrame(thumbX, thumbY, thumbSize, thumbSize);
+
+        if (_labelElement.Visible)
+        {
+            float textX = originX + Padding.Left + trackW + 8f;
+            float textW = Math.Max(0, Transform.Width - (Padding.Left + trackW + 8f + Padding.Right));
+            _labelElement.Transform.SetAbsoluteFrame(textX, originY, textW, Math.Max(1f, Transform.Height));
+        }
     }
 
     private void UpdateVisualState()
     {
         if (_isOn)
         {
-            _capsule.Style.BackColor = new SKColor(34, 197, 94); // Green when active
-            _knob.Transform.X = Transform.X + 23; // Move right
-            _knob.Style.BackColor = SKColors.White;
+            _track.Style.BackColor = new SKColor(100, 100, 100); // Gray accent
+            _track.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
+            _thumb.Style.BackColor = SKColors.White;
         }
         else
         {
-            _capsule.Style.BackColor = new SKColor(30, 41, 59); // Slate-800 when off
-            _knob.Transform.X = Transform.X + 3; // Move left
-            _knob.Style.BackColor = new SKColor(226, 232, 240);
+            _track.Style.BackColor = new SKColor(58, 58, 58); // Gray 700
+            _track.Style.Border.Color = new SKColor(82, 82, 82); // Gray 600
+            _thumb.Style.BackColor = new SKColor(200, 200, 200); // Gray 300
         }
+        // Reposition thumb without a full ancestor layout storm
+        InvalidateLayout();
+        InvalidatePaint();
     }
 }

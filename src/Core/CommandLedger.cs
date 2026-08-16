@@ -853,6 +853,9 @@ public class CommandLedger
 
     public void Record(string elementId, List<DrawCommand> elementCommands)
     {
+        if (string.IsNullOrEmpty(elementId))
+            throw new ArgumentException("Draw command element id must not be null or empty.", nameof(elementId));
+
         if (_commands.TryGetValue(elementId, out var existing))
         {
             for (int i = 0; i < existing.Count; i++)
@@ -927,6 +930,8 @@ public class CommandLedger
     /// </summary>
     public List<DrawCommand> GetCommands(string elementId)
     {
+        if (string.IsNullOrEmpty(elementId))
+            return null;
         return _commands.TryGetValue(elementId, out var list) ? list : null;
     }
 }

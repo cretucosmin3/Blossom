@@ -1,6 +1,7 @@
 using System;
 using SkiaSharp;
 using Blossom.Core;
+using Blossom.Core.Visual.Enums;
 
 namespace Blossom.Core.Visual;
 
@@ -223,18 +224,24 @@ public class Transform : IDisposable
         get => ComputedTransform.X;
         set
         {
-            Local.Width = Computed.Width;
-            Local.Height = Computed.Height;
+            if (Math.Abs(ComputedTransform.X - value) < 0.01f && !_transformDirty) return;
 
-            Local.X = value - (Parent != null ? Parent.ComputedTransform.X : 0);
+            // Do not copy Computed size into Local — that clobbers a Width/Height set earlier
+            // in the same layout pass before Evaluate() has run.
+            float parentX = Parent != null ? Parent.ComputedTransform.X : 0;
+            Local.X = value - parentX;
             CalculateLeftAnchor();
             CalculateRighAnchor();
 
-            CenterX = X + (Width / 2f);
+            ComputedTransform.X = value;
+            CenterX = value + (ComputedTransform.Width / 2f);
 
             _transformDirty = true;
-            OnChanged?.Invoke(this);
-            ParentElement?.ScheduleRender();
+            if (VisualElement.LayoutMutationDepth == 0)
+            {
+                OnChanged?.Invoke(this);
+                ParentElement?.InvalidatePaint();
+            }
         }
     }
 
@@ -244,18 +251,22 @@ public class Transform : IDisposable
         get => ComputedTransform.Y;
         set
         {
-            Local.Width = Computed.Width;
-            Local.Height = Computed.Height;
+            if (Math.Abs(ComputedTransform.Y - value) < 0.01f && !_transformDirty) return;
 
-            Local.Y = value - (Parent != null ? Parent.ComputedTransform.Y : 0);
+            float parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
+            Local.Y = value - parentY;
             CalculateTopAnchor();
             CalculateBottomAnchor();
 
-            CenterY = Y + (Height / 2f);
+            ComputedTransform.Y = value;
+            CenterY = value + (ComputedTransform.Height / 2f);
 
             _transformDirty = true;
-            OnChanged?.Invoke(this);
-            ParentElement?.ScheduleRender();
+            if (VisualElement.LayoutMutationDepth == 0)
+            {
+                OnChanged?.Invoke(this);
+                ParentElement?.InvalidatePaint();
+            }
         }
     }
 
@@ -265,15 +276,24 @@ public class Transform : IDisposable
         get => ComputedTransform.Width;
         set
         {
+            value = Math.Max(0, value);
+            if (Math.Abs(ComputedTransform.Width - value) < 0.01f && Math.Abs(Local.Width - value) < 0.01f && !_transformDirty)
+                return;
+
             Local.Width = value;
             CalculateLeftAnchor();
             CalculateRighAnchor();
 
-            CenterX = X + (Width / 2f);
+            ComputedTransform.Width = value;
+            CenterX = ComputedTransform.X + (ComputedTransform.Width / 2f);
 
             _transformDirty = true;
-            OnChanged?.Invoke(this);
-            ParentElement?.ScheduleRender();
+            if (VisualElement.LayoutMutationDepth == 0)
+            {
+                OnChanged?.Invoke(this);
+                // Size change may require LayoutChildren
+                ParentElement?.InvalidateLayout();
+            }
         }
     }
 
@@ -283,16 +303,99 @@ public class Transform : IDisposable
         get => ComputedTransform.Height;
         set
         {
+            value = Math.Max(0, value);
+            if (Math.Abs(ComputedTransform.Height - value) < 0.01f && Math.Abs(Local.Height - value) < 0.01f && !_transformDirty)
+                return;
+
             Local.Height = value;
             CalculateTopAnchor();
             CalculateBottomAnchor();
 
-            CenterY = Y + (Height / 2f);
+            ComputedTransform.Height = value;
+            CenterY = ComputedTransform.Y + (ComputedTransform.Height / 2f);
 
             _transformDirty = true;
-            OnChanged?.Invoke(this);
-            ParentElement?.ScheduleRender();
+            if (VisualElement.LayoutMutationDepth == 0)
+            {
+                OnChanged?.Invoke(this);
+                ParentElement?.InvalidateLayout();
+            }
         }
+    }
+
+    /// <summary>
+    /// Sets absolute (parent-space / screen) frame and eagerly updates <see cref="Computed"/>
+    /// so nested layout in the same pass can read a correct parent origin.
+    /// Prefer this over setting X/Y/Width/Height separately during layout.
+    /// </summary>
+    public void SetAbsoluteFrame(float absX, float absY, float width, float height)
+    {
+        width = Math.Max(0, width);
+        height = Math.Max(0, height);
+
+        // Skip no-ops so LayoutChildren can re-apply the same frames without scheduling another frame
+        const float eps = 0.01f;
+        if (_anchorsInitialized
+            && Math.Abs(ComputedTransform.X - absX) < eps
+            && Math.Abs(ComputedTransform.Y - absY) < eps
+            && Math.Abs(ComputedTransform.Width - width) < eps
+            && Math.Abs(ComputedTransform.Height - height) < eps)
+        {
+            return;
+        }
+
+        float parentX = Parent != null ? Parent.ComputedTransform.X : 0;
+        float parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
+
+        Local.X = absX - parentX;
+        Local.Y = absY - parentY;
+        Local.Width = width;
+        Local.Height = height;
+
+        // Prefer left/top fixed anchors for manually placed frames
+        if (_Anchor == Anchor.None)
+            _Anchor = Anchor.Left | Anchor.Top;
+
+        CalculateLeftAnchor();
+        CalculateRighAnchor();
+        CalculateTopAnchor();
+        CalculateBottomAnchor();
+
+        ComputedTransform.X = absX;
+        ComputedTransform.Y = absY;
+        ComputedTransform.Width = Local.Width;
+        ComputedTransform.Height = Local.Height;
+        CenterX = absX + Local.Width / 2f;
+        CenterY = absY + Local.Height / 2f;
+
+        _anchorsInitialized = true;
+        _transformDirty = true;
+        _matrixDirty = true;
+
+        if (ParentElement != null)
+        {
+            ParentElement.InvalidateLayout();
+            ParentElement.ClearRenderCache();
+            ParentElement.MarkVisibilityClippingDirty();
+        }
+
+        // During LayoutChildren, notifications are suppressed (see VisualElement.LayoutMutationDepth)
+        if (VisualElement.LayoutMutationDepth == 0)
+        {
+            OnChanged?.Invoke(this);
+            // Paint only — caller that needs re-layout should call InvalidateLayout explicitly
+            ParentElement?.InvalidatePaint();
+        }
+    }
+
+    /// <summary>
+    /// Sets frame in parent-local coordinates (ignores scroll). Eagerly updates Computed using parent Computed origin.
+    /// </summary>
+    public void SetLocalFrame(float localX, float localY, float width, float height)
+    {
+        float parentX = Parent != null ? Parent.ComputedTransform.X : 0;
+        float parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
+        SetAbsoluteFrame(parentX + localX, parentY + localY, width, height);
     }
 
     public float CenterX { get; private set; }
@@ -326,7 +429,7 @@ public class Transform : IDisposable
 
             _transformDirty = true;
             OnChanged?.Invoke(this);
-            ParentElement?.ScheduleRender();
+            ParentElement?.InvalidateLayout();
         }
     }
 
@@ -425,14 +528,26 @@ public class Transform : IDisposable
             }
         }
 
+        if (ParentElement?.MinWidth != null && ComputedTransform.Width < ParentElement.MinWidth.Value)
+        {
+            ComputedTransform.Width = ParentElement.MinWidth.Value;
+        }
+        if (ParentElement?.MaxWidth != null && ComputedTransform.Width > ParentElement.MaxWidth.Value)
+        {
+            ComputedTransform.Width = ParentElement.MaxWidth.Value;
+        }
+
         if (ComputedTransform.Width < 0)
         {
             ComputedTransform.Width = 0;
         }
 
-        // Add parent X
+        // Add parent X (scroll chrome is not content — do not apply scroll offset)
         float scrollX = 0f;
-        if (Parent?.ParentElement is ScrollContainer sc)
+        if (Parent?.ParentElement is ScrollContainer sc
+            && sc.OverflowX == OverflowMode.Scroll
+            && ParentElement != sc.VScrollbar
+            && ParentElement != sc.HScrollbar)
         {
             scrollX = sc.ScrollX;
         }
@@ -477,16 +592,28 @@ public class Transform : IDisposable
             }
         }
 
+        if (ParentElement?.MinHeight != null && ComputedTransform.Height < ParentElement.MinHeight.Value)
+        {
+            ComputedTransform.Height = ParentElement.MinHeight.Value;
+        }
+        if (ParentElement?.MaxHeight != null && ComputedTransform.Height > ParentElement.MaxHeight.Value)
+        {
+            ComputedTransform.Height = ParentElement.MaxHeight.Value;
+        }
+
         if (ComputedTransform.Height < 0)
         {
             ComputedTransform.Height = 0;
         }
 
-        // Add parent Y
+        // Add parent Y (scroll chrome is not content — do not apply scroll offset)
         float scrollY = 0f;
-        if (Parent?.ParentElement is ScrollContainer sc)
+        if (Parent?.ParentElement is ScrollContainer sc2
+            && sc2.OverflowY == OverflowMode.Scroll
+            && ParentElement != sc2.VScrollbar
+            && ParentElement != sc2.HScrollbar)
         {
-            scrollY = sc.ScrollY;
+            scrollY = sc2.ScrollY;
         }
         ComputedTransform.Y += Parent != null ? (Parent.ComputedTransform.Y - scrollY) : 0;
     }
@@ -520,22 +647,54 @@ public class Transform : IDisposable
 
         _transformDirty = false;
 
-        bool changed = prevX != Computed.X || prevY != Computed.Y || prevW != Computed.Width || prevH != Computed.Height;
+        const float eps = 0.01f;
+        bool changed =
+            Math.Abs(prevX - Computed.X) > eps ||
+            Math.Abs(prevY - Computed.Y) > eps ||
+            Math.Abs(prevW - Computed.Width) > eps ||
+            Math.Abs(prevH - Computed.Height) > eps;
+
         if (changed)
         {
-            ParentElement?.ClearRenderCache();
-            var children = ParentElement?.Children;
-            if (children != null)
+            bool sizeChanged =
+                Math.Abs(prevW - Computed.Width) > eps ||
+                Math.Abs(prevH - Computed.Height) > eps;
+
+            if (sizeChanged && ParentElement != null && VisualElement.LayoutMutationDepth == 0)
             {
-                for (int i = 0; i < children.Length; i++)
+                ParentElement.NotifySizeChanged(Computed.Width, Computed.Height);
+                // Custom LayoutChildren (Kanban, Modal, etc.) must re-run when size changes
+                ParentElement.InvalidateLayout();
+            }
+
+            ParentElement?.ClearRenderCache();
+
+            if (VisualElement.LayoutMutationDepth == 0)
+            {
+                var children = ParentElement?.Children;
+                if (children != null)
                 {
-                    var child = children[i];
-                    if (child != null)
+                    for (int i = 0; i < children.Count; i++)
                     {
-                        child.Transform._transformDirty = true;
-                        child.ScheduleRender();
+                        var child = children[i];
+                        if (child != null)
+                        {
+                            child.Transform._transformDirty = true;
+                            // Transform dirty only — paint once via parent path if needed
+                        }
                     }
                 }
+
+                if (sizeChanged && ParentElement != null)
+                {
+                    foreach (var visual in ParentElement.GetVisualChildren())
+                    {
+                        if (visual == null) continue;
+                        visual.Transform._transformDirty = true;
+                    }
+                }
+
+                ParentElement?.InvalidatePaint();
             }
         }
 
