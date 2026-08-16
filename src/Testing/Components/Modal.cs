@@ -1,4 +1,5 @@
 using System;
+using Blossom.Core.Design;
 using Blossom.Core.Visual;
 using Silk.NET.Input;
 using SkiaSharp;
@@ -66,7 +67,7 @@ public class Modal : VisualElement
         ZIndex = 1000;
         Visible = false;
 
-        Transform = new Transform(0, 0, 1920, 1080)
+        Transform = new Transform(0, 0, DesignCanvas.DefaultDesignWidth, DesignCanvas.DefaultDesignHeight)
         {
             Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom
         };

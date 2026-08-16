@@ -7,6 +7,7 @@ namespace Blossom.Testing
     public class TestingApplication : Application
     {
         private readonly KanbanView? _kanbanView;
+        private readonly ComponentDesignView? _componentDesignView;
         private readonly BenchmarkStaticView? _benchStaticView;
         private readonly BenchmarkDynamicView? _benchDynamicView;
 
@@ -31,9 +32,13 @@ namespace Blossom.Testing
                 return;
             }
 
-            // Normal Mode - Single Kanban View
+            // Normal Mode - Kanban Host View + Component Design View (Isolation)
             _kanbanView = new KanbanView();
+            _componentDesignView = new ComponentDesignView(_kanbanView);
+
             AddView(_kanbanView);
+            AddView(_componentDesignView);
+
             SetActiveView(_kanbanView);
         }
     }

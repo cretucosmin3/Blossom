@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Blossom.Core;
+using Blossom.Core.Design;
 using Blossom.Core.Visual;
 using Blossom.Testing.Components;
 using Blossom.Testing.Models;
@@ -34,6 +35,7 @@ public class KanbanView : View
     private Container _headerContainer = null!;
     private VisualElement _titleElement = null!;
     private VisualElement _subtitleElement = null!;
+    private Button _designerBtn = null!;
     private Button _settingsBtn = null!;
     private Button _addTaskBtn = null!;
 
@@ -62,12 +64,21 @@ public class KanbanView : View
     private Slider _settingsCardRoundness = null!;
     private Slider _settingsPanelRoundness = null!;
 
+    /// <summary>
+    /// Optional host strip under the header for plugins attached from the Component Designer.
+    /// Hidden until a plugin is attached — not part of Board Settings.
+    /// </summary>
+    private Container _pluginSlot = null!;
+    private PluginRoot? _currentPlugin;
+
     // Cached column frames for drop hit-testing (absolute)
     private readonly SKRect[] _columnHitRects = new SKRect[3];
 
     public KanbanView() : base("Blossom Tasks")
     {
         BackColor = new SKColor(23, 23, 23);
+        // App fills the window; root anchors reflow with client size.
+        Canvas = new DesignCanvas(1000f, 1000f);
     }
 
     public override void Init()
@@ -84,11 +95,27 @@ public class KanbanView : View
         };
 
         BuildHeader();
+        BuildPluginHostStrip();
         BuildColumns();
         BuildModals();
 
         AddElement(_boardRoot);
         RebuildBoard();
+    }
+
+    private void BuildPluginHostStrip()
+    {
+        // Host slot for designer → board attach. Starts collapsed (not in Settings).
+        _pluginSlot = new Container(SKColors.Transparent, 0f)
+        {
+            Name = "Kanban_PluginSlot",
+            Visible = false,
+            Transform = new Transform(0, 0, 100f, 0f)
+        };
+        _pluginSlot.Style.BackColor = SKColors.Transparent;
+        _pluginSlot.Style.Border.Width = 0;
+        _pluginSlot.Style.Shadow = null!;
+        _boardRoot.AddChild(_pluginSlot);
     }
 
     private void SeedDefaultTasks()
@@ -113,6 +140,9 @@ public class KanbanView : View
         _titleElement = Label("Kanban_Title", "Blossom Tasks", SKColors.White, 22, 700);
         _subtitleElement = Label("Kanban_Subtitle", "Todo board", new SKColor(163, 163, 163), 12, 500);
 
+        _designerBtn = new Button("🎨 Designer", new SKColor(79, 70, 229)) { Name = "Kanban_Designer" };
+        _designerBtn.Clicked += OpenComponentDesigner;
+
         _settingsBtn = new Button("Settings", new SKColor(70, 70, 70)) { Name = "Kanban_Settings" };
         _settingsBtn.Clicked += OpenSettingsModal;
 
@@ -121,6 +151,7 @@ public class KanbanView : View
 
         _headerContainer.AddChild(_titleElement);
         _headerContainer.AddChild(_subtitleElement);
+        _headerContainer.AddChild(_designerBtn);
         _headerContainer.AddChild(_settingsBtn);
         _headerContainer.AddChild(_addTaskBtn);
         _boardRoot.AddChild(_headerContainer);
@@ -235,12 +266,12 @@ public class KanbanView : View
         _editModal.AddContent(_editDeleteBtn);
         _editModal.Confirmed += ConfirmEditTask;
 
-        // Settings modal — switches + sliders to tweak board visuals live
+        // Settings modal — board visual tweaks only (no plugin demos / designer chrome)
         _settingsModal = new Modal("Board Settings")
         {
             Name = "Kanban_SettingsModal",
             CardWidth = 440f,
-            CardHeight = 560f
+            CardHeight = 440f
         };
         _settingsModal.PrimaryButton.Label = "Done";
         _settingsModal.SecondaryButton.Visible = false; // single dismiss action
@@ -322,7 +353,6 @@ public class KanbanView : View
             ApplyVisualSettings(rebuild: false);
         };
 
-        // Preferred control heights for modal stack layout
         foreach (var el in new VisualElement[]
                  {
                      _settingsCompact, _settingsShadows, _settingsDimCompleted,
@@ -339,6 +369,54 @@ public class KanbanView : View
         _boardRoot.AddChild(_addModal);
         _boardRoot.AddChild(_editModal);
         _boardRoot.AddChild(_settingsModal);
+    }
+
+    public void OpenComponentDesigner()
+    {
+        Application?.SetActiveView("Component Designer");
+    }
+
+    /// <summary>
+    /// Attaches an authored plugin into the board host strip under the header (from Component Designer).
+    /// </summary>
+    public void AttachPlugin(PluginRoot plugin)
+    {
+        if (plugin == null || _pluginSlot == null) return;
+
+        if (_currentPlugin != null)
+            PluginEmbed.Detach(_currentPlugin);
+
+        _currentPlugin = plugin;
+        _pluginSlot.Visible = true;
+
+        float slotH = plugin is SampleBoardMetricsPlugin ? 160f : 120f;
+        _pluginSlot.Transform.Height = slotH;
+        _pluginSlot.Embed(_currentPlugin);
+
+        if (_currentPlugin is SampleBoardMetricsPlugin metricsPlugin)
+            metricsPlugin.UpdateStats();
+        else if (_currentPlugin is SampleBoardStatsPlugin statsPlugin)
+            statsPlugin.UpdateStats();
+
+        ForceLayoutEvaluation();
+    }
+
+    public (int total, int inProgress, int done) GetBoardStats()
+    {
+        int total = _items.Count;
+        int inProgress = _items.Count(x => x.Column == TodoColumn.InProgress);
+        int done = _items.Count(x => x.Column == TodoColumn.Done || x.IsDone);
+        return (total, inProgress, done);
+    }
+
+    public void AddSampleTaskFromPlugin()
+    {
+        _items.Add(new TodoItem
+        {
+            Title = $"Plugin Task #{_items.Count + 1}",
+            Column = TodoColumn.Backlog
+        });
+        QueueRebuild();
     }
 
     private void OpenSettingsModal()
@@ -580,6 +658,9 @@ public class KanbanView : View
 
         for (int i = 0; i < 3; i++)
             _colScrollContainers[i].ScrollY = savedScrollY[i];
+
+        if (_currentPlugin is SampleBoardStatsPlugin stats) stats.UpdateStats();
+        else if (_currentPlugin is SampleBoardMetricsPlugin metrics) metrics.UpdateStats();
     }
 
     private void OnCardStatusChanged(TodoItem todo)
@@ -656,15 +737,35 @@ public class KanbanView : View
         _titleElement.Transform.SetAbsoluteFrame(headerX + 18f, headerY + 12f, 220f, 26f);
         _subtitleElement.Transform.SetAbsoluteFrame(headerX + 18f, headerY + 38f, 220f, 18f);
 
-        float addW = 120f, addH = 36f;
+        float addW = 110f, addH = 36f;
         float addX = headerX + headerW - 16f - addW;
         float addY = headerY + (headerH - addH) / 2f;
         _addTaskBtn.Transform.SetAbsoluteFrame(addX, addY, addW, addH);
 
-        float setW = 96f, setH = 36f;
-        _settingsBtn.Transform.SetAbsoluteFrame(addX - 12f - setW, addY, setW, setH);
+        float setW = 88f, setH = 36f;
+        float setX = addX - 10f - setW;
+        _settingsBtn.Transform.SetAbsoluteFrame(setX, addY, setW, setH);
 
-        float colTop = headerY + headerH + 14f;
+        float desW = 104f, desH = 36f;
+        float desX = setX - 10f - desW;
+        _designerBtn.Transform.SetAbsoluteFrame(desX, addY, desW, desH);
+
+        // Optional plugin strip under header (only when a plugin is attached from Designer)
+        float pluginGap = 0f;
+        float pluginH = 0f;
+        if (_pluginSlot != null && _pluginSlot.Visible && _currentPlugin != null)
+        {
+            pluginGap = 10f;
+            pluginH = Math.Max(80f, _pluginSlot.Transform.Height);
+            _pluginSlot.Transform.SetAbsoluteFrame(headerX, headerY + headerH + pluginGap, headerW, pluginH);
+            PluginEmbed.UpdateLayout(_currentPlugin, _pluginSlot, headerW, pluginH);
+        }
+        else if (_pluginSlot != null)
+        {
+            _pluginSlot.Transform.SetAbsoluteFrame(headerX, headerY + headerH, headerW, 0f);
+        }
+
+        float colTop = headerY + headerH + pluginGap + pluginH + 14f;
         float colH = Math.Max(120f, originY + viewH - padY - colTop);
         float colW = Math.Max(120f, (headerW - colGap * 2) / 3f);
 

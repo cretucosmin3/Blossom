@@ -102,8 +102,11 @@ Browser (static host)
 
 ### Layout today
 
+- **Product model:** apps fill the window; components reflow with anchors relative to their parent/slot. See `docs/design_canvas.md` and `plans/adr-design-canvas.md`.
+- Host views: layout width/height track the window client size so root content with `Left|Right|Top|Bottom` fills the app. No host scale/letterbox matrix.
+- Components / plugins: author against a design size, then embed into a slot; `PluginEmbed` sets the root to the slot size and **anchors reflow**.
+- Isolation workflow: `ComponentDesignView` previews plugins against different slot sizes (anchor reflow).
 - Anchors: `Left` / `Right` / `Top` / `Bottom` (stretch vs fixed vs proportional)
-- Optional **reference resolution** on `View` (virtual design size + letterbox scale)
 - `ScrollContainer` applies scroll offsets into child computed positions
 - Custom layout engines should plug in via planned hooks (`LayoutChildren`, layout vs paint dirty) — see platform plan; do **not** add Flexbox as a core system unless the plan explicitly says so
 
@@ -111,8 +114,9 @@ Browser (static host)
 
 - Retained mode: dirty rects, scissor clip, painter’s order (ZIndex, tree depth, registration order)
 - Advanced: SKSL backgrounds, backdrop blur, 3D transforms with inverse hit-test
+- Event-driven idle: when no dirty rects or render flags are active, the engine sleeps to preserve CPU/power; only invalidate when state actually changes.
 
-Background reading: `docs/architecture_and_features.md`, `docs/layout_system.md`, `docs/bulletproof rendering.md`.
+Background reading: `docs/architecture_and_features.md`, `docs/design_canvas.md`, `docs/layout_system.md`, `docs/layout_contract.md`, `docs/bulletproof rendering.md`.
 
 ---
 
@@ -121,7 +125,8 @@ Background reading: `docs/architecture_and_features.md`, `docs/layout_system.md`
 `src/Testing` hosts the primary manual test harness and sample test components (not the framework API boundary):
 
 - Single active application view: **Todo Kanban Board** (`KanbanView`), exercising pointer capture, whole-card drag-and-drop, scrollable columns, modals, and input fields.
-- Components under `Testing/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **StackPanel**, and **TodoCard**.
+- Isolation designer view: **Component Design View** (`ComponentDesignView`), exercising independent plugin canvases, slot reflow presets, and live embed attachment.
+- Components under `Testing/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **StackPanel**, **TodoCard**, **SampleBoardMetricsPlugin**, and **SampleBoardStatsPlugin**.
 - Benchmarks: `./Blossom --benchmark` (isolated benchmark views).
 
 When hardening core, update demos only as needed for compile/regression — do not expand the control library as the main deliverable unless asked.
@@ -187,6 +192,8 @@ dotnet run --project Blossom.csproj
 | Keyboard / mouse event maps | `docs/input_model.md`, `src/Core/EventMap.cs`, `src/Browser.cs` |
 | Scrolling & scrollbars | `docs/scroll_container.md`, `src/Visual/ScrollContainer.cs` |
 | Layout contracts & panels | `docs/layout_contract.md`, `docs/custom_layout.md` |
+| Design canvas & units | `docs/design_canvas.md`, `src/Core/Design/`, `plans/adr-design-canvas.md` |
+| Plugin embed & isolation | `src/Core/Design/PluginEmbed.cs`, `src/Core/Design/PluginRoot.cs`, `src/Testing/Views/ComponentDesignView.cs` |
 | Custom control recipes & samples | `docs/custom_controls.md`, `docs/platform_samples.md` |
 | Styles / shaders | `src/Visual/ElementStyle.cs`, `src/Visual/Style/` |
 | Multi-view app shell | `src/Core/Application.cs`, `src/Testing/TestingApp.cs` |

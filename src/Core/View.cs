@@ -1,9 +1,11 @@
 using System;
+using Blossom.Core.Design;
 using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using SkiaSharp;
 using Silk.NET.Input;
 
@@ -16,12 +18,110 @@ namespace Blossom.Core
         public SKColor BackColor = SKColors.White;
         public readonly CommandLedger Ledger = new();
 
-        public bool UseReferenceResolution { get; set; } = false;
-        public int ReferenceWidth { get; set; } = 1280;
-        public int ReferenceHeight { get; set; } = 800;
+        private DesignCanvas _canvas = new DesignCanvas();
 
-        public int Width => UseReferenceResolution ? ReferenceWidth : (int)Browser.RenderRect.Width;
-        public int Height => UseReferenceResolution ? ReferenceHeight : (int)Browser.RenderRect.Height;
+        /// <summary>
+        /// The declared design canvas defining authoring dimensions (<see cref="Ru"/>) and host fit policy.
+        /// </summary>
+        public DesignCanvas Canvas
+        {
+            get => _canvas;
+            set
+            {
+                if (_canvas != value)
+                {
+                    if (_canvas != null)
+                        _canvas.Changed -= ForceLayoutEvaluation;
+                    _canvas = value ?? new DesignCanvas();
+                    _canvas.Changed += ForceLayoutEvaluation;
+                    ForceLayoutEvaluation();
+                }
+            }
+        }
+
+        public View() : this("Untitled")
+        {
+        }
+
+        /// <summary>
+        /// Logical layout width. Under the product model (window-bound apps), tracks the window client width
+        /// so root content with Left|Right anchors fills the app.
+        /// </summary>
+        public int Width => (int)GetLayoutWidth();
+
+        /// <summary>
+        /// Logical layout height. Under the product model (window-bound apps), tracks the window client height
+        /// so root content with Top|Bottom anchors fills the app.
+        /// </summary>
+        public int Height => (int)GetLayoutHeight();
+
+        /// <summary>
+        /// Strongly-typed layout width in design units (<see cref="Ru"/>).
+        /// </summary>
+        public Ru LayoutWidth => new(GetLayoutWidth());
+
+        /// <summary>
+        /// Strongly-typed layout height in design units (<see cref="Ru"/>).
+        /// </summary>
+        public Ru LayoutHeight => new(GetLayoutHeight());
+
+        private float GetLayoutWidth()
+        {
+            // Apps fill the window: layout size is the client size so anchors reflow on resize.
+            if (Browser.RenderRect.Width > 0)
+                return Browser.RenderRect.Width;
+            return Canvas.Width;
+        }
+
+        private float GetLayoutHeight()
+        {
+            if (Browser.RenderRect.Height > 0)
+                return Browser.RenderRect.Height;
+            return Canvas.Height;
+        }
+
+        // Backward compatibility shims
+        public bool UseReferenceResolution
+        {
+            get => true;
+            set { }
+        }
+
+        public int ReferenceWidth
+        {
+            get => (int)Canvas.Width;
+            set => Canvas.Width = value;
+        }
+
+        public int ReferenceHeight
+        {
+            get => (int)Canvas.Height;
+            set => Canvas.Height = value;
+        }
+
+        /// <summary>
+        /// Maps a window coordinate to host design canvas units.
+        /// </summary>
+        public Vector2 PointToDesign(Vector2 windowPos) =>
+            PointToDesign(windowPos.X, windowPos.Y);
+
+        /// <summary>
+        /// Maps a window coordinate to host design canvas units.
+        /// </summary>
+        public Vector2 PointToDesign(float winX, float winY) =>
+            Canvas.PointToDesign(winX, winY, Browser.RenderRect.Width, Browser.RenderRect.Height);
+
+        /// <summary>
+        /// Maps a design canvas unit point to window coordinates.
+        /// </summary>
+        public Vector2 PointToWindow(Vector2 designPos) =>
+            PointToWindow(designPos.X, designPos.Y);
+
+        /// <summary>
+        /// Maps a design canvas unit point to window coordinates.
+        /// </summary>
+        public Vector2 PointToWindow(float desX, float desY) =>
+            Canvas.PointToWindow(desX, desY, Browser.RenderRect.Width, Browser.RenderRect.Height);
 
         public event ForVoid Loop;
 
@@ -124,9 +224,10 @@ namespace Blossom.Core
             UpdateCursorForTarget(null);
         }
 
-        internal View(string name)
+        public View(string name)
         {
             Name = name;
+            _canvas.Changed += ForceLayoutEvaluation;
 
             Events.OnMouseDown += OnMouseDown;
             Events.OnMouseUp += OnMouseUp;
@@ -200,7 +301,7 @@ namespace Blossom.Core
             else if (target != null && target == hoveredElement)
             {
                 UpdateCursorForTarget(target);
-                target.Events.HandleMouseHover(target, mousePos);
+                target.Events.HandleMouseHover(target, PointToDesign(mousePos));
             }
         }
 
@@ -217,13 +318,14 @@ namespace Blossom.Core
             }
             SetActiveKeyboardElement(focusTarget);
 
-            // Record candidate for Click policy
+            // Record candidate for Click policy (in window logical coords for threshold)
             _clickCandidateElement = element;
             _mouseDownPos = args.Global;
             _mouseDownButton = args.Button;
 
             if (element != null)
             {
+                var designPos = PointToDesign(args.Global);
                 // Bubble mouse down event
                 var current = element;
                 while (current != null)
@@ -232,7 +334,7 @@ namespace Blossom.Core
                     var elemArgs = new MouseEventArgs
                     {
                         Button = args.Button,
-                        Global = args.Global,
+                        Global = designPos,
                         Relative = relative,
                         Handled = args.Handled
                     };
@@ -253,6 +355,7 @@ namespace Blossom.Core
 
             if (target != null)
             {
+                var designPos = PointToDesign(args.Global);
                 var current = target;
                 while (current != null)
                 {
@@ -260,7 +363,7 @@ namespace Blossom.Core
                     var elemArgs = new MouseEventArgs
                     {
                         Button = args.Button,
-                        Global = args.Global,
+                        Global = designPos,
                         Relative = relative,
                         Handled = args.Handled
                     };
@@ -281,6 +384,7 @@ namespace Blossom.Core
                 float distance = System.Numerics.Vector2.Distance(_mouseDownPos, args.Global);
                 if (sameElement && distance <= ClickDistanceThreshold)
                 {
+                    var designPos = PointToDesign(args.Global);
                     var current = target;
                     while (current != null)
                     {
@@ -288,7 +392,7 @@ namespace Blossom.Core
                         var clickArgs = new MouseEventArgs
                         {
                             Button = args.Button,
-                            Global = args.Global,
+                            Global = designPos,
                             Relative = relative
                         };
                         current.Events.HandleClick(clickArgs, current);
@@ -316,6 +420,7 @@ namespace Blossom.Core
 
             if (target != null)
             {
+                var designPos = PointToDesign(args.Global);
                 var current = target;
                 while (current != null)
                 {
@@ -323,7 +428,7 @@ namespace Blossom.Core
                     var elemArgs = new MouseEventArgs
                     {
                         Button = args.Button,
-                        Global = args.Global,
+                        Global = designPos,
                         Relative = relative,
                         Handled = args.Handled
                     };
@@ -388,6 +493,18 @@ namespace Blossom.Core
             _hierarchyDirty = true;
             RenderRequired = true;
         }
+
+        /// <summary>
+        /// Attaches an embeddable plugin into a destination slot element in host design units.
+        /// </summary>
+        public void AttachPlugin(PluginRoot plugin, VisualElement slotHost) =>
+            PluginEmbed.Attach(plugin, slotHost);
+
+        /// <summary>
+        /// Detaches an embedded plugin from its host slot.
+        /// </summary>
+        public void DetachPlugin(PluginRoot plugin) =>
+            PluginEmbed.Detach(plugin);
 
         public void TrackElement(ref VisualElement element)
         {
@@ -646,6 +763,10 @@ namespace Blossom.Core
 
         public void Dispose()
         {
+            if (_canvas != null)
+            {
+                _canvas.Changed -= ForceLayoutEvaluation;
+            }
             ReleasePointerCapture();
             SetActiveKeyboardElement(null);
             hoveredElement = null;

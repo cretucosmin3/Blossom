@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using SkiaSharp;
 using Blossom.Core;
+using Blossom.Core.Design;
 using Blossom.Core.Visual.Enums;
 using Silk.NET.Input;
 
@@ -639,7 +640,7 @@ public class VisualElement : IDisposable
         var localBounds = GetLocalCombinedBounds();
         
         SKRect rect;
-        bool useGlobalMapping = ParentView != null && ParentView.UseReferenceResolution;
+        bool useGlobalMapping = ParentView != null;
         if (!useGlobalMapping)
         {
             var curr = this;
@@ -1265,6 +1266,16 @@ public class VisualElement : IDisposable
         ParentView?.MarkHierarchyDirty();
         InvalidateLayout();
     }
+
+    /// <summary>
+    /// Embeds a plugin root into this element as a host slot, executing synthetic resize reflow (Strategy S2).
+    /// </summary>
+    public void Embed(PluginRoot plugin) => PluginEmbed.Attach(plugin, this);
+
+    /// <summary>
+    /// Detaches an embedded plugin root from this element.
+    /// </summary>
+    public void Unembed(PluginRoot plugin) => PluginEmbed.Detach(plugin);
 
     internal virtual IEnumerable<VisualElement> GetVisualChildren() => Children;
 

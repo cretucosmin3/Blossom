@@ -1,6 +1,7 @@
 using System;
 using SkiaSharp;
 using Blossom.Core;
+using Blossom.Core.Design;
 using Blossom.Core.Visual.Enums;
 
 namespace Blossom.Core.Visual;
@@ -136,26 +137,6 @@ public class Transform : IDisposable
             return _cachedGlobalM44;
         }
 
-        // Apply viewport reference resolution scaling to root elements
-        if (ParentElement?.ParentView != null && ParentElement.ParentView.UseReferenceResolution)
-        {
-            var view = ParentElement.ParentView;
-            float scaleX = (float)Browser.RenderRect.Width / view.Width;
-            float scaleY = (float)Browser.RenderRect.Height / view.Height;
-            float scale = Math.Min(scaleX, scaleY);
-            float offsetX = (Browser.RenderRect.Width - view.Width * scale) / 2f;
-            float offsetY = (Browser.RenderRect.Height - view.Height * scale) / 2f;
-
-            using var viewportMat = SKMatrix44.CreateIdentity();
-            viewportMat.PreTranslate(offsetX, offsetY, 0);
-            viewportMat.PreScale(scale, scale, 1);
-
-            _cachedGlobalM44.SetIdentity();
-            _cachedGlobalM44.PreConcat(viewportMat);
-            _cachedGlobalM44.PreConcat(local);
-            return _cachedGlobalM44;
-        }
-
         return local;
     }
 
@@ -182,8 +163,8 @@ public class Transform : IDisposable
         }
     }
 
-    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : (float)Browser.RenderRect.Width);
-    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : (float)Browser.RenderRect.Height);
+    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : DesignCanvas.DefaultDesignWidth);
+    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : DesignCanvas.DefaultDesignHeight);
 
     internal float FixedLeft;
     internal float FixedRight;
@@ -495,10 +476,9 @@ public class Transform : IDisposable
 
     private void ComputeHorizontalTransform()
     {
-        float ParentWidth = ParentElement?.ParentView != null ? ParentElement.ParentView.Width : (float)Browser.RenderRect.Width;
-
-        if (Parent is not null)
-            ParentWidth = Parent.ComputedTransform.Width;
+        float ParentWidth = Parent is not null
+            ? Parent.ComputedTransform.Width
+            : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : DesignCanvas.DefaultDesignWidth);
 
         if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
         {
@@ -556,10 +536,9 @@ public class Transform : IDisposable
 
     private void ComputeVerticalTransform()
     {
-        float ParentHeight = ParentElement?.ParentView != null ? ParentElement.ParentView.Height : (float)Browser.RenderRect.Height;
-
-        if (Parent != null)
-            ParentHeight = Parent.Computed.Height;
+        float ParentHeight = Parent != null
+            ? Parent.Computed.Height
+            : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : DesignCanvas.DefaultDesignHeight);
 
         bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
         bool topAnchored = _Anchor.HasFlag(Anchor.Top);
