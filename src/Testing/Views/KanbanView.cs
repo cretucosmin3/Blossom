@@ -27,8 +27,7 @@ public class KanbanView : View
     private float _panelRoundness = 10f;
 
     private TodoCard? _draggingCard;
-    private float _dragGrabOffsetX;
-    private float _dragGrabOffsetY;
+    private readonly CardDragPhysics _dragPhysics = new();
 
     private KanbanBoardRoot _boardRoot = null!;
 
@@ -79,6 +78,40 @@ public class KanbanView : View
         BackColor = new SKColor(23, 23, 23);
         // App fills the window; root anchors reflow with client size.
         Canvas = new DesignCanvas(1000f, 1000f);
+        Loop += OnFrameTick;
+    }
+
+    public override void OnDeactivated()
+    {
+        if (_draggingCard != null)
+        {
+            try
+            {
+                _draggingCard.ReleasePointer();
+                _draggingCard.Transform.RotationZ = 0f;
+                _draggingCard.Transform.TransformOriginX = 0.5f;
+                _draggingCard.Transform.TransformOriginY = 0.5f;
+                if (_draggingCard.Parent == _boardRoot)
+                    _boardRoot.RemoveChild(_draggingCard);
+            }
+            catch { }
+            _draggingCard = null;
+            _dragPhysics.Reset();
+            QueueRebuild();
+        }
+        base.OnDeactivated();
+    }
+
+    private void OnFrameTick()
+    {
+        if (_draggingCard == null) return;
+
+        _dragPhysics.StepFrame();
+        _draggingCard.Transform.RotationZ = _dragPhysics.RotationZ;
+
+        FullRenderRequired = true;
+        RenderRequired = true;
+        try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
     }
 
     public override void Init()
@@ -530,8 +563,14 @@ public class KanbanView : View
         if (_addModal.IsOpen || _editModal.IsOpen || _settingsModal.IsOpen) return;
 
         _draggingCard = card;
-        _dragGrabOffsetX = grabOffsetX;
-        _dragGrabOffsetY = grabOffsetY;
+
+        float w = Math.Max(1f, card.Transform.Width);
+        float h = Math.Max(1f, card.Transform.Height);
+
+        _dragPhysics.Start(grabOffsetX, grabOffsetY, w, h, globalPos);
+        card.Transform.TransformOriginX = _dragPhysics.OriginX;
+        card.Transform.TransformOriginY = _dragPhysics.OriginY;
+        card.Transform.RotationZ = _dragPhysics.RotationZ;
 
         // Lift out of scroll clip
         card.Parent?.RemoveChild(card);
@@ -556,6 +595,8 @@ public class KanbanView : View
     private void OnCardDragMoved(TodoCard card, System.Numerics.Vector2 globalPos)
     {
         if (_draggingCard != card) return;
+        _dragPhysics.OnDragMove(globalPos);
+        card.Transform.RotationZ = _dragPhysics.RotationZ;
         MoveDraggedCard(card, globalPos);
     }
 
@@ -563,9 +604,12 @@ public class KanbanView : View
     {
         float w = Math.Max(1f, card.Transform.Width);
         float h = Math.Max(1f, card.Transform.Height);
+        float originX = card.Transform.TransformOriginX;
+        float originY = card.Transform.TransformOriginY;
+
         card.Transform.SetAbsoluteFrame(
-            globalPos.X - _dragGrabOffsetX,
-            globalPos.Y - _dragGrabOffsetY,
+            globalPos.X - originX * w,
+            globalPos.Y - originY * h,
             w,
             h);
 
@@ -584,6 +628,10 @@ public class KanbanView : View
     {
         card.ReleasePointer();
         card.ZIndex = 0;
+        card.Transform.RotationZ = 0f;
+        card.Transform.TransformOriginX = 0.5f;
+        card.Transform.TransformOriginY = 0.5f;
+        _dragPhysics.Reset();
 
         TodoColumn target = card.Item.Column;
         for (int i = 0; i < 3; i++)
@@ -618,11 +666,15 @@ public class KanbanView : View
             try
             {
                 _draggingCard.ReleasePointer();
+                _draggingCard.Transform.RotationZ = 0f;
+                _draggingCard.Transform.TransformOriginX = 0.5f;
+                _draggingCard.Transform.TransformOriginY = 0.5f;
                 if (_draggingCard.Parent == _boardRoot)
                     _boardRoot.RemoveChild(_draggingCard);
             }
             catch { /* ignore teardown races */ }
             _draggingCard = null;
+            _dragPhysics.Reset();
         }
 
         for (int i = 0; i < 3; i++)
