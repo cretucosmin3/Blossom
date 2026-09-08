@@ -503,7 +503,7 @@ public class VisualElement : IDisposable
     public bool HasClippingAncestors => _hasClippingAncestors;
 
     internal bool _visibilityClippingDirty = true;
-    internal void MarkVisibilityClippingDirty()
+    public void MarkVisibilityClippingDirty()
     {
         if (_visibilityClippingDirty) return;
         _visibilityClippingDirty = true;
@@ -727,10 +727,10 @@ public class VisualElement : IDisposable
     #endregion
 
     private View _ParentView = null!;
-    internal View ParentView
+    public View ParentView
     {
         get => Parent != null ? Parent.ParentView : _ParentView;
-        set => _ParentView = value;
+        internal set => _ParentView = value;
     }
 
     public int Layer

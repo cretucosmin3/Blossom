@@ -126,7 +126,7 @@ namespace Blossom.Core
         public event ForVoid Loop;
 
         internal bool IsLoaded { get; set; }
-        public bool RenderRequired { get; internal set; } = true;
+        public bool RenderRequired { get; set; } = true;
         public bool FullRenderRequired { get; set; } = true;
         public bool LayoutRequired { get; internal set; } = true;
 

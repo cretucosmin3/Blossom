@@ -39,7 +39,7 @@ rm -f ./Blossom.bat
 
 if [ "$TARGET_OS" = "windows" ]; then
   echo "=== Compiling Blossom for Windows (Release, x64) ==="
-  dotnet publish Blossom.csproj -c Release -r win-x64 --self-contained "$SELF_CONTAINED" -p:PublishReadyToRun=true -o ./production
+  dotnet publish src/Blossom.Demo/Blossom.Demo.csproj -c Release -r win-x64 --self-contained "$SELF_CONTAINED" -p:PublishReadyToRun=true -o ./production
 
   echo "=== Configuring native libraries ==="
   rm -f production/glfw3.dll
@@ -50,14 +50,14 @@ if [ "$TARGET_OS" = "windows" ]; then
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/production"
-exec ./Blossom.exe "$@"
+exec ./Blossom.Demo.exe "$@"
 EOF
   chmod +x ./Blossom
 
   cat << 'EOF' > ./Blossom.bat
 @echo off
 cd /d "%~dp0production"
-"%~dp0production\Blossom.exe" %*
+"%~dp0production\Blossom.Demo.exe" %*
 EOF
 
   echo "=== Compilation Complete! ==="
@@ -66,7 +66,7 @@ EOF
 
 else
   echo "=== Compiling Blossom for Linux (Release, x64) ==="
-  dotnet publish Blossom.csproj -c Release -r linux-x64 --self-contained "$SELF_CONTAINED" -p:PublishReadyToRun=true -p:TieredCompilation=true -o ./production
+  dotnet publish src/Blossom.Demo/Blossom.Demo.csproj -c Release -r linux-x64 --self-contained "$SELF_CONTAINED" -p:PublishReadyToRun=true -p:TieredCompilation=true -o ./production
 
   echo "=== Configuring native libraries ==="
   rm -f production/libglfw.so.3
@@ -78,19 +78,19 @@ else
     cp -r ./assets/* production/assets/
   fi
 
-  chmod +x production/Blossom
+  chmod +x production/Blossom.Demo
 
   echo "=== Creating root launcher script ==="
   cat << 'EOF' > ./Blossom
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/production"
-exec ./Blossom "$@"
+exec ./Blossom.Demo "$@"
 EOF
   chmod +x ./Blossom
 
   echo "=== Compilation Complete! ==="
   echo "Production build located in: ./production"
-  echo "You can run the application with: ./production/Blossom (or ./Blossom)"
+  echo "You can run the application with: ./production/Blossom.Demo (or ./Blossom)"
   echo "Logs are written to: ./production/blossom.log"
 fi

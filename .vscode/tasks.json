@@ -13,7 +13,7 @@
             "type": "shell",
             "args": [
                 "build",
-                "${workspaceFolder}/Blossom.csproj",
+                "${workspaceFolder}/Blossom.sln",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -25,7 +25,7 @@
             "type": "shell",
             "args": [
                 "publish",
-                "${workspaceFolder}/Blossom.csproj",
+                "${workspaceFolder}/Blossom.sln",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -39,7 +39,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/Blossom.csproj"
+                "${workspaceFolder}/src/Blossom.Demo/Blossom.Demo.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

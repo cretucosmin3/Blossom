@@ -9,7 +9,6 @@ using Silk.NET.Windowing.Glfw;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
-using Blossom.Testing;
 using System;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
@@ -18,6 +17,7 @@ using System.Runtime.InteropServices;
 using SkiaSharp;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using Silk.NET.Windowing.Sdl;
 using Silk.NET.GLFW;
 
@@ -126,9 +126,12 @@ public static class Browser
         PostMarkers.Add((marker, color));
     }
 
-    internal static void Initialize()
+    /// <summary>
+    /// Hosts <paramref name="application"/> in a native window and runs until the window closes.
+    /// </summary>
+    public static void Initialize(Application application)
     {
-        BrowserApp = new TestingApplication();
+        BrowserApp = application ?? throw new ArgumentNullException(nameof(application));
 
         OnLoaded = () =>
         {
@@ -168,7 +171,7 @@ public static class Browser
 
         var options = WindowOptions.Default;
         options.Size = new Vector2D<int>((int)RenderRect.Width, (int)RenderRect.Height);
-        options.Title = "Blossom";
+        options.Title = string.IsNullOrWhiteSpace(BrowserApp.Title) ? "Blossom" : BrowserApp.Title;
         options.VSync = false;
         options.TransparentFramebuffer = false;
         options.WindowBorder = WindowBorder.Resizable;
@@ -387,21 +390,34 @@ public static class Browser
 
     private static void LoadLogo()
     {
-        unsafe
+        try
         {
-            using var image = Image.Load<Rgba32>("assets/icon.png");
-            var memoryGroup = image.GetPixelMemoryGroup();
-            Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
-            var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
-            foreach (var memory in memoryGroup)
+            unsafe
             {
-                memory.Span.CopyTo(block);
-                block = block[memory.Length..];
-            }
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "icon.png");
+                if (!File.Exists(iconPath))
+                    iconPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "icon.png");
+                if (!File.Exists(iconPath))
+                    throw new FileNotFoundException("assets/icon.png not found next to the app or in the working directory.");
 
-            var icon = new RawImage(image.Width, image.Height, array);
-            window.SetWindowIcon(ref icon);
-            Log.Info("Logo loaded");
+                using var image = Image.Load<Rgba32>(iconPath);
+                var memoryGroup = image.GetPixelMemoryGroup();
+                Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
+                var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
+                foreach (var memory in memoryGroup)
+                {
+                    memory.Span.CopyTo(block);
+                    block = block[memory.Length..];
+                }
+
+                var icon = new RawImage(image.Width, image.Height, array);
+                window.SetWindowIcon(ref icon);
+                Log.Info("Logo loaded");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning($"Could not load window icon: {ex.Message}");
         }
     }
 

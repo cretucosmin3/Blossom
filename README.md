@@ -5,7 +5,9 @@ Blossom is a framework / browser and app distribuitor for .Net C# applications w
 
 ## Building and Running
 
-You can compile Blossom on Linux using the build script:
+Blossom is a **class library** (`src/Blossom`) plus a sample host (`src/Blossom.Demo`). Other C# apps reference the library and call `Browser.Initialize(yourApplication)`.
+
+You can compile the demo on Linux using the build script:
 
 ```bash
 ./build.sh
@@ -15,7 +17,7 @@ By default, the script compiles Blossom in Release mode targeting Linux x64 with
 
 ### Build Options
 
-- **Framework-Dependent Build (Default)**: Runs when you invoke `./build.sh`. This requires the .NET 8 runtime to be installed on the system.
+- **Framework-Dependent Build**: Run with `--framework-dependent` (or `-fd`). This requires the .NET 10 runtime to be installed on the system.
 - **Self-Contained Build**: Run with the `--self-contained` (or `-s`) flag:
   ```bash
   ./build.sh --self-contained

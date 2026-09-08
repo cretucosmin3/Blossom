@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net10.0/Blossom.dll",
+            "program": "${workspaceFolder}/src/Blossom.Demo/bin/Debug/net10.0/Blossom.Demo.dll",
             "dotnetPath": "/home/kozmo/.dotnet/dotnet",
             "args": [],
             "cwd": "${workspaceFolder}",

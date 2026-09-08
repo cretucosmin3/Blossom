@@ -13,6 +13,8 @@ namespace Blossom.Testing
 
         public TestingApplication()
         {
+            Title = "Blossom";
+
             if (BenchmarkManager.IsBenchmarkMode)
             {
                 Log.Info("Booting up in Benchmark mode...");

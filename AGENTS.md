@@ -35,16 +35,22 @@ See also: `findings/element-view-gap-analysis.md`, `plans/visual-element-platfor
 
 ```text
 Blossom/
-├── Program.cs              # Entry
-├── Blossom.csproj          # Single executable project (net10.0)
+├── Blossom.sln             # Library + demo
 ├── src/
-│   ├── Browser.cs          # Window loop, input wiring, frame timing
-│   ├── Core/               # Application, View, ElementTree, EventMap, Renderer, ledger
-│   ├── Visual/             # VisualElement, Transform, Style, ScrollContainer, shaders
-│   ├── Testing/            # Demo app, showcase views, sample components
-│   ├── Utils/              # Fonts, imaging helpers
-│   └── External/           # Vendored quadtree helpers
-├── assets/                 # Fonts, images, icons (copied to output on build)
+│   ├── Blossom/            # Framework library (class lib)
+│   │   ├── Blossom.csproj
+│   │   ├── Browser.cs      # Window loop, input wiring, frame timing
+│   │   ├── Core/           # Application, View, ElementTree, EventMap, Renderer, ledger
+│   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
+│   │   ├── Utils/          # Fonts, imaging helpers
+│   │   └── External/       # Vendored quadtree helpers
+│   └── Blossom.Demo/       # Sample host app (not the public API)
+│       ├── Blossom.Demo.csproj
+│       ├── Program.cs
+│       ├── TestingApp.cs
+│       ├── Views/
+│       └── Components/
+├── assets/                 # Fonts, images, icons (copied to demo output on build)
 ├── glfw/                   # Native GLFW libs for packaging
 ├── docs/                   # Architecture / layout / rendering notes
 ├── plans/                  # Implementation plans (+ agy-runs/)
@@ -66,7 +72,7 @@ Ignore `bin/`, `obj/`, and large build outputs under `dist/` if present.
 | TFM | **.NET 10** (`net10.0`) |
 | Window / input | Silk.NET 2.15 (GLFW) |
 | Graphics | SkiaSharp 2.88 (+ SVG, ImageSharp) |
-| Solution | Single `Blossom.csproj` / `Blossom.sln` |
+| Solution | `Blossom.sln` — library `src/Blossom/Blossom.csproj` + demo `src/Blossom.Demo/Blossom.Demo.csproj` |
 
 ---
 
@@ -86,19 +92,19 @@ Browser (static host)
 
 | Concern | Primary files |
 |---|---|
-| Window + input entry | `src/Browser.cs` |
-| App / multi-view | `src/Core/Application.cs` |
-| View render + mouse routing | `src/Core/View.cs` |
-| Hit-test tree | `src/Core/ElementsMap.cs` |
-| Events | `src/Core/EventMap.cs`, `src/Visual/ElementEvents.cs` |
-| Element node | `src/Visual/VisualElement.cs` |
-| Layout / anchors / matrices | `src/Visual/Transform.cs`, `src/Visual/Enums/Anchor.cs` |
-| Style | `src/Visual/ElementStyle.cs`, `src/Visual/Style/*` |
-| Scroll | `src/Visual/ScrollContainer.cs` |
-| Draw commands | `src/Core/CommandLedger.cs`, `VisualElement.RecordDrawCommands` |
-| Shaders / effects | `src/Visual/Style/SKSLShaders.cs` |
-| Demo shell | `src/Testing/TestingApp.cs`, `src/Testing/Views/*` |
-| Sample widgets | `src/Testing/Components/*` (not formal public controls) |
+| Window + input entry | `src/Blossom/Browser.cs` |
+| App / multi-view | `src/Blossom/Core/Application.cs` |
+| View render + mouse routing | `src/Blossom/Core/View.cs` |
+| Hit-test tree | `src/Blossom/Core/ElementsMap.cs` |
+| Events | `src/Blossom/Core/EventMap.cs`, `src/Blossom/Visual/ElementEvents.cs` |
+| Element node | `src/Blossom/Visual/VisualElement.cs` |
+| Layout / anchors / matrices | `src/Blossom/Visual/Transform.cs`, `src/Blossom/Visual/Enums/Anchor.cs` |
+| Style | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/*` |
+| Scroll | `src/Blossom/Visual/ScrollContainer.cs` |
+| Draw commands | `src/Blossom/Core/CommandLedger.cs`, `VisualElement.RecordDrawCommands` |
+| Shaders / effects | `src/Blossom/Visual/Style/SKSLShaders.cs` |
+| Demo shell | `src/Blossom.Demo/TestingApp.cs`, `src/Blossom.Demo/Views/*` |
+| Sample widgets | `src/Blossom.Demo/Components/*` (not formal public controls) |
 
 ### Layout today
 
@@ -122,11 +128,11 @@ Background reading: `docs/architecture_and_features.md`, `docs/design_canvas.md`
 
 ## Testing / demos
 
-`src/Testing` hosts the primary manual test harness and sample test components (not the framework API boundary):
+`src/Blossom.Demo` hosts the primary manual test harness and sample test components (not the framework API boundary):
 
 - Single active application view: **Todo Kanban Board** (`KanbanView`), exercising pointer capture, whole-card drag-and-drop, scrollable columns, modals, and input fields.
 - Isolation designer view: **Component Design View** (`ComponentDesignView`), exercising independent plugin canvases, slot reflow presets, and live embed attachment.
-- Components under `Testing/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **StackPanel**, **TodoCard**, **SampleBoardMetricsPlugin**, and **SampleBoardStatsPlugin**.
+- Components under `Blossom.Demo/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **StackPanel**, **TodoCard**, **SampleBoardMetricsPlugin**, and **SampleBoardStatsPlugin**.
 - Benchmarks: `./Blossom --benchmark` (isolated benchmark views).
 
 When hardening core, update demos only as needed for compile/regression — do not expand the control library as the main deliverable unless asked.
@@ -153,7 +159,7 @@ If a task names a plan, **read and follow that plan** (and any progress checkbox
 - Prefer **primitives and contracts on `VisualElement` / `View`** over new widget types in core.
 - **Do not** expand a focus system (no TabIndex, focus rings, traps) unless the user overrides product direction.
 - **Do not** add `ScrollIntoView` or built-in flex/grid unless explicitly requested.
-- Sample/layout proofs can live under `Testing` or docs; keep core free of “app chrome” widgets when possible.
+- Sample/layout proofs can live under `Blossom.Demo` or docs; keep core free of “app chrome” widgets when possible.
 - No secrets in the repo.
 - Don’t treat `bin/` / `obj/` as source of truth.
 - Nullable is enabled; respect existing patterns for `null!` / events.
@@ -166,7 +172,7 @@ Agents may **build** (and run short verification) to check changes. Prefer not s
 
 ```bash
 # From repo root
-dotnet build Blossom.csproj
+dotnet build Blossom.sln
 
 # Or packaging script (Linux; see build.sh for flags)
 ./build.sh
@@ -175,9 +181,11 @@ dotnet build Blossom.csproj
 Run (after build), from output or via project:
 
 ```bash
-dotnet run --project Blossom.csproj
+dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
 # optional: --builder | --benchmark
 ```
+
+Other apps consume the framework with a project (or later package) reference to `src/Blossom/Blossom.csproj`, then `Browser.Initialize(new MyApplication())`.
 
 ---
 
@@ -185,18 +193,18 @@ dotnet run --project Blossom.csproj
 
 | Task | Start here |
 |---|---|
-| Element behavior / tree | `docs/lifecycle.md`, `src/Visual/VisualElement.cs` |
-| Anchors / size / 3D matrix | `src/Visual/Transform.cs` |
-| Mouse / hover / view render | `docs/input_model.md`, `src/Core/View.cs` |
-| Hit-testing | `docs/input_model.md`, `src/Core/ElementsMap.cs` |
-| Keyboard / mouse event maps | `docs/input_model.md`, `src/Core/EventMap.cs`, `src/Browser.cs` |
-| Scrolling & scrollbars | `docs/scroll_container.md`, `src/Visual/ScrollContainer.cs` |
+| Element behavior / tree | `docs/lifecycle.md`, `src/Blossom/Visual/VisualElement.cs` |
+| Anchors / size / 3D matrix | `src/Blossom/Visual/Transform.cs` |
+| Mouse / hover / view render | `docs/input_model.md`, `src/Blossom/Core/View.cs` |
+| Hit-testing | `docs/input_model.md`, `src/Blossom/Core/ElementsMap.cs` |
+| Keyboard / mouse event maps | `docs/input_model.md`, `src/Blossom/Core/EventMap.cs`, `src/Blossom/Browser.cs` |
+| Scrolling & scrollbars | `docs/scroll_container.md`, `src/Blossom/Visual/ScrollContainer.cs` |
 | Layout contracts & panels | `docs/layout_contract.md`, `docs/custom_layout.md` |
-| Design canvas & units | `docs/design_canvas.md`, `src/Core/Design/`, `plans/adr-design-canvas.md` |
-| Plugin embed & isolation | `src/Core/Design/PluginEmbed.cs`, `src/Core/Design/PluginRoot.cs`, `src/Testing/Views/ComponentDesignView.cs` |
+| Design canvas & units | `docs/design_canvas.md`, `src/Blossom/Core/Design/`, `plans/adr-design-canvas.md` |
+| Plugin embed & isolation | `src/Blossom/Core/Design/PluginEmbed.cs`, `src/Blossom/Core/Design/PluginRoot.cs`, `src/Blossom.Demo/Views/ComponentDesignView.cs` |
 | Custom control recipes & samples | `docs/custom_controls.md`, `docs/platform_samples.md` |
-| Styles / shaders | `src/Visual/ElementStyle.cs`, `src/Visual/Style/` |
-| Multi-view app shell | `src/Core/Application.cs`, `src/Testing/TestingApp.cs` |
+| Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
+| Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
 | Platform roadmap | `plans/visual-element-platform-must-have.md` |
 | Known gaps | `findings/element-view-gap-analysis.md` |
 | AGY implementer runs | `AGY_SUBAGENT.md`, `plans/agy-runs/` |
@@ -206,6 +214,6 @@ dotnet run --project Blossom.csproj
 ## When unsure
 
 1. Prefer reading `VisualElement` + `View` + the relevant plan under `plans/`.  
-2. Treat demos in `Testing` as consumers of the API, not as the definition of core.  
+2. Treat demos in `Blossom.Demo` as consumers of the API, not as the definition of core.  
 3. Ask the user before large product-direction changes (focus model, layout engine shape, new packages).  
 4. For unattended implementation, use the AGY workflow with `--add-dir` on the real repo path.

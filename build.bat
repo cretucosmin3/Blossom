@@ -15,7 +15,7 @@ if exist Blossom.exe del Blossom.exe
 if exist Blossom.bat del Blossom.bat
 
 echo === Compiling Blossom for Windows (Release, x64) ===
-dotnet publish -c Release -r win-x64 --self-contained %SELF_CONTAINED% -p:PublishReadyToRun=true -o .\dist
+dotnet publish src\Blossom.Demo\Blossom.Demo.csproj -c Release -r win-x64 --self-contained %SELF_CONTAINED% -p:PublishReadyToRun=true -o .\dist
 if %errorlevel% neq 0 (
     echo Compilation failed!
     goto end
@@ -27,7 +27,7 @@ copy glfw\glfw3-x64.dll dist\glfw3.dll > nul
 
 echo === Creating root launcher script ===
 echo @echo off > Blossom.bat
-echo "%%~dp0dist\Blossom.exe" %%* >> Blossom.bat
+echo "%%~dp0dist\Blossom.Demo.exe" %%* >> Blossom.bat
 
 echo === Compilation Complete! ===
 echo You can run the application now with: Blossom.bat
