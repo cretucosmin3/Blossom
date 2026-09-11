@@ -416,6 +416,13 @@ namespace Blossom.Core
 
         private void OnMouseMove(object _, MouseEventArgs args)
         {
+            // If the OS dropped mouse-up (release outside the window, UI thread busy),
+            // do not keep routing moves to the capture target.
+            if (PointerCaptureElement != null && !Events.IsMouseButtonDown(0) && !Events.IsMouseButtonDown(1))
+            {
+                ReleasePointerCapture();
+            }
+
             var target = PointerCaptureElement ?? Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
 
             if (target != null)

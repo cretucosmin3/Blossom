@@ -37,16 +37,6 @@ namespace Blossom.Utils
                 if (_defaultRobotoLight == null)
                     TryLoadFromEmbedded(LightResource, isLight: true);
 
-                if (_defaultRobotoMedium != null)
-                {
-                    _fontCache["Roboto-Medium"] = _defaultRobotoMedium;
-                    _fontCache["Roboto"] = _defaultRobotoMedium;
-                    _fontCache["Arimo"] = _defaultRobotoMedium;
-                }
-
-                if (_defaultRobotoLight != null)
-                    _fontCache["Roboto-Light"] = _defaultRobotoLight;
-
                 if (_defaultRobotoMedium == null && _defaultRobotoLight == null)
                     Log.Warning("Bundled Roboto fonts were not found; text will use the Skia default typeface.");
             }
@@ -116,39 +106,77 @@ namespace Blossom.Utils
                 _defaultRobotoMedium = typeface;
         }
 
-        public static SKTypeface GetTypeface(string fontName, int weight = 400, int width = 0, SKFontStyleSlant slant = SKFontStyleSlant.Upright)
+        public static SKTypeface GetTypeface(string fontName, int weight = 400, int width = 5, SKFontStyleSlant slant = SKFontStyleSlant.Upright)
         {
+            if (width <= 0)
+                width = 5; // SKFontStyleWidth.Normal
+            if (weight <= 0)
+                weight = 400;
+
             if (string.IsNullOrWhiteSpace(fontName))
             {
-                fontName = "Roboto";
+                fontName = "Liberation Sans, Noto Sans, sans-serif";
             }
 
-            if (_fontCache.TryGetValue(fontName, out var cached))
+            string cacheKey = $"{fontName}_{weight}_{width}_{(int)slant}";
+            if (_fontCache.TryGetValue(cacheKey, out var cached))
             {
                 return cached;
             }
 
-            if (fontName.Equals("Arimo", StringComparison.OrdinalIgnoreCase) ||
-                fontName.Equals("Roboto", StringComparison.OrdinalIgnoreCase) ||
-                fontName.Equals("Sans-Serif", StringComparison.OrdinalIgnoreCase))
+            var style = new SKFontStyle(weight, width, slant);
+
+            // 1. Try requested font family or comma-separated family names in order
+            var families = fontName.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var family in families)
             {
-                if (weight <= 300 && _defaultRobotoLight != null)
-                    return _defaultRobotoLight;
-                if (_defaultRobotoMedium != null)
-                    return _defaultRobotoMedium;
+                if (family.Equals("sans-serif", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                try
+                {
+                    var tf = SKTypeface.FromFamilyName(family, style);
+                    if (tf != null && !tf.FamilyName.Equals("Dialog", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _fontCache[cacheKey] = tf;
+                        return tf;
+                    }
+                }
+                catch { }
             }
 
+            // 2. Try common high-quality system UI fonts
+            string[] systemFallbacks = ["Liberation Sans", "Noto Sans", "DejaVu Sans", "Inter", "Segoe UI", "Ubuntu", "Cantarell", "sans-serif"];
+            foreach (var fallbackName in systemFallbacks)
+            {
+                try
+                {
+                    var tf = SKTypeface.FromFamilyName(fallbackName, style);
+                    if (tf != null && !tf.FamilyName.Equals("Dialog", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _fontCache[cacheKey] = tf;
+                        return tf;
+                    }
+                }
+                catch { }
+            }
+
+            // 3. Fallback to default system typeface
             try
             {
-                var tf = SKTypeface.FromFamilyName(fontName, new SKFontStyle(weight, width, slant));
+                var tf = SKTypeface.FromFamilyName(null, style);
                 if (tf != null && !tf.FamilyName.Equals("Dialog", StringComparison.OrdinalIgnoreCase))
                 {
+                    _fontCache[cacheKey] = tf;
                     return tf;
                 }
             }
             catch { }
 
-            return (weight <= 300 && _defaultRobotoLight != null) ? _defaultRobotoLight : (_defaultRobotoMedium ?? SKTypeface.Default);
+            // 4. Bundled fallback
+            var fallback = (weight <= 300 && _defaultRobotoLight != null) ? _defaultRobotoLight : (_defaultRobotoMedium ?? SKTypeface.Default);
+            _fontCache[cacheKey] = fallback;
+            return fallback;
         }
 
         public static V2 Measure(SKPaint paint, string text)

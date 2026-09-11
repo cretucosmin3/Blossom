@@ -119,7 +119,7 @@ public class VisualElement : IDisposable
     private bool _isLayoutDirty = true;
     public bool IsLayoutDirty => _isLayoutDirty;
 
-    private bool _isPaintDirty = true;
+    internal bool _isPaintDirty = true;
     public bool IsPaintDirty => _isPaintDirty;
 
     /// <summary>
@@ -270,6 +270,28 @@ public class VisualElement : IDisposable
     }
 
     /// <summary>
+    /// Recursively marks render bounds, transform matrix, and layout transform dirty for this element and all descendants.
+    /// Used when this element or an ancestor moves or resizes.
+    /// </summary>
+    public void InvalidateSubtreeBounds()
+    {
+        _renderBoundsDirty = true;
+        _localBoundsDirty = true;
+        Transform._matrixDirty = true;
+        Transform._transformDirty = true;
+
+        for (int i = 0; i < _children.Count; i++)
+        {
+            _children[i]?.InvalidateSubtreeBounds();
+        }
+        foreach (var visual in GetVisualChildren())
+        {
+            if (visual == null || _children.Contains(visual)) continue;
+            visual.InvalidateSubtreeBounds();
+        }
+    }
+
+    /// <summary>
     /// Returns the size this element would like given max constraints.
     /// Default: current Width/Height (or Local width/height).
     /// Override for text, images, or custom content.
@@ -365,9 +387,14 @@ public class VisualElement : IDisposable
     }
 
     /// <summary>
-    /// Cumulative interactive state: true only if this element and all ancestors have <see cref="Interactive"/> set to true.
+    /// Cumulative visible state: true only if this element and all ancestors have <see cref="Visible"/> set to true.
     /// </summary>
-    public bool EffectiveInteractive => Interactive && (Parent == null || Parent.EffectiveInteractive);
+    public bool EffectiveVisible => Visible && (Parent == null || Parent.EffectiveVisible);
+
+    /// <summary>
+    /// Cumulative interactive state: true only if this element and all ancestors are visible and have <see cref="Interactive"/> set to true.
+    /// </summary>
+    public bool EffectiveInteractive => Interactive && EffectiveVisible && (Parent == null || Parent.EffectiveInteractive);
 
     private float _opacity = 1f;
     /// <summary>
@@ -484,7 +511,14 @@ public class VisualElement : IDisposable
         {
             ScheduleRender();
         }
+
+        OnUpdate(dt);
     }
+
+    /// <summary>
+    /// Called each frame during the view update pass. Override to perform per-frame animations.
+    /// </summary>
+    protected virtual void OnUpdate(float dt) { }
     #endregion
 
     #region Events
@@ -505,7 +539,6 @@ public class VisualElement : IDisposable
     internal bool _visibilityClippingDirty = true;
     public void MarkVisibilityClippingDirty()
     {
-        if (_visibilityClippingDirty) return;
         _visibilityClippingDirty = true;
         foreach (var child in Children)
         {
@@ -518,7 +551,7 @@ public class VisualElement : IDisposable
     internal int CachedNestedElementCount = 0;
 
     private bool _IsDirty = false;
-    private SKRect _lastRenderBounds = SKRect.Empty;
+    internal SKRect _lastRenderBounds = SKRect.Empty;
     private SKRect _cachedRenderBounds;
     internal bool _renderBoundsDirty = true;
     private SKRect _cachedLocalBounds;
@@ -692,6 +725,7 @@ public class VisualElement : IDisposable
         CalculateText();
         MarkVisibilityClippingDirty();
         TransformChanged?.Invoke(this, transform);
+        InvalidateSubtreeBounds();
         InvalidatePaint();
     }
 
@@ -1420,6 +1454,16 @@ public class VisualElement : IDisposable
             else
             {
                 targetCanvas.Concat(ref globalMatrix2D);
+            }
+
+            // Clip this element's own draw (custom images, children paint) to its box.
+            // Ancestor clip alone does not clip Overflow=Clip content that draws past local bounds.
+            if (IsClipping)
+            {
+                float cw = Transform.Computed.Width;
+                float ch = Transform.Computed.Height;
+                if (cw > 0 && ch > 0)
+                    targetCanvas.ClipRect(new SKRect(0, 0, cw, ch), SKClipOperation.Intersect, true);
             }
 
             for (int i = 0; i < cmds.Count; i++)

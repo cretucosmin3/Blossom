@@ -10,12 +10,26 @@ namespace Blossom.Core.Visual;
 public class ScrollContainer : VisualElement
 {
     private float _scrollX = 0f;
+    private float _scrollY = 0f;
+    private float _targetScrollX = 0f;
+    private float _targetScrollY = 0f;
+    private bool _isAnimatingX = false;
+    private bool _isAnimatingY = false;
+
+    public bool SmoothScroll { get; set; } = true;
+    public float ScrollDuration { get; set; } = 0.22f;
+    public float ScrollDamping { get; set; } = 22f;
+    public float ScrollStepY { get; set; } = 72f;
+    public float ScrollStepX { get; set; } = 72f;
+
     public float ScrollX
     {
         get => _scrollX;
         set
         {
             float clamped = (OverflowX == OverflowMode.Scroll) ? Math.Clamp(value, 0, MaxScrollX) : 0f;
+            _targetScrollX = clamped;
+            _isAnimatingX = false;
             if (_scrollX != clamped)
             {
                 _scrollX = clamped;
@@ -24,13 +38,14 @@ public class ScrollContainer : VisualElement
         }
     }
 
-    private float _scrollY = 0f;
     public float ScrollY
     {
         get => _scrollY;
         set
         {
             float clamped = (OverflowY == OverflowMode.Scroll) ? Math.Clamp(value, 0, MaxScrollY) : 0f;
+            _targetScrollY = clamped;
+            _isAnimatingY = false;
             if (_scrollY != clamped)
             {
                 _scrollY = clamped;
@@ -93,6 +108,9 @@ public class ScrollContainer : VisualElement
 
     public void SetContentSize(float? width, float? height)
     {
+        if (_customContentWidth == width && _customContentHeight == height)
+            return;
+
         _customContentWidth = width;
         _customContentHeight = height;
         ClampScroll();
@@ -211,20 +229,14 @@ public class ScrollContainer : VisualElement
                 deltaY = 0f;
             }
 
-            bool consumed = false;
-
             if (OverflowY == OverflowMode.Scroll && deltaY != 0f && MaxScrollY > 0)
             {
-                float before = ScrollY;
-                ScrollY = Math.Clamp(ScrollY - deltaY * 25f, 0, MaxScrollY);
-                if (ScrollY != before) consumed = true;
+                AnimateScrollBy(0, -deltaY * ScrollStepY);
             }
 
             if (OverflowX == OverflowMode.Scroll && deltaX != 0f && MaxScrollX > 0)
             {
-                float before = ScrollX;
-                ScrollX = Math.Clamp(ScrollX - deltaX * 25f, 0, MaxScrollX);
-                if (ScrollX != before) consumed = true;
+                AnimateScrollBy(-deltaX * ScrollStepX, 0);
             }
 
             // Always mark handled when this scroller is the target so parents do not double-scroll (v1 nested policy).
@@ -232,13 +244,182 @@ public class ScrollContainer : VisualElement
             {
                 args.Handled = true;
             }
-
-            if (consumed)
-            {
-                MarkChildrenTransformDirty();
-                InvalidatePaint();
-            }
         };
+    }
+
+    public void AnimateScrollTo(float targetX, float targetY)
+    {
+        if (!SmoothScroll)
+        {
+            ScrollX = targetX;
+            ScrollY = targetY;
+            return;
+        }
+
+        if (OverflowY == OverflowMode.Scroll && MaxScrollY > 0)
+        {
+            float clamped = Math.Clamp(targetY, 0, MaxScrollY);
+            if (Math.Abs(clamped - _scrollY) > 0.1f)
+            {
+                _targetScrollY = clamped;
+                _isAnimatingY = true;
+                ScheduleRender();
+            }
+            else
+            {
+                _targetScrollY = clamped;
+                _isAnimatingY = false;
+            }
+        }
+
+        if (OverflowX == OverflowMode.Scroll && MaxScrollX > 0)
+        {
+            float clamped = Math.Clamp(targetX, 0, MaxScrollX);
+            if (Math.Abs(clamped - _scrollX) > 0.1f)
+            {
+                _targetScrollX = clamped;
+                _isAnimatingX = true;
+                ScheduleRender();
+            }
+            else
+            {
+                _targetScrollX = clamped;
+                _isAnimatingX = false;
+            }
+        }
+    }
+
+    public void AnimateScrollBy(float deltaX, float deltaY)
+    {
+        if (!SmoothScroll)
+        {
+            if (deltaX != 0f) ScrollX += deltaX;
+            if (deltaY != 0f) ScrollY += deltaY;
+            return;
+        }
+
+        if (OverflowY == OverflowMode.Scroll && deltaY != 0f && MaxScrollY > 0)
+        {
+            // If currently moving and user scrolls in the OPPOSITE direction:
+            // immediately cancel momentum and reverse direction from the current position!
+            float currentMoveDir = _isAnimatingY ? Math.Sign(_targetScrollY - _scrollY) : 0;
+            float inputDir = Math.Sign(deltaY);
+
+            float currentBase;
+            if (_isAnimatingY && currentMoveDir != 0 && inputDir != 0 && inputDir != currentMoveDir)
+            {
+                currentBase = _scrollY;
+            }
+            else
+            {
+                currentBase = _isAnimatingY ? _targetScrollY : _scrollY;
+            }
+
+            float newTarget = Math.Clamp(currentBase + deltaY, 0, MaxScrollY);
+
+            // Cap the lead ahead of current position to keep response crisp and avoid runaway scrolling
+            float maxLead = ScrollStepY * 4f;
+            if (newTarget - _scrollY > maxLead)
+                newTarget = Math.Clamp(_scrollY + maxLead, 0, MaxScrollY);
+            else if (_scrollY - newTarget > maxLead)
+                newTarget = Math.Clamp(_scrollY - maxLead, 0, MaxScrollY);
+
+            if (Math.Abs(newTarget - _scrollY) > 0.1f)
+            {
+                _targetScrollY = newTarget;
+                _isAnimatingY = true;
+                ScheduleRender();
+            }
+            else
+            {
+                _targetScrollY = newTarget;
+                _isAnimatingY = false;
+            }
+        }
+
+        if (OverflowX == OverflowMode.Scroll && deltaX != 0f && MaxScrollX > 0)
+        {
+            float currentMoveDir = _isAnimatingX ? Math.Sign(_targetScrollX - _scrollX) : 0;
+            float inputDir = Math.Sign(deltaX);
+
+            float currentBase;
+            if (_isAnimatingX && currentMoveDir != 0 && inputDir != 0 && inputDir != currentMoveDir)
+            {
+                currentBase = _scrollX;
+            }
+            else
+            {
+                currentBase = _isAnimatingX ? _targetScrollX : _scrollX;
+            }
+
+            float newTarget = Math.Clamp(currentBase + deltaX, 0, MaxScrollX);
+
+            float maxLead = ScrollStepX * 4f;
+            if (newTarget - _scrollX > maxLead)
+                newTarget = Math.Clamp(_scrollX + maxLead, 0, MaxScrollX);
+            else if (_scrollX - newTarget > maxLead)
+                newTarget = Math.Clamp(_scrollX - maxLead, 0, MaxScrollX);
+
+            if (Math.Abs(newTarget - _scrollX) > 0.1f)
+            {
+                _targetScrollX = newTarget;
+                _isAnimatingX = true;
+                ScheduleRender();
+            }
+            else
+            {
+                _targetScrollX = newTarget;
+                _isAnimatingX = false;
+            }
+        }
+    }
+
+    protected override void OnUpdate(float dt)
+    {
+        base.OnUpdate(dt);
+
+        if (_isAnimatingY)
+        {
+            float stepDt = (dt > 0.0001f && dt < 0.1f) ? dt : 0.016f;
+            float blend = 1f - MathF.Exp(-ScrollDamping * stepDt);
+            float nextY = _scrollY + (_targetScrollY - _scrollY) * blend;
+
+            if (Math.Abs(_targetScrollY - nextY) < 0.25f)
+            {
+                nextY = _targetScrollY;
+                _isAnimatingY = false;
+            }
+
+            if (Math.Abs(_scrollY - nextY) > 0.01f)
+            {
+                _scrollY = nextY;
+                OnScrollOffsetChanged();
+            }
+
+            // Always schedule render on both moving frames and the settling frame so final position is drawn
+            ScheduleRender();
+        }
+
+        if (_isAnimatingX)
+        {
+            float stepDt = (dt > 0.0001f && dt < 0.1f) ? dt : 0.016f;
+            float blend = 1f - MathF.Exp(-ScrollDamping * stepDt);
+            float nextX = _scrollX + (_targetScrollX - _scrollX) * blend;
+
+            if (Math.Abs(_targetScrollX - nextX) < 0.25f)
+            {
+                nextX = _targetScrollX;
+                _isAnimatingX = false;
+            }
+
+            if (Math.Abs(_scrollX - nextX) > 0.01f)
+            {
+                _scrollX = nextX;
+                OnScrollOffsetChanged();
+            }
+
+            ScheduleRender();
+        }
     }
 
     public void MarkChildrenTransformDirty()
@@ -249,7 +430,7 @@ public class ScrollContainer : VisualElement
             var child = children[i];
             if (child != null)
             {
-                child.Transform._transformDirty = true;
+                child.InvalidateSubtreeBounds();
                 child.ScheduleRender();
             }
         }
@@ -259,11 +440,17 @@ public class ScrollContainer : VisualElement
     {
         float newX = (OverflowX == OverflowMode.Scroll) ? Math.Clamp(_scrollX, 0, MaxScrollX) : 0f;
         float newY = (OverflowY == OverflowMode.Scroll) ? Math.Clamp(_scrollY, 0, MaxScrollY) : 0f;
+        _targetScrollX = (OverflowX == OverflowMode.Scroll) ? Math.Clamp(_targetScrollX, 0, MaxScrollX) : 0f;
+        _targetScrollY = (OverflowY == OverflowMode.Scroll) ? Math.Clamp(_targetScrollY, 0, MaxScrollY) : 0f;
+
         if (newX != _scrollX || newY != _scrollY)
         {
             _scrollX = newX;
             _scrollY = newY;
-            MarkChildrenTransformDirty();
+            _isAnimatingX = false;
+            _isAnimatingY = false;
+            OnScrollOffsetChanged();
+            ScheduleRender();
         }
     }
 

@@ -69,7 +69,9 @@ public class ElementTree : IDisposable
 
     private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
     {
-        var sortedChildren = root.GetVisualChildren().Where(c => c != null).OrderByDescending(c => c.ZIndex).ToList();
+        if (!root.Visible) return;
+
+        var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderByDescending(c => c.ZIndex).ToList();
         foreach (var child in sortedChildren)
         {
             CollectElementsForHitTest(child, list);
@@ -93,7 +95,7 @@ public class ElementTree : IDisposable
 
         foreach (var elementFromPoint in elements)
         {
-            if (elementFromPoint.ComputedVisibility == Visibility.Hidden)
+            if (!elementFromPoint.EffectiveVisible || elementFromPoint.ComputedVisibility == Visibility.Hidden)
                 continue;
 
             if (!elementFromPoint.EffectiveInteractive)

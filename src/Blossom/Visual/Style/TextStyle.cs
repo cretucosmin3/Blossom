@@ -11,13 +11,13 @@ public class TextStyle : StyleProperty, IDisposable
 
     private int _Spacing = 2;
     private float _Size = 18f;
-    private int _Weight = 100;
-    private int _Width = 0;
+    private int _Weight = 400;
+    private int _Width = 5; // SKFontStyleWidth.Normal
     private float _Padding = 0f;
     private SKPathEffect _PathEffect = null;
     private TextAlign _Alignment = TextAlign.Center;
     private SKColor _Color;
-    private string _FontName = "Roboto";
+    private string _FontName = "Liberation Sans, Noto Sans, sans-serif";
 
     public ShadowStyle _Shadow;
 
@@ -26,9 +26,11 @@ public class TextStyle : StyleProperty, IDisposable
         Paint = new SKPaint()
         {
             IsAntialias = true,
+            SubpixelText = true,
+            LcdRenderText = true,
+            HintingLevel = SKPaintHinting.Normal,
             TextAlign = SKTextAlign.Left,
             TextSize = _Size,
-            SubpixelText = true,
             Typeface = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
         };
     }
@@ -43,6 +45,9 @@ public class TextStyle : StyleProperty, IDisposable
         }
 
         Paint.IsAntialias = true;
+        Paint.SubpixelText = true;
+        Paint.LcdRenderText = true;
+        Paint.HintingLevel = SKPaintHinting.Normal;
         Paint.Typeface = typeFace;
         Paint.TextSize = _Size;
 

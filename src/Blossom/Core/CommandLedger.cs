@@ -229,6 +229,102 @@ public class DrawImageCommand : DrawCommand
 }
 
 /// <summary>
+/// Draws an app-owned <see cref="SKImage"/> (typically a GPU snapshot from <see cref="Gpu"/>).
+/// Does not dispose <paramref name="image"/>; optional paint is disposed only when <paramref name="ownsPaint"/> is true.
+/// </summary>
+public class DrawSkImageCommand : DrawCommand
+{
+    private readonly SKImage _image;
+    private readonly SKRect _dest;
+    private readonly SKRect? _source;
+    private readonly SKPaint? _paint;
+    private readonly bool _ownsPaint;
+
+    public DrawSkImageCommand(SKImage image, SKRect dest, SKPaint? paint = null, bool ownsPaint = false)
+        : this(image, dest, source: null, paint, ownsPaint)
+    {
+    }
+
+    public DrawSkImageCommand(SKImage image, SKRect dest, SKRect source, SKPaint? paint = null, bool ownsPaint = false)
+        : this(image, dest, (SKRect?)source, paint, ownsPaint)
+    {
+    }
+
+    private DrawSkImageCommand(SKImage image, SKRect dest, SKRect? source, SKPaint? paint, bool ownsPaint)
+    {
+        _image = image ?? throw new ArgumentNullException(nameof(image));
+        _dest = dest;
+        _source = source;
+        _paint = paint;
+        _ownsPaint = ownsPaint;
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        if (_image.Handle == IntPtr.Zero)
+            return;
+
+        if (_source.HasValue)
+            canvas.DrawImage(_image, _source.Value, _dest, _paint);
+        else
+            canvas.DrawImage(_image, _dest, _paint);
+    }
+
+    public override void Dispose()
+    {
+        if (_ownsPaint)
+            _paint?.Dispose();
+    }
+}
+
+/// <summary>
+/// Fills a rectangle with a paint. Use for a custom <see cref="SKRuntimeEffect"/> (set uniforms on the paint's shader).
+/// Paint is disposed only when <paramref name="ownsPaint"/> is true.
+/// </summary>
+public class DrawPaintCommand : DrawCommand
+{
+    private readonly SKRect _dest;
+    private readonly SKPaint _paint;
+    private readonly bool _ownsPaint;
+
+    public DrawPaintCommand(SKRect dest, SKPaint paint, bool ownsPaint = false)
+    {
+        _dest = dest;
+        _paint = paint ?? throw new ArgumentNullException(nameof(paint));
+        _ownsPaint = ownsPaint;
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        canvas.DrawRect(_dest, _paint);
+    }
+
+    public override void Dispose()
+    {
+        if (_ownsPaint)
+            _paint.Dispose();
+    }
+}
+
+/// <summary>
+/// Runs an app callback on the element's canvas (crop overlays, split lines, etc.).
+/// </summary>
+public class DrawCallbackCommand : DrawCommand
+{
+    private readonly Action<SKCanvas> _draw;
+
+    public DrawCallbackCommand(Action<SKCanvas> draw)
+    {
+        _draw = draw ?? throw new ArgumentNullException(nameof(draw));
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        _draw(canvas);
+    }
+}
+
+/// <summary>
 /// Command to draw a background SVG picture with scaling, optional clipping, and filters.
 /// </summary>
 public class DrawSvgCommand : DrawCommand

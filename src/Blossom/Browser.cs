@@ -36,6 +36,9 @@ public static class Browser
 
     public static event ForVoid OnLoaded;
 
+    /// <summary>OS file drop onto the window. Also forwarded to <c>Application.Events</c> and the active view.</summary>
+    public static event Action<string[]> FilesDropped;
+
     public static IntPtr Window_handle => window.Native.Win32.Value.Hwnd;
     public static bool IsLoaded { get; private set; } = false;
     public static bool IsRunning { get; } = false;
@@ -110,11 +113,8 @@ public static class Browser
 
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
     private static readonly List<(SKRect, SKColor)> PostMarkers = new();
-#if DEBUG
-    public static bool ShowDebugOverlay { get; set; } = true;
-#else
-    public static bool ShowDebugOverlay { get; set; } = false;
-#endif
+    /// <summary>Frame-time overlay (top-left). Off by default; toggle with F12 or <c>--fps</c>.</summary>
+    public static bool ShowDebugOverlay { get; set; }
 
     private static Glfw _glfw = null!;
 
@@ -197,6 +197,7 @@ public static class Browser
         window.Load += Load;
         window.Render += Render;
         window.Closing += Closing;
+        window.FileDrop += OnFileDrop;
 
         window.StateChanged += (state) =>
         {
@@ -292,12 +293,38 @@ public static class Browser
 
     internal static void ChangeCursor(StandardCursor cursor)
     {
+        SetCursor(cursor);
+    }
+
+    /// <summary>Set a platform standard mouse cursor.</summary>
+    public static void SetCursor(StandardCursor cursor)
+    {
         if (input == null || input.Mice == null) return;
         foreach (IMouse mouse in input.Mice)
         {
             try
             {
-                mouse.Cursor.StandardCursor = cursor;
+                var c = mouse.Cursor;
+                c.Type = CursorType.Standard;
+                c.StandardCursor = cursor;
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>Set a custom RGBA mouse cursor (32-bit non-premultiplied little-endian).</summary>
+    public static void SetCustomCursor(RawImage image, int hotspotX, int hotspotY)
+    {
+        if (input == null || input.Mice == null) return;
+        foreach (IMouse mouse in input.Mice)
+        {
+            try
+            {
+                var c = mouse.Cursor;
+                c.HotspotX = hotspotX;
+                c.HotspotY = hotspotY;
+                c.Image = image;
+                c.Type = CursorType.Custom;
             }
             catch { }
         }
@@ -354,8 +381,14 @@ public static class Browser
         // Register mouse events
         foreach (IMouse mouse in input.Mice)
         {
-            mouse.MouseMove += (IMouse _, Vector2 pos) =>
+            mouse.MouseMove += (IMouse m, Vector2 pos) =>
             {
+                if (BrowserApp.ActiveView?.PointerCaptureElement != null
+                    && !m.IsButtonPressed(Silk.NET.Input.MouseButton.Left)
+                    && !m.IsButtonPressed(Silk.NET.Input.MouseButton.Right))
+                {
+                    BrowserApp.ActiveView.ReleasePointerCapture();
+                }
                 BrowserApp.Events.HandleMouseMove(pos);
                 BrowserApp.ActiveView?.Events.HandleMouseMove(pos);
             };
@@ -386,6 +419,31 @@ public static class Browser
     private static void Closing()
     {
         BrowserApp.Dispose();
+    }
+
+    private static void OnFileDrop(string[] paths)
+    {
+        if (paths == null || paths.Length == 0)
+            return;
+
+        try
+        {
+            FilesDropped?.Invoke(paths);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"FilesDropped handler failed:\n{ex}");
+        }
+
+        try
+        {
+            BrowserApp?.Events.HandleFilesDropped(paths);
+            BrowserApp?.ActiveView?.Events.HandleFilesDropped(paths);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"View/application file-drop handler failed:\n{ex}");
+        }
     }
 
     private static void LoadLogo()
@@ -491,10 +549,11 @@ public static class Browser
             Blossom.Core.BenchmarkManager.EndFrame();
         }
 
-        if (window.Title != BrowserApp.ActiveView.Name)
-        {
-            window.Title = BrowserApp.ActiveView.Name;
-        }
+        string title = !string.IsNullOrWhiteSpace(BrowserApp.Title)
+            ? BrowserApp.Title
+            : (BrowserApp.ActiveView?.Name ?? "Blossom");
+        if (window.Title != title)
+            window.Title = title;
 
         frameTimes[frameCounter] = frameTimer.ElapsedMilliseconds;
 

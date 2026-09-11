@@ -33,6 +33,8 @@ public class EventMap : IDisposable
     public bool IsShiftDown => _keysDown.Contains(Key.ShiftLeft) || _keysDown.Contains(Key.ShiftRight);
     public bool IsControlDown => _keysDown.Contains(Key.ControlLeft) || _keysDown.Contains(Key.ControlRight);
     public bool IsAltDown => _keysDown.Contains(Key.AltLeft) || _keysDown.Contains(Key.AltRight);
+    public bool IsMouseButtonDown(int button) =>
+        button >= 0 && button < keysDown.Length && keysDown[button];
 
     public int DoubleClickTime = 200;
 
@@ -58,6 +60,9 @@ public class EventMap : IDisposable
     }
 
     public event Action<object, MouseEventArgs> OnMouseDoubleClick;
+
+    /// <summary>OS file drop onto the window. Paths are absolute.</summary>
+    public event Action<string[]> OnFilesDropped;
 
     /// <summary>
     /// Register series of keys to one event
@@ -238,6 +243,13 @@ public class EventMap : IDisposable
         {
             OnScroll?.Invoke(target, args);
         }
+    }
+
+    internal void HandleFilesDropped(string[] paths)
+    {
+        if (paths == null || paths.Length == 0)
+            return;
+        OnFilesDropped?.Invoke(paths);
     }
     #endregion
 

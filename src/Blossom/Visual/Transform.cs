@@ -10,7 +10,7 @@ public class Transform : IDisposable
 {
     private readonly SKMatrix44 _cachedLocalM44 = new SKMatrix44();
     private readonly SKMatrix44 _cachedGlobalM44 = new SKMatrix44();
-    private bool _matrixDirty = true;
+    internal bool _matrixDirty = true;
 
     private float _rotationX = 0f;
     private float _rotationY = 0f;
@@ -218,6 +218,8 @@ public class Transform : IDisposable
             CenterX = value + (ComputedTransform.Width / 2f);
 
             _transformDirty = true;
+            _matrixDirty = true;
+            ParentElement?.InvalidateSubtreeBounds();
             if (VisualElement.LayoutMutationDepth == 0)
             {
                 OnChanged?.Invoke(this);
@@ -243,6 +245,8 @@ public class Transform : IDisposable
             CenterY = value + (ComputedTransform.Height / 2f);
 
             _transformDirty = true;
+            _matrixDirty = true;
+            ParentElement?.InvalidateSubtreeBounds();
             if (VisualElement.LayoutMutationDepth == 0)
             {
                 OnChanged?.Invoke(this);
@@ -269,6 +273,8 @@ public class Transform : IDisposable
             CenterX = ComputedTransform.X + (ComputedTransform.Width / 2f);
 
             _transformDirty = true;
+            _matrixDirty = true;
+            ParentElement?.InvalidateSubtreeBounds();
             if (VisualElement.LayoutMutationDepth == 0)
             {
                 OnChanged?.Invoke(this);
@@ -296,6 +302,8 @@ public class Transform : IDisposable
             CenterY = ComputedTransform.Y + (ComputedTransform.Height / 2f);
 
             _transformDirty = true;
+            _matrixDirty = true;
+            ParentElement?.InvalidateSubtreeBounds();
             if (VisualElement.LayoutMutationDepth == 0)
             {
                 OnChanged?.Invoke(this);
@@ -314,22 +322,40 @@ public class Transform : IDisposable
         width = Math.Max(0, width);
         height = Math.Max(0, height);
 
+        float parentX = Parent != null ? Parent.ComputedTransform.X : 0;
+        float parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
+
+        float targetLocalX = absX - parentX;
+        float targetLocalY = absY - parentY;
+
+        float scrollX = 0f;
+        float scrollY = 0f;
+        if (Parent?.ParentElement is ScrollContainer sc
+            && ParentElement != sc.VScrollbar
+            && ParentElement != sc.HScrollbar)
+        {
+            if (sc.OverflowX == OverflowMode.Scroll) scrollX = sc.ScrollX;
+            if (sc.OverflowY == OverflowMode.Scroll) scrollY = sc.ScrollY;
+        }
+
+        float computedX = absX - scrollX;
+        float computedY = absY - scrollY;
+
         // Skip no-ops so LayoutChildren can re-apply the same frames without scheduling another frame
         const float eps = 0.01f;
         if (_anchorsInitialized
-            && Math.Abs(ComputedTransform.X - absX) < eps
-            && Math.Abs(ComputedTransform.Y - absY) < eps
-            && Math.Abs(ComputedTransform.Width - width) < eps
-            && Math.Abs(ComputedTransform.Height - height) < eps)
+            && Math.Abs(Local.X - targetLocalX) < eps
+            && Math.Abs(Local.Y - targetLocalY) < eps
+            && Math.Abs(Local.Width - width) < eps
+            && Math.Abs(Local.Height - height) < eps
+            && Math.Abs(ComputedTransform.X - computedX) < eps
+            && Math.Abs(ComputedTransform.Y - computedY) < eps)
         {
             return;
         }
 
-        float parentX = Parent != null ? Parent.ComputedTransform.X : 0;
-        float parentY = Parent != null ? Parent.ComputedTransform.Y : 0;
-
-        Local.X = absX - parentX;
-        Local.Y = absY - parentY;
+        Local.X = targetLocalX;
+        Local.Y = targetLocalY;
         Local.Width = width;
         Local.Height = height;
 
@@ -342,12 +368,12 @@ public class Transform : IDisposable
         CalculateTopAnchor();
         CalculateBottomAnchor();
 
-        ComputedTransform.X = absX;
-        ComputedTransform.Y = absY;
+        ComputedTransform.X = computedX;
+        ComputedTransform.Y = computedY;
         ComputedTransform.Width = Local.Width;
         ComputedTransform.Height = Local.Height;
-        CenterX = absX + Local.Width / 2f;
-        CenterY = absY + Local.Height / 2f;
+        CenterX = computedX + Local.Width / 2f;
+        CenterY = computedY + Local.Height / 2f;
 
         _anchorsInitialized = true;
         _transformDirty = true;
@@ -355,9 +381,23 @@ public class Transform : IDisposable
 
         if (ParentElement != null)
         {
+            ParentElement.InvalidateSubtreeBounds();
             ParentElement.InvalidateLayout();
             ParentElement.ClearRenderCache();
             ParentElement.MarkVisibilityClippingDirty();
+
+            if (ParentElement.ParentView != null)
+            {
+                if (!ParentElement._lastRenderBounds.IsEmpty)
+                {
+                    ParentElement.ParentView.AddDirtyRect(ParentElement._lastRenderBounds);
+                }
+                var newBounds = ParentElement.RenderBounds;
+                ParentElement.ParentView.AddDirtyRect(newBounds);
+                ParentElement._lastRenderBounds = newBounds;
+                ParentElement._isPaintDirty = true;
+                ParentElement.ParentView.RenderRequired = true;
+            }
         }
 
         // During LayoutChildren, notifications are suppressed (see VisualElement.LayoutMutationDepth)
@@ -639,6 +679,24 @@ public class Transform : IDisposable
                 Math.Abs(prevW - Computed.Width) > eps ||
                 Math.Abs(prevH - Computed.Height) > eps;
 
+            if (ParentElement != null)
+            {
+                ParentElement.InvalidateSubtreeBounds();
+
+                if (ParentElement.ParentView != null)
+                {
+                    if (!ParentElement._lastRenderBounds.IsEmpty)
+                    {
+                        ParentElement.ParentView.AddDirtyRect(ParentElement._lastRenderBounds);
+                    }
+                    var newBounds = ParentElement.RenderBounds;
+                    ParentElement.ParentView.AddDirtyRect(newBounds);
+                    ParentElement._lastRenderBounds = newBounds;
+                    ParentElement._isPaintDirty = true;
+                    ParentElement.ParentView.RenderRequired = true;
+                }
+            }
+
             if (sizeChanged && ParentElement != null && VisualElement.LayoutMutationDepth == 0)
             {
                 ParentElement.NotifySizeChanged(Computed.Width, Computed.Height);
@@ -650,29 +708,6 @@ public class Transform : IDisposable
 
             if (VisualElement.LayoutMutationDepth == 0)
             {
-                var children = ParentElement?.Children;
-                if (children != null)
-                {
-                    for (int i = 0; i < children.Count; i++)
-                    {
-                        var child = children[i];
-                        if (child != null)
-                        {
-                            child.Transform._transformDirty = true;
-                            // Transform dirty only — paint once via parent path if needed
-                        }
-                    }
-                }
-
-                if (sizeChanged && ParentElement != null)
-                {
-                    foreach (var visual in ParentElement.GetVisualChildren())
-                    {
-                        if (visual == null) continue;
-                        visual.Transform._transformDirty = true;
-                    }
-                }
-
                 ParentElement?.InvalidatePaint();
             }
         }
