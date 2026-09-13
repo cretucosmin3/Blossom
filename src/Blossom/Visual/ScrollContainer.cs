@@ -19,8 +19,8 @@ public class ScrollContainer : VisualElement
     public bool SmoothScroll { get; set; } = true;
     public float ScrollDuration { get; set; } = 0.22f;
     public float ScrollDamping { get; set; } = 22f;
-    public float ScrollStepY { get; set; } = 72f;
-    public float ScrollStepX { get; set; } = 72f;
+    public float ScrollStepY { get; set; } = 108f;
+    public float ScrollStepX { get; set; } = 108f;
 
     public float ScrollX
     {
@@ -54,23 +54,11 @@ public class ScrollContainer : VisualElement
         }
     }
 
-    private void OnScrollOffsetChanged()
+    protected virtual void OnScrollOffsetChanged()
     {
-        // Content moves under a clip — must repaint the full viewport and every child
-        // (including those that were Hidden while off-screen and need a fresh BackColor record).
         MarkChildrenTransformDirty();
         MarkVisibilityClippingDirty();
         InvalidatePaint();
-
-        var children = Children;
-        for (int i = 0; i < children.Count; i++)
-        {
-            var child = children[i];
-            if (child == null) continue;
-            child.MarkVisibilityClippingDirty();
-            child.ClearRenderCache();
-            child.InvalidatePaint();
-        }
 
         VScrollbar?.InvalidatePaint();
         HScrollbar?.InvalidatePaint();
@@ -223,7 +211,7 @@ public class ScrollContainer : VisualElement
             float deltaX = args.Offset.X;
             float deltaY = args.Offset.Y;
 
-            if (isShift && deltaX == 0f && deltaY != 0f)
+            if ((isShift || OverflowY != OverflowMode.Scroll) && deltaX == 0f && deltaY != 0f)
             {
                 deltaX = deltaY;
                 deltaY = 0f;
@@ -431,7 +419,6 @@ public class ScrollContainer : VisualElement
             if (child != null)
             {
                 child.InvalidateSubtreeBounds();
-                child.ScheduleRender();
             }
         }
     }

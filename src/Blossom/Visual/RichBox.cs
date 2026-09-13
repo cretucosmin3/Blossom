@@ -14,7 +14,7 @@ namespace Blossom.Core.Visual;
 public class RichBox : VisualElement
 {
     private const float ScrollbarW = 5f;
-    private const float ScrollStep = 36f;
+    private const float ScrollStep = 54f;
 
     private readonly List<TextSpan> _spans = new();
     private bool _scrollable;

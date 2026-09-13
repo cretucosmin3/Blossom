@@ -1982,7 +1982,7 @@ public class VisualElement : IDisposable
         _hasClippingAncestors = false;
         while (ancestor != null)
         {
-            if (!ancestor.Visible)
+            if (!ancestor.Visible || ancestor.ComputedVisibility == Visibility.Hidden)
             {
                 ComputedVisibility = Visibility.Hidden;
                 return;
