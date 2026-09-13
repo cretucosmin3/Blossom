@@ -90,6 +90,69 @@ public class DrawTextCommand : DrawCommand
     }
 }
 
+/// <summary>Command to draw a laid-out rich text block (emoji fallback, wrap, ellipsis).</summary>
+public sealed class DrawRichTextCommand : DrawCommand
+{
+    private readonly TextLayout _layout;
+    private readonly SKPoint _origin;
+    private readonly SKRect? _clip;
+    private readonly SKPaint _paint;
+
+    public DrawRichTextCommand(TextLayout layout, SKPoint origin, SKPaint prototype, SKRect? clip)
+    {
+        _layout = layout;
+        _origin = origin;
+        _clip = clip;
+        _paint = prototype.Clone();
+        _paint.TextAlign = SKTextAlign.Left;
+    }
+
+    public override void Execute(SKCanvas canvas)
+    {
+        int save = -1;
+        if (_clip.HasValue)
+        {
+            save = canvas.Save();
+            canvas.ClipRect(_clip.Value, SKClipOperation.Intersect, true);
+        }
+
+        var runs = _layout.Runs;
+        float clipTop = _clip?.Top ?? float.MinValue;
+        float clipBottom = _clip?.Bottom ?? float.MaxValue;
+        float clipLeft = _clip?.Left ?? float.MinValue;
+        float clipRight = _clip?.Right ?? float.MaxValue;
+
+        for (int i = 0; i < runs.Count; i++)
+        {
+            var run = runs[i];
+            if (string.IsNullOrEmpty(run.Text))
+                continue;
+
+            float x = _origin.X + run.X;
+            float baseline = _origin.Y + run.Y;
+            float top = baseline - run.Ascent;
+            float bottom = baseline + run.Descent;
+            if (bottom < clipTop - 0.5f || top > clipBottom + 0.5f)
+                continue;
+            if (x + run.Width < clipLeft - 0.5f || x > clipRight + 0.5f)
+                continue;
+
+            _paint.Typeface = run.Typeface;
+            _paint.TextSize = run.Size;
+            _paint.Color = run.Color;
+            canvas.DrawText(run.Text, x, baseline, _paint);
+        }
+
+        if (save != -1)
+            canvas.RestoreToCount(save);
+    }
+
+    public override void Dispose()
+    {
+        _paint.Dispose();
+    }
+}
+
 /// <summary>
 /// Defines how a background image scales to fit its target element.
 /// </summary>

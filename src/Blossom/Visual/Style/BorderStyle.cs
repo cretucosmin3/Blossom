@@ -34,6 +34,7 @@ public class BorderStyle : StyleProperty, IDisposable
         get => _Color;
         set
         {
+            if (_Color == value) return;
             _Color = value;
             TriggerRender();
         }

@@ -133,6 +133,12 @@ public static class Browser
     {
         BrowserApp = application ?? throw new ArgumentNullException(nameof(application));
 
+        try
+        {
+            Blossom.Utils.Fonts.EnsureFallbacks();
+        }
+        catch { }
+
         OnLoaded = () =>
         {
             ManageInputEvents();
@@ -297,9 +303,14 @@ public static class Browser
     }
 
     /// <summary>Set a platform standard mouse cursor.</summary>
+    private static StandardCursor _appliedStandardCursor = (StandardCursor)(-1);
+
     public static void SetCursor(StandardCursor cursor)
     {
         if (input == null || input.Mice == null) return;
+        if (cursor == _appliedStandardCursor)
+            return;
+        _appliedStandardCursor = cursor;
         foreach (IMouse mouse in input.Mice)
         {
             try
@@ -316,6 +327,7 @@ public static class Browser
     public static void SetCustomCursor(RawImage image, int hotspotX, int hotspotY)
     {
         if (input == null || input.Mice == null) return;
+        _appliedStandardCursor = (StandardCursor)(-1);
         foreach (IMouse mouse in input.Mice)
         {
             try
@@ -601,8 +613,7 @@ public static class Browser
         }
 
         WasResized = false;
-        
-        // Final blit to screen
+
         Renderer.FlushToScreen();
     }
 }

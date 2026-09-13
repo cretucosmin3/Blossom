@@ -158,6 +158,7 @@ public class ElementStyle : IDisposable
         get => _BackColor;
         set
         {
+            if (_BackColor == value) return;
             _BackColor = value;
             ScheduleRender();
         }

@@ -69,9 +69,12 @@ public class ElementTree : IDisposable
 
     private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
     {
-        if (!root.Visible) return;
+        if (root == null || root.IsDisposed || !root.Visible) return;
 
-        var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderByDescending(c => c.ZIndex).ToList();
+        var sortedChildren = root.GetVisualChildren()
+            .Where(c => c != null && !c.IsDisposed && c.Visible)
+            .OrderByDescending(c => c.ZIndex)
+            .ToList();
         foreach (var child in sortedChildren)
         {
             CollectElementsForHitTest(child, list);
@@ -81,8 +84,38 @@ public class ElementTree : IDisposable
 
     public VisualElement FirstFromPoint(float x, float y)
     {
+        var nearby = QuadTree.GetObjects(new RectangleF(x - 2f, y - 2f, 4f, 4f));
+        if (nearby != null && nearby.Count > 0)
+        {
+            nearby.Sort((a, b) =>
+            {
+                if (a.Element == null || a.Element.IsDisposed) return 1;
+                if (b.Element == null || b.Element.IsDisposed) return -1;
+                int ld = b.Element.Layer.CompareTo(a.Element.Layer);
+                if (ld != 0) return ld;
+                int zd = b.Element.ZIndex.CompareTo(a.Element.ZIndex);
+                if (zd != 0) return zd;
+                // Same stacking: smaller control wins so a button beats a full-width bar.
+                float aa = Math.Max(a.Element.Transform.Computed.Width * a.Element.Transform.Computed.Height, a.Element.Transform.Width * a.Element.Transform.Height);
+                float ba = Math.Max(b.Element.Transform.Computed.Width * b.Element.Transform.Computed.Height, b.Element.Transform.Width * b.Element.Transform.Height);
+                return aa.CompareTo(ba);
+            });
+            foreach (var tracker in nearby)
+            {
+                var el = tracker.Element;
+                if (el == null || el.IsDisposed) continue;
+                if (!el.EffectiveVisible || el.ComputedVisibility == Visibility.Hidden)
+                    continue;
+                if (!Hits(el, x, y))
+                    continue;
+                var resolved = ResolveClickthrough(el);
+                if (resolved != null)
+                    return resolved;
+            }
+        }
+
         var rootElements = _byId.Values.Select(x => x.Item1)
-            .Where(e => e.Parent == null)
+            .Where(e => e != null && !e.IsDisposed && e.Parent == null)
             .Reverse()
             .OrderByDescending(e => e.ZIndex)
             .ToList();
@@ -95,90 +128,108 @@ public class ElementTree : IDisposable
 
         foreach (var elementFromPoint in elements)
         {
+            if (elementFromPoint == null || elementFromPoint.IsDisposed)
+                continue;
             if (!elementFromPoint.EffectiveVisible || elementFromPoint.ComputedVisibility == Visibility.Hidden)
                 continue;
 
-            if (!elementFromPoint.EffectiveInteractive)
+            if (!Hits(elementFromPoint, x, y))
                 continue;
 
-            SKMatrix44 globalMatrix = elementFromPoint.Transform.GetGlobalM44();
-
-            // Solve:
-            // x = (m00 * Xl + m01 * Yl + m03) / (m30 * Xl + m31 * Yl + m33)
-            // y = (m10 * Xl + m11 * Yl + m13) / (m30 * Xl + m31 * Yl + m33)
-            //
-            // Rearranged as linear system:
-            // (x * m30 - m00) * Xl + (x * m31 - m01) * Yl = m03 - x * m33
-            // (y * m30 - m10) * Xl + (y * m31 - m11) * Yl = m13 - y * m33
-
-            float m00 = globalMatrix[0, 0];
-            float m01 = globalMatrix[0, 1];
-            float m03 = globalMatrix[0, 3];
-
-            float m10 = globalMatrix[1, 0];
-            float m11 = globalMatrix[1, 1];
-            float m13 = globalMatrix[1, 3];
-
-            float m30 = globalMatrix[3, 0];
-            float m31 = globalMatrix[3, 1];
-            float m33 = globalMatrix[3, 3];
-
-            float A1 = x * m30 - m00;
-            float B1 = x * m31 - m01;
-            float C1 = m03 - x * m33;
-
-            float A2 = y * m30 - m10;
-            float B2 = y * m31 - m11;
-            float C2 = m13 - y * m33;
-
-            float D = A1 * B2 - B1 * A2;
-            if (Math.Abs(D) < 1e-6f)
-                continue;
-
-            float localX = (C1 * B2 - B1 * C2) / D;
-            float localY = (A1 * C2 - C1 * A2) / D;
-
-            // Ensure the clicked point is in front of the camera (w > 0)
-            float w = m30 * localX + m31 * localY + m33;
-            if (w <= 1e-6f)
-                continue;
-
-            if (!elementFromPoint.HitTestLocal(localX, localY))
-            {
-                continue;
-            }
-
-            if (elementFromPoint.ComputedVisibility == Visibility.Clipped || elementFromPoint.HasClippingAncestors)
-            {
-                bool insideClipping = true;
-                var ancestor = elementFromPoint.Parent;
-                while (ancestor != null)
-                {
-                    if (ancestor.IsClipping)
-                    {
-                        var globalPt3D = MapPoint3D(globalMatrix, localX, localY, 0f);
-                        var ancestorGlobal = ancestor.Transform.GetGlobalM44();
-                        var invAncestorGlobal = new SKMatrix44();
-                        if (ancestorGlobal.Invert(invAncestorGlobal))
-                        {
-                            var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
-                            if (!ancestor.HitTestLocal(ancestorLocalPt.X, ancestorLocalPt.Y))
-                            {
-                                insideClipping = false;
-                                break;
-                            }
-                        }
-                    }
-                    ancestor = ancestor.Parent;
-                }
-                if (!insideClipping) continue;
-            }
-
-            if (!elementFromPoint.IsClickthrough)
-                return elementFromPoint;
+            var resolved = ResolveClickthrough(elementFromPoint);
+            if (resolved != null)
+                return resolved;
         }
 
         return default!;
+    }
+
+    /// <summary>
+    /// <see cref="VisualElement.IsClickthrough"/> is pointer-events:none: keep walking to the
+    /// nearest ancestor that can actually receive hover/click (e.g. a button's icon/label).
+    /// </summary>
+    internal static VisualElement? ResolveClickthrough(VisualElement el)
+    {
+        while (el != null && el.IsClickthrough)
+            el = el.Parent!;
+        if (el == null || el.IsDisposed)
+            return null;
+        if (!el.EffectiveVisible || !el.EffectiveInteractive)
+            return null;
+        if (el.ComputedVisibility == Visibility.Hidden)
+            return null;
+        return el;
+    }
+
+    internal static bool Hits(VisualElement elementFromPoint, float x, float y)
+    {
+        if (elementFromPoint == null || elementFromPoint.IsDisposed)
+            return false;
+
+        var bounds = elementFromPoint.RenderBounds;
+        if (x < bounds.Left || x > bounds.Right || y < bounds.Top || y > bounds.Bottom)
+            return false;
+
+        SKMatrix44 globalMatrix = elementFromPoint.Transform.GetGlobalM44();
+
+        float m00 = globalMatrix[0, 0];
+        float m01 = globalMatrix[0, 1];
+        float m03 = globalMatrix[0, 3];
+
+        float m10 = globalMatrix[1, 0];
+        float m11 = globalMatrix[1, 1];
+        float m13 = globalMatrix[1, 3];
+
+        float m30 = globalMatrix[3, 0];
+        float m31 = globalMatrix[3, 1];
+        float m33 = globalMatrix[3, 3];
+
+        float A1 = x * m30 - m00;
+        float B1 = x * m31 - m01;
+        float C1 = m03 - x * m33;
+
+        float A2 = y * m30 - m10;
+        float B2 = y * m31 - m11;
+        float C2 = m13 - y * m33;
+
+        float D = A1 * B2 - B1 * A2;
+        if (Math.Abs(D) < 1e-6f)
+            return false;
+
+        float localX = (C1 * B2 - B1 * C2) / D;
+        float localY = (A1 * C2 - C1 * A2) / D;
+
+        float w = m30 * localX + m31 * localY + m33;
+        if (w <= 1e-6f)
+            return false;
+
+        if (!elementFromPoint.HitTestLocal(localX, localY))
+            return false;
+
+        if (elementFromPoint.ComputedVisibility == Visibility.Clipped || elementFromPoint.HasClippingAncestors)
+        {
+            var ancestor = elementFromPoint.Parent;
+            while (ancestor != null)
+            {
+                if (ancestor.IsDisposed)
+                    return false;
+                if (ancestor.IsClipping)
+                {
+                    var globalPt3D = MapPoint3D(globalMatrix, localX, localY, 0f);
+                    var ancestorGlobal = ancestor.Transform.GetGlobalM44();
+                    using var invAncestorGlobal = new SKMatrix44();
+                    if (ancestorGlobal.Invert(invAncestorGlobal))
+                    {
+                        var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
+                        if (!ancestor.HitTestLocal(ancestorLocalPt.X, ancestorLocalPt.Y))
+                            return false;
+                    }
+                }
+                ancestor = ancestor.Parent;
+            }
+        }
+
+        return true;
     }
 
     public VisualElement? FirstFromQuad(RectangleF quad)

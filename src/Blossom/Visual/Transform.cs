@@ -8,8 +8,8 @@ namespace Blossom.Core.Visual;
 
 public class Transform : IDisposable
 {
-    private readonly SKMatrix44 _cachedLocalM44 = new SKMatrix44();
-    private readonly SKMatrix44 _cachedGlobalM44 = new SKMatrix44();
+    private SKMatrix44? _cachedLocalM44 = new SKMatrix44();
+    private SKMatrix44? _cachedGlobalM44 = new SKMatrix44();
     internal bool _matrixDirty = true;
 
     private float _rotationX = 0f;
@@ -77,6 +77,12 @@ public class Transform : IDisposable
 
     public SKMatrix44 GetLocalM44()
     {
+        if (_cachedLocalM44 == null || _cachedLocalM44.Handle == IntPtr.Zero)
+        {
+            _cachedLocalM44 = new SKMatrix44();
+            _matrixDirty = true;
+        }
+
         if (_matrixDirty)
         {
             _cachedLocalM44.SetIdentity();
@@ -131,6 +137,10 @@ public class Transform : IDisposable
         if (Parent != null)
         {
             var parentGlobal = Parent.GetGlobalM44();
+            if (_cachedGlobalM44 == null || _cachedGlobalM44.Handle == IntPtr.Zero)
+            {
+                _cachedGlobalM44 = new SKMatrix44();
+            }
             _cachedGlobalM44.SetIdentity();
             _cachedGlobalM44.PreConcat(parentGlobal);
             _cachedGlobalM44.PreConcat(local);
@@ -142,8 +152,18 @@ public class Transform : IDisposable
 
     public void Dispose()
     {
-        _cachedLocalM44.Dispose();
-        _cachedGlobalM44.Dispose();
+        if (_cachedLocalM44 != null)
+        {
+            if (_cachedLocalM44.Handle != IntPtr.Zero)
+                _cachedLocalM44.Dispose();
+            _cachedLocalM44 = null;
+        }
+        if (_cachedGlobalM44 != null)
+        {
+            if (_cachedGlobalM44.Handle != IntPtr.Zero)
+                _cachedGlobalM44.Dispose();
+            _cachedGlobalM44 = null;
+        }
     }
 
     internal VisualElement ParentElement;

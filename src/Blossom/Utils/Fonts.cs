@@ -185,5 +185,115 @@ namespace Blossom.Utils
             var textHeight = paint.TextSize - paint.FontMetrics.Descent;
             return new Arrays.V2(textWidth, textHeight);
         }
+
+        private static readonly List<SKTypeface> _fallbackFaces = new();
+        private static bool _fallbacksLoaded;
+        private static readonly object _fallbacksLock = new();
+
+        /// <summary>
+        /// Typeface that can draw <paramref name="codepoint"/>, falling back to emoji / symbol fonts
+        /// when <paramref name="primary"/> does not contain the glyph.
+        /// </summary>
+        public static SKTypeface ResolveForCodepoint(SKTypeface? primary, int codepoint)
+        {
+            primary ??= _defaultRobotoMedium ?? SKTypeface.Default;
+            if (HasGlyph(primary, codepoint))
+                return primary;
+
+            if (!_fallbacksLoaded)
+                EnsureFallbacks();
+
+            for (int i = 0; i < _fallbackFaces.Count; i++)
+            {
+                var tf = _fallbackFaces[i];
+                if (tf != null && HasGlyph(tf, codepoint))
+                    return tf;
+            }
+            return primary;
+        }
+
+        public static bool HasGlyph(SKTypeface typeface, int codepoint)
+        {
+            if (typeface == null || codepoint <= 0)
+                return false;
+
+            // Never use color emoji fonts on Linux: SkiaSharp FreeType build lacks PNG support and crashes
+            string family = typeface.FamilyName ?? "";
+            if (family.Contains("Color", StringComparison.OrdinalIgnoreCase) ||
+                family.Contains("Emoji", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            try
+            {
+                string s = char.ConvertFromUtf32(codepoint);
+                ushort[] glyphs = typeface.GetGlyphs(s);
+                if (glyphs == null || glyphs.Length == 0)
+                    return false;
+                for (int i = 0; i < glyphs.Length; i++)
+                {
+                    if (glyphs[i] == 0)
+                        return false;
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Eagerly loads system symbol fallback fonts. Must run at startup before active GPU draw calls.
+        /// </summary>
+        public static void EnsureFallbacks()
+        {
+            if (_fallbacksLoaded)
+                return;
+
+            lock (_fallbacksLock)
+            {
+                if (_fallbacksLoaded)
+                    return;
+                _fallbacksLoaded = true;
+
+                string[] families =
+                {
+                    "DejaVu Sans",
+                    "Noto Sans Symbols 2",
+                    "Noto Sans Symbols",
+                    "Symbola"
+                };
+                foreach (var family in families)
+                {
+                    try
+                    {
+                        var tf = SKTypeface.FromFamilyName(family);
+                        if (tf != null && !tf.FamilyName.Equals("Dialog", StringComparison.OrdinalIgnoreCase)
+                            && !_fallbackFaces.Exists(x => x.FamilyName == tf.FamilyName))
+                            _fallbackFaces.Add(tf);
+                    }
+                    catch { }
+                }
+
+                string[] files =
+                {
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/ancient-scripts/Symbola.ttf",
+                    "/usr/share/fonts/truetype/symbola/Symbola.ttf"
+                };
+                foreach (var path in files)
+                {
+                    try
+                    {
+                        if (!File.Exists(path))
+                            continue;
+                        var tf = SKTypeface.FromFile(path);
+                        if (tf != null && !_fallbackFaces.Exists(x => x.FamilyName == tf.FamilyName))
+                            _fallbackFaces.Add(tf);
+                    }
+                    catch { }
+                }
+            }
+        }
     }
 }

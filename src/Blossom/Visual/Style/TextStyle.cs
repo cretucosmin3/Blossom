@@ -1,6 +1,7 @@
 using System;
 using System.Security.Cryptography;
 using Blossom.Core;
+using Blossom.Core.Visual.Enums;
 using SkiaSharp;
 
 namespace Blossom.Core.Visual;
@@ -16,6 +17,8 @@ public class TextStyle : StyleProperty, IDisposable
     private float _Padding = 0f;
     private SKPathEffect _PathEffect = null;
     private TextAlign _Alignment = TextAlign.Center;
+    private TextOverflow _Overflow = TextOverflow.Visible;
+    private int _MaxLines = 1;
     private SKColor _Color;
     private string _FontName = "Liberation Sans, Noto Sans, sans-serif";
 
@@ -74,6 +77,7 @@ public class TextStyle : StyleProperty, IDisposable
         get => _Size;
         set
         {
+            if (Math.Abs(_Size - value) < 0.01f) return;
             _Size = value;
             RedoFont();
         }
@@ -85,6 +89,7 @@ public class TextStyle : StyleProperty, IDisposable
         get => _Weight;
         set
         {
+            if (_Weight == value) return;
             _Weight = value;
             RedoFont();
         }
@@ -112,12 +117,40 @@ public class TextStyle : StyleProperty, IDisposable
         }
     }
 
+    /// <summary>How text that does not fit the element is handled (visible, clip, or ellipsis).</summary>
+    [BuilderProperty("Text Overflow", "Text")]
+    public TextOverflow Overflow
+    {
+        get => _Overflow;
+        set
+        {
+            if (_Overflow == value) return;
+            _Overflow = value;
+            TriggerRender();
+        }
+    }
+
+    /// <summary>Maximum wrapped lines. 1 = single line (default). Used with <see cref="Overflow"/>.</summary>
+    [BuilderProperty("Max Lines", "Text", min: 1f, max: 32f, step: 1f)]
+    public int MaxLines
+    {
+        get => _MaxLines;
+        set
+        {
+            int v = Math.Clamp(value, 1, 64);
+            if (_MaxLines == v) return;
+            _MaxLines = v;
+            TriggerRender();
+        }
+    }
+
     [BuilderProperty("Text Color", "Text")]
     public SKColor Color
     {
         get => _Color;
         set
         {
+            if (_Color == value) return;
             _Color = value;
             Paint.Color = value;
             TriggerRender();

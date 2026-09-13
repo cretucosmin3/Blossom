@@ -62,7 +62,8 @@ internal static class Renderer
     {
         if (Surface == null || OffscreenSurface == null) return;
 
-        // Blit the Offscreen Buffer to the Screen Buffer
+        // The GL swapchain is cleared every frame. Always copy the full persistent
+        // offscreen buffer — a dirty-rect blit leaves the rest of the window blank.
         Surface.Canvas.DrawSurface(OffscreenSurface, 0, 0);
         Surface.Canvas.Flush();
     }

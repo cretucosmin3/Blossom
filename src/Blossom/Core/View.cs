@@ -185,6 +185,30 @@ namespace Blossom.Core
         internal readonly List<VisualElement> CachedRenderQueue = new();
         internal readonly List<VisualElement> CachedSortedElements = new();
 
+        /// <summary>
+        /// Front-to-back hit test using last paint order so overlapping siblings
+        /// (e.g. a top bar behind toolbar buttons) resolve to the control on top.
+        /// </summary>
+        internal VisualElement? HitTest(float x, float y)
+        {
+            var list = CachedSortedElements;
+            if (list.Count > 0)
+            {
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    var el = list[i];
+                    if (el == null || !el.EffectiveVisible || el.ComputedVisibility == Visibility.Hidden)
+                        continue;
+                    if (!ElementTree.Hits(el, x, y))
+                        continue;
+                    var resolved = ElementTree.ResolveClickthrough(el);
+                    if (resolved != null)
+                        return resolved;
+                }
+            }
+            return Elements.FirstFromPoint(x, y);
+        }
+
         internal void AddDirtyRect(SKRect rect)
         {
             lock (_dirtyRectsLock)
@@ -235,6 +259,8 @@ namespace Blossom.Core
             Events.OnMouseScroll += OnMouseScroll;
         }
 
+        private StandardCursor _lastCursor = (StandardCursor)(-1);
+
         private void UpdateCursorForTarget(VisualElement? target)
         {
             var cursorElem = target;
@@ -249,9 +275,13 @@ namespace Blossom.Core
                 cursorElem = cursorElem.Parent;
             }
 
+            var next = effectiveCursor ?? StandardCursor.Default;
+            if (next == _lastCursor)
+                return;
+            _lastCursor = next;
             try
             {
-                Browser.ChangeCursor(effectiveCursor ?? StandardCursor.Default);
+                Browser.ChangeCursor(next);
             }
             catch { }
         }
@@ -300,15 +330,13 @@ namespace Blossom.Core
             }
             else if (target != null && target == hoveredElement)
             {
-                UpdateCursorForTarget(target);
                 target.Events.HandleMouseHover(target, PointToDesign(mousePos));
             }
         }
 
         private void OnMouseDown(object _, MouseEventArgs args)
         {
-            VisualElement element = Elements.FirstFromPoint(
-                new(args.Global.X, args.Global.Y));
+            VisualElement element = HitTest(args.Global.X, args.Global.Y);
 
             // Find first element walking up the parent chain with ReceivesKeyboard and EffectiveInteractive
             var focusTarget = element;
@@ -351,7 +379,7 @@ namespace Blossom.Core
 
         private void OnMouseUp(object _, MouseEventArgs args)
         {
-            var target = PointerCaptureElement ?? Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            var target = PointerCaptureElement ?? HitTest(args.Global.X, args.Global.Y);
 
             if (target != null)
             {
@@ -410,7 +438,7 @@ namespace Blossom.Core
                 ReleasePointerCapture();
             }
 
-            var currentUnderCursor = Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            var currentUnderCursor = HitTest(args.Global.X, args.Global.Y);
             UpdateHoverTarget(currentUnderCursor, args.Global);
         }
 
@@ -423,7 +451,7 @@ namespace Blossom.Core
                 ReleasePointerCapture();
             }
 
-            var target = PointerCaptureElement ?? Elements.FirstFromPoint(new(args.Global.X, args.Global.Y));
+            var target = PointerCaptureElement ?? HitTest(args.Global.X, args.Global.Y);
 
             if (target != null)
             {
@@ -725,7 +753,7 @@ namespace Blossom.Core
                 for (int idx = 0; idx < CachedSortedElements.Count; idx++)
                 {
                     var element = CachedSortedElements[idx];
-                    if (!element.Visible) continue;
+                    if (!element.Visible || !element.EffectiveVisible) continue;
                     // Still draw Clipped elements; only skip fully hidden
                     if (element.ComputedVisibility == Visibility.Hidden) continue;
 

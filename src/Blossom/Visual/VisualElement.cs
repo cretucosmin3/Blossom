@@ -303,13 +303,12 @@ public class VisualElement : IDisposable
 
         if (!string.IsNullOrEmpty(Text) && Style?.Text?.Paint != null)
         {
-            CalculateTextBounds();
-            var fontMetrics = Style.Text.Paint.FontMetrics;
-            float textH = fontMetrics.Descent - fontMetrics.Ascent;
-            float textW = TextBounds.Width;
+            var layout = EnsureTextLayout(maxWidth);
+            float textW = layout.Width;
+            float textH = layout.Height > 0 ? layout.Height : (Style.Text.Paint.FontMetrics.Descent - Style.Text.Paint.FontMetrics.Ascent);
 
             w = textW + Padding.Horizontal + (Style.Text.Padding * 2);
-            h = Math.Max(textH, TextBounds.Height) + Padding.Vertical + (Style.Text.Padding * 2);
+            h = textH + Padding.Vertical + (Style.Text.Padding * 2);
         }
 
         if (MinWidth.HasValue) w = Math.Max(w, MinWidth.Value);
@@ -490,27 +489,33 @@ public class VisualElement : IDisposable
 
     internal void UpdateHover(float dt)
     {
+        bool usesAnimatedVisual = Style != null && (
+            (Style.BackgroundShader != BackgroundShaderType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
+            (Style.BorderEffect != BorderEffectType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
+            (EffectiveTransitionType != TransitionEffectType.None && EffectiveTransitionProgress < 1.0f));
+
         bool isHovered = ParentView != null && ParentView.HoveredElement == this;
         float target = isHovered ? 1f : 0f;
         if (HoverProgress != target)
         {
-            float speed = 8f; // Transition speed (approx. 125ms)
-            if (isHovered)
-                HoverProgress = Math.Min(1f, HoverProgress + dt * speed);
+            if (usesAnimatedVisual)
+            {
+                float speed = 8f;
+                if (isHovered)
+                    HoverProgress = Math.Min(1f, HoverProgress + dt * speed);
+                else
+                    HoverProgress = Math.Max(0f, HoverProgress - dt * speed);
+                ScheduleRender();
+            }
             else
-                HoverProgress = Math.Max(0f, HoverProgress - dt * speed);
-
-            ScheduleRender();
+            {
+                // Chrome hover is applied instantly via BackColor; don't keep the view dirty for 125ms.
+                HoverProgress = target;
+            }
         }
 
-        // If the element has active shaders, animated border effects, or an active transition shader, keep scheduling redrawing frames
-        if (Style != null && (
-            (Style.BackgroundShader != BackgroundShaderType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
-            (Style.BorderEffect != BorderEffectType.None && Style.ShaderRenderMode == EffectRenderMode.Continuous) ||
-            (EffectiveTransitionType != TransitionEffectType.None && EffectiveTransitionProgress < 1.0f)))
-        {
+        if (usesAnimatedVisual)
             ScheduleRender();
-        }
 
         OnUpdate(dt);
     }
@@ -632,12 +637,12 @@ public class VisualElement : IDisposable
         // Include text bounds if text is rendered
         if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
         {
-            CalculateText(); // Ensure local TextPosition is updated
+            CalculateText();
             var textRect = SKRect.Create(
-                TextPosition.X + TextBounds.Left,
-                TextPosition.Y + TextBounds.Top,
-                TextBounds.Width,
-                TextBounds.Height
+                TextPosition.X,
+                TextPosition.Y,
+                Math.Max(TextBounds.Width, 0),
+                Math.Max(TextBounds.Height, 0)
             );
             localRect.Union(textRect);
         }
@@ -1373,6 +1378,7 @@ public class VisualElement : IDisposable
                 _Text.Append(value);
 
                 _localBoundsDirty = true;
+                _textLayout = null;
                 CalculateText();
                 InvalidateLayout();
             }
@@ -1391,6 +1397,7 @@ public class VisualElement : IDisposable
     internal void RenderSingle(SKCanvas targetCanvas)
     {
         if (ParentView == null) return;
+        if (!Visible || !EffectiveVisible || ComputedVisibility == Visibility.Hidden) return;
 
         // Ensure commands are recorded in the ledger (key by Id — Name may be null).
         // Re-record when size changes so fills/borders match current bounds (scrolled cards
@@ -1789,11 +1796,25 @@ public class VisualElement : IDisposable
             }
         }
 
-        // 4. Draw Text
-        if (!string.IsNullOrEmpty(Text) && Style?.Text != null)
+        // 4. Draw Text (rich layout: wrap, ellipsis, emoji fallback, optional scroll culling)
+        if (HasTextContent && Style?.Text != null)
         {
-            CalculateText(); // calculates local TextPosition
-            cmds.Add(new DrawTextCommand(Text, TextPosition, Style.Text.Paint));
+            CalculateText();
+            var layout = EnsureTextLayout();
+            SKRect? clip = null;
+            var overflow = Style.Text.Overflow;
+            bool scrolling = ScrollsTextContent;
+            if (scrolling || overflow == TextOverflow.Clip || overflow == TextOverflow.Ellipsis || overflow == TextOverflow.Wrap)
+            {
+                clip = new SKRect(0, 0, Math.Max(0, Transform.Computed.Width), Math.Max(0, Transform.Computed.Height));
+            }
+            var origin = TextPosition;
+            if (scrolling)
+            {
+                origin.X -= TextScrollX;
+                origin.Y -= TextScrollY;
+            }
+            cmds.Add(new DrawRichTextCommand(layout, origin, Style.Text.Paint, clip));
         }
 
         OnAfterStyleDraw(cmds);
@@ -1811,10 +1832,80 @@ public class VisualElement : IDisposable
     protected virtual void OnAfterStyleDraw(List<DrawCommand> cmds) { }
 
     private SKRect TextBounds;
+    private TextLayout? _textLayout;
+    private float _textLayoutW = float.NaN, _textLayoutH = float.NaN;
+    private string? _textLayoutKey;
+
+    /// <summary>Override to feed mixed-style runs. Default is a single span from <see cref="Text"/>.</summary>
+    protected virtual IReadOnlyList<TextSpan> EnumerateTextSpans()
+    {
+        if (string.IsNullOrEmpty(Text))
+            return Array.Empty<TextSpan>();
+        return new[] { new TextSpan(Text) };
+    }
+
+    protected bool HasTextContent => EnumerateTextSpans().Count > 0;
+
+    protected void InvalidateTextLayout()
+    {
+        _textLayout = null;
+        _textLayoutKey = null;
+        _localBoundsDirty = true;
+        InvalidateLayout();
+        InvalidatePaint();
+    }
+
+    /// <summary>When true, text is laid out in full and offset by <see cref="TextScrollX"/> / <see cref="TextScrollY"/>.</summary>
+    protected virtual bool ScrollsTextContent => false;
+    protected virtual float TextScrollX => 0f;
+    protected virtual float TextScrollY => 0f;
+
+    protected TextLayout EnsureTextLayout(float constraintWidth = 0)
+    {
+        var paint = Style?.Text?.Paint;
+        if (paint == null)
+            return _textLayout ??= new TextLayout();
+
+        float cw = Transform.Computed.Width;
+        float ch = Transform.Computed.Height;
+        if (cw <= 0 && constraintWidth > 0)
+            cw = constraintWidth;
+
+        float padLeft = Padding.Left + Style!.Text.Padding;
+        float padRight = Padding.Right + Style.Text.Padding;
+        float padTop = Padding.Top + Style.Text.Padding;
+        float padBottom = Padding.Bottom + Style.Text.Padding;
+        float innerW = Math.Max(1f, cw - padLeft - padRight);
+        float innerH = Math.Max(1f, ch - padTop - padBottom);
+        if (constraintWidth > 0)
+            innerW = Math.Max(1f, Math.Min(innerW, constraintWidth - padLeft - padRight));
+
+        var overflow = Style.Text.Overflow;
+        int maxLines = Style.Text.MaxLines;
+        bool scrolling = ScrollsTextContent;
+        if (scrolling)
+        {
+            overflow = TextOverflow.Wrap;
+            maxLines = int.MaxValue;
+        }
+        float maxW = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : innerW;
+        float maxH = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : (scrolling ? float.MaxValue : innerH);
+
+        string key = $"{Text}|{overflow}|{maxLines}|{innerW:0.#}|{(scrolling ? 0 : innerH):0.#}|{paint.TextSize:0.#}|{paint.Color}|{paint.Typeface?.FamilyName}|s{(scrolling ? 1 : 0)}";
+        if (_textLayout != null && _textLayoutKey == key && _textLayoutW == innerW && _textLayoutH == innerH)
+            return _textLayout;
+
+        _textLayout = TextLayout.Build(EnumerateTextSpans(), paint, maxW, maxH, overflow, maxLines);
+        _textLayoutKey = key;
+        _textLayoutW = innerW;
+        _textLayoutH = innerH;
+        TextBounds = new SKRect(0, 0, _textLayout.Width, _textLayout.Height);
+        return _textLayout;
+    }
+
     private void CalculateTextBounds()
     {
-        if (Browser.IsLoaded && Style?.Text?.Paint != null && Text.Length > 0)
-            Style.Text.Paint.MeasureText(Text, ref TextBounds);
+        EnsureTextLayout();
     }
 
     internal void CalculateText()
@@ -1822,18 +1913,27 @@ public class VisualElement : IDisposable
         if (Style?.Text == null || Style.Text.Paint == null)
             return;
 
-        // Local coordinate space (origin at 0, 0)
         var cx = 0f;
         var cy = 0f;
         var cw = Transform.Computed.Width;
         var ch = Transform.Computed.Height;
 
-        CalculateTextBounds();
+        var layout = EnsureTextLayout();
+        TextBounds = new SKRect(0, 0, layout.Width, layout.Height);
 
         float padLeft = Padding.Left + Style.Text.Padding;
         float padRight = Padding.Right + Style.Text.Padding;
         float padTop = Padding.Top + Style.Text.Padding;
         float padBottom = Padding.Bottom + Style.Text.Padding;
+        float innerW = Math.Max(0f, cw - padLeft - padRight);
+        float innerH = Math.Max(0f, ch - padTop - padBottom);
+
+        if (ScrollsTextContent)
+        {
+            TextPosition.X = cx + padLeft;
+            TextPosition.Y = cy + padTop;
+            return;
+        }
 
         TextPosition.X = Style.Text.Alignment switch
         {
@@ -1846,8 +1946,8 @@ public class VisualElement : IDisposable
                 x == TextAlign.Right ||
                 x == TextAlign.TopRight ||
                 x == TextAlign.BottomRight
-                => cx + cw - TextBounds.Width - padRight,
-            _ => cx + (padLeft - padRight) / 2f + (cw / 2f) - TextBounds.MidX // Center
+                => cx + cw - layout.Width - padRight,
+            _ => cx + padLeft + (innerW - layout.Width) * 0.5f
         };
 
         TextPosition.Y = Style.Text.Alignment switch
@@ -1856,13 +1956,13 @@ public class VisualElement : IDisposable
                 x == TextAlign.Top ||
                 x == TextAlign.TopLeft ||
                 x == TextAlign.TopRight
-                => cy + TextBounds.Height + padTop - TextBounds.Bottom,
+                => cy + padTop,
             var x when
                 x == TextAlign.Bottom ||
                 x == TextAlign.BottomLeft ||
                 x == TextAlign.BottomRight
-                => cy + ch - padBottom,
-            _ => cy + (padTop - padBottom) / 2f + (ch / 2f) - TextBounds.MidY // Center
+                => cy + ch - padBottom - layout.Height,
+            _ => cy + padTop + (innerH - layout.Height) * 0.5f
         };
     }
 
@@ -2057,6 +2157,8 @@ public class VisualElement : IDisposable
         if (_isDisposed) return;
         _isDisposed = true;
 
+        OnDisposing?.Invoke(this);
+
         if (HasPointerCapture)
         {
             ReleasePointer();
@@ -2092,7 +2194,6 @@ public class VisualElement : IDisposable
         _cachedRoundRect?.Dispose();
         _BackgroundImage?.Dispose();
         _BackgroundSvg?.Picture?.Dispose();
-        OnDisposing?.Invoke(this);
     }
 }
 
