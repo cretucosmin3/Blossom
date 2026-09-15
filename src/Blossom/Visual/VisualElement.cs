@@ -1381,6 +1381,7 @@ public class VisualElement : IDisposable
                 _textLayout = null;
                 CalculateText();
                 InvalidateLayout();
+                InvalidatePaint();
             }
         }
     }

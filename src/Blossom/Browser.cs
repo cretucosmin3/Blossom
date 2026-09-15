@@ -367,10 +367,15 @@ public static class Browser
                 bool browserHandled = BrowserApp.Events.HandleKeyDown(key, i);
                 if (!browserHandled && BrowserApp.ActiveView != null)
                 {
-                    bool viewHandled = BrowserApp.ActiveView.Events.HandleKeyDown(key, i);
-                    if (!viewHandled)
+                    bool elementHandled = false;
+                    if (BrowserApp.ActiveView.ActiveKeyboardElement != null)
                     {
-                        BrowserApp.ActiveView.ActiveKeyboardElement?.Events?.HandleKeyDown(key, i);
+                        elementHandled = BrowserApp.ActiveView.ActiveKeyboardElement.Events.HandleKeyDown(key, i);
+                    }
+
+                    if (!elementHandled)
+                    {
+                        BrowserApp.ActiveView.Events.HandleKeyDown(key, i);
                     }
                 }
             };
