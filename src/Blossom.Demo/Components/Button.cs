@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using Silk.NET.Input;
@@ -14,9 +16,42 @@ public class Button : VisualElement
     private string _label = "";
     private bool _isHovered = false;
     private bool _isPressed = false;
+    private bool _enable3DEffect = true;
+    private float _pressScale = 0.95f;
 
     public Action? Clicked;
     public Action? OnClick;
+
+    [BuilderProperty("3D Effect", "Appearance")]
+    public bool Enable3DEffect
+    {
+        get => _enable3DEffect;
+        set
+        {
+            if (_enable3DEffect != value)
+            {
+                _enable3DEffect = value;
+                ApplyCurrentVisualState();
+            }
+        }
+    }
+
+    [BuilderProperty("Press Scale", "Appearance", min: 0.1f, max: 1f, step: 0.05f)]
+    public float PressScale
+    {
+        get => _pressScale;
+        set
+        {
+            if (Math.Abs(_pressScale - value) > 0.001f)
+            {
+                _pressScale = value;
+                if (_isPressed && _enable3DEffect)
+                {
+                    ApplyCurrentVisualState();
+                }
+            }
+        }
+    }
 
     public string Label
     {
@@ -40,7 +75,7 @@ public class Button : VisualElement
         }
     }
 
-    public Button(string text = "Button", SKColor? color = null)
+    public Button(string text = "Button", SKColor? color = null, bool enable3DEffect = true)
     {
         Name = $"Button_{text}";
         _label = text;
@@ -48,7 +83,15 @@ public class Button : VisualElement
         _normalColor = color ?? new SKColor(58, 58, 58); // Gray 700
         UpdateColors();
 
+        var attr = GetType().GetCustomAttribute<Enable3DEffectAttribute>();
+        _enable3DEffect = attr != null ? attr.Enabled : enable3DEffect;
+        if (attr != null)
+        {
+            _pressScale = attr.Scale;
+        }
+
         Cursor = StandardCursor.Hand;
+        Padding = new Thickness(0, 4, 0, 0);
 
         Style = new ElementStyle
         {
@@ -139,6 +182,14 @@ public class Button : VisualElement
             Style.BackColor = _normalColor;
             Cursor = StandardCursor.Hand;
         }
+
+        float targetScale = (_enable3DEffect && _isPressed && EffectiveInteractive) ? _pressScale : 1f;
+        if (Math.Abs(Transform.ScaleX - targetScale) > 0.001f || Math.Abs(Transform.ScaleY - targetScale) > 0.001f)
+        {
+            Transform.ScaleX = targetScale;
+            Transform.ScaleY = targetScale;
+        }
+
         InvalidatePaint();
     }
 

@@ -116,6 +116,19 @@ public static class Browser
     /// <summary>Frame-time overlay (top-left). Off by default; toggle with F12 or <c>--fps</c>.</summary>
     public static bool ShowDebugOverlay { get; set; }
 
+    /// <summary>
+    /// Hard cap on presented frames per second, independent of the display refresh rate.
+    /// Default is 120. Set to 0 to disable the cap (used by throughput benchmarks).
+    /// </summary>
+    public static int MaxFps
+    {
+        get => _maxFps;
+        set => _maxFps = Math.Max(0, value);
+    }
+
+    private static int _maxFps = 120;
+    private static long _nextPresentTicks;
+
     private static Glfw _glfw = null!;
 
     internal static void AddVisualMarker(SKRect marker, SKColor color)
@@ -270,6 +283,12 @@ public static class Browser
 
                 if (BrowserApp.ActiveView?.RenderRequired == true)
                 {
+                    WaitForFrameSlot();
+                    if (window.IsClosing)
+                        break;
+                    if (BrowserApp.ActiveView?.RenderRequired != true)
+                        continue;
+
                     window.DoRender();
 
                     if (!SkipCountingNextRender)
@@ -282,8 +301,10 @@ public static class Browser
                         SkipCountingNextRender = false;
                     }
                 }
-
-                Thread.Sleep(1);
+                else
+                {
+                    Thread.Sleep(1);
+                }
             }
         }
         catch (Exception ex)
@@ -295,6 +316,50 @@ public static class Browser
         {
             window.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Block until the next present slot so presented FPS never exceeds <see cref="MaxFps"/>.
+    /// Pumps events during the wait so input stays responsive.
+    /// </summary>
+    private static void WaitForFrameSlot()
+    {
+        int maxFps = _maxFps;
+        if (maxFps <= 0)
+            return;
+
+        long freq = Stopwatch.Frequency;
+        long period = Math.Max(1L, freq / maxFps);
+        long now = Stopwatch.GetTimestamp();
+        long target = _nextPresentTicks;
+
+        if (target <= 0)
+        {
+            _nextPresentTicks = now + period;
+            return;
+        }
+
+        while (now < target && !window.IsClosing)
+        {
+            double remainMs = (target - now) * 1000.0 / freq;
+            if (remainMs > 1.5)
+            {
+                DrainPostQueue();
+                window.DoEvents();
+                window.ContinueEvents();
+                Thread.Sleep(1);
+            }
+            else
+            {
+                Thread.SpinWait(128);
+            }
+            now = Stopwatch.GetTimestamp();
+        }
+
+        now = Stopwatch.GetTimestamp();
+        _nextPresentTicks += period;
+        if (now - _nextPresentTicks > period)
+            _nextPresentTicks = now + period;
     }
 
     internal static void ChangeCursor(StandardCursor cursor)
@@ -512,7 +577,12 @@ public static class Browser
 
     private static readonly Stopwatch frameTimer = new();
     private static int frameCounter = 0;
-    private static readonly double[] frameTimes = new double[10];
+    private static readonly double[] frameTimes = new double[20];
+
+    static Browser()
+    {
+        Array.Fill(frameTimes, 1.0);
+    }
 
     private static readonly SKPaint PostMarkerPaint = new()
     {
@@ -521,27 +591,225 @@ public static class Browser
         Style = SKPaintStyle.Stroke,
     };
 
-    private static readonly SKPaint InfoTextPaint = new()
+    private static readonly SKPaint HudBgPaint = new()
     {
-        TextSize = 18,
-        FakeBoldText = true,
-        Color = SKColors.IndianRed,
-        Style = SKPaintStyle.Fill,
-        Typeface = Blossom.Utils.Fonts.GetTypeface("Roboto", 500),
-    };
-
-    private static readonly SKPaint InfoBackgroundPaint = new()
-    {
-        Color = new SKColor(15, 15, 20, 255), // Solid dark cyberpunk background
+        Color = new SKColor(24, 24, 24, 255), // Pure neutral dark gray #181818
         Style = SKPaintStyle.Fill,
     };
 
-    private static readonly SKPaint InfoBorderPaint = new()
+    private static readonly SKPaint HudBorderPaint = new()
     {
         StrokeWidth = 1f,
-        Color = new SKColor(205, 92, 92, 180), // IndianRed matching border
+        Color = new SKColor(255, 255, 255, 255), // Crisp pure white #FFFFFF
         Style = SKPaintStyle.Stroke,
+        IsAntialias = true,
     };
+
+    private static readonly SKPaint HudStatusPipPaint = new()
+    {
+        Style = SKPaintStyle.Fill,
+        IsAntialias = true,
+    };
+
+    private static readonly SKPaint HudHeaderTitlePaint = new()
+    {
+        TextSize = 13.5f,
+        Color = new SKColor(255, 255, 255, 255), // Pure white #FFFFFF
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 600),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudSeparatorPaint = new()
+    {
+        StrokeWidth = 1f,
+        Color = new SKColor(55, 55, 55, 255), // Pure neutral gray #373737
+        Style = SKPaintStyle.Stroke,
+        IsAntialias = true,
+    };
+
+    private static readonly SKPaint HudMetricLabelPaint = new()
+    {
+        TextSize = 10f,
+        Color = new SKColor(150, 150, 150, 255), // Pure neutral medium gray #969696
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 600),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudFpsValuePaint = new()
+    {
+        TextSize = 26f,
+        Color = new SKColor(16, 185, 129, 255), // Emerald-500
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 700),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudFrameTimeValuePaint = new()
+    {
+        TextSize = 26f,
+        Color = new SKColor(255, 255, 255, 255), // Crisp pure white #FFFFFF
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 700),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudMetricUnitPaint = new()
+    {
+        TextSize = 12f,
+        Color = new SKColor(130, 130, 130, 255), // Pure neutral gray #828282
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 600),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudDiagLabelPaint = new()
+    {
+        TextSize = 10.5f,
+        Color = new SKColor(140, 140, 140, 255), // Pure neutral gray #8C8C8C
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 600),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static readonly SKPaint HudDiagValuePaint = new()
+    {
+        TextSize = 11.5f,
+        Color = new SKColor(235, 235, 235, 255), // Crisp pure light gray #EBEBEB
+        Style = SKPaintStyle.Fill,
+        Typeface = Blossom.Utils.Fonts.GetTypeface("Noto Sans, Inter, Roboto, DejaVu Sans, Liberation Sans, sans-serif", weight: 500),
+        IsAntialias = true,
+        SubpixelText = true,
+        LcdRenderText = true,
+        HintingLevel = SKPaintHinting.Normal,
+    };
+
+    private static void DrawDebugOverlay(double avgDrawMs, double theoreticalFps)
+    {
+        // Draw informational markers
+        foreach (var (rect, color) in PostMarkers)
+        {
+            PostMarkerPaint.Color = color;
+            PostMarkerPaint.PathEffect?.Dispose();
+            PostMarkerPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 3, 10 }, Random.Shared.Next(0, 1000));
+            Renderer.Canvas.DrawRect(rect, PostMarkerPaint);
+        }
+
+        const float panelX = 14f;
+        const float panelY = 14f;
+        const float panelW = 240f;
+        const float panelH = 258f;
+
+        var bgRect = SKRect.Create(panelX, panelY, panelW, panelH);
+        var borderRect = SKRect.Create(panelX + 0.5f, panelY + 0.5f, panelW - 1f, panelH - 1f);
+
+        // 1. Pure dark gray panel with crisp white border
+        // Insetting stroke by 0.5px aligns the 1px line precisely to the pixel grid within bgRect,
+        // preventing fractional anti-aliasing spillover outside the panel bounds that causes flicker during re-renders.
+        Renderer.Canvas.DrawRect(bgRect, HudBgPaint);
+        Renderer.Canvas.DrawRect(borderRect, HudBorderPaint);
+
+        // Performance color coding based on theoretical FPS / draw latency
+        SKColor perfColor;
+        if (theoreticalFps >= 60.0 || avgDrawMs <= 16.667)
+            perfColor = new SKColor(16, 185, 129, 255); // Emerald green
+        else if (theoreticalFps >= 30.0 || avgDrawMs <= 33.333)
+            perfColor = new SKColor(245, 158, 11, 255); // Amber
+        else
+            perfColor = new SKColor(239, 68, 68, 255);  // Crimson red
+
+        // 2. Header — Clean "Stats" with live square indicator pip
+        float headerY = panelY;
+        HudStatusPipPaint.Color = perfColor;
+        Renderer.Canvas.DrawRect(SKRect.Create(panelX + 14, headerY + 13, 6, 6), HudStatusPipPaint);
+        Renderer.Canvas.DrawText("Stats", panelX + 26, headerY + 22, HudHeaderTitlePaint);
+
+        // Separator line under header flush with panel borders
+        float div1Y = headerY + 32.5f;
+        Renderer.Canvas.DrawLine(panelX + 1f, div1Y, panelX + panelW - 1f, div1Y, HudSeparatorPaint);
+
+        // 3. Primary metrics — stacked vertically
+        // Block 1: FPS
+        float fpsBlockY = headerY + 32f;
+        Renderer.Canvas.DrawText("FPS", panelX + 14, fpsBlockY + 18, HudMetricLabelPaint);
+        HudFpsValuePaint.Color = perfColor;
+        string fpsStr = theoreticalFps >= 1000.0 ? $"{theoreticalFps:0}" : (theoreticalFps > 0 ? $"{theoreticalFps:0.0}" : "--.-");
+        Renderer.Canvas.DrawText(fpsStr, panelX + 14, fpsBlockY + 45, HudFpsValuePaint);
+
+        // Separator between metrics
+        float div2Y = fpsBlockY + 54.5f;
+        Renderer.Canvas.DrawLine(panelX + 1f, div2Y, panelX + panelW - 1f, div2Y, HudSeparatorPaint);
+
+        // Block 2: Frame Draw Time
+        float ftBlockY = fpsBlockY + 54f;
+        Renderer.Canvas.DrawText("FRAME DRAW", panelX + 14, ftBlockY + 18, HudMetricLabelPaint);
+        string ftStr = $"{avgDrawMs:0.00}";
+        Renderer.Canvas.DrawText(ftStr, panelX + 14, ftBlockY + 45, HudFrameTimeValuePaint);
+        float ftValWidth = HudFrameTimeValuePaint.MeasureText(ftStr);
+        Renderer.Canvas.DrawText(" ms", panelX + 14 + ftValWidth, ftBlockY + 45, HudMetricUnitPaint);
+
+        // Separator between metrics and diagnostics
+        float div3Y = ftBlockY + 54.5f;
+        Renderer.Canvas.DrawLine(panelX + 1f, div3Y, panelX + panelW - 1f, div3Y, HudSeparatorPaint);
+
+        // 4. Secondary Diagnostics — each metric on its own line with generous vertical gap
+        float diagBlockY = ftBlockY + 54f;
+        float scale = Browser.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Browser.RenderRect.Width : 1f;
+        int elementCount = BrowserApp.ActiveView?.Elements.Count ?? 0;
+
+        float rowY = diagBlockY + 20f;
+        const float rowGap = 21f;
+        const float valColX = panelX + 68f;
+
+        // Row 1: Resolution & Scale
+        Renderer.Canvas.DrawText("RES", panelX + 14, rowY, HudDiagLabelPaint);
+        Renderer.Canvas.DrawText($"{Renderer.FramebufferWidth}x{Renderer.FramebufferHeight} ({scale:0.0}x)", valColX, rowY, HudDiagValuePaint);
+        rowY += rowGap;
+
+        // Row 2: Node Count
+        Renderer.Canvas.DrawText("NODES", panelX + 14, rowY, HudDiagLabelPaint);
+        Renderer.Canvas.DrawText($"{elementCount}", valColX, rowY, HudDiagValuePaint);
+        rowY += rowGap;
+
+        // Row 3: Active View
+        string viewName = BrowserApp.ActiveView?.Name ?? "None";
+        if (viewName.Length > 15) viewName = viewName[..14] + "…";
+        Renderer.Canvas.DrawText("VIEW", panelX + 14, rowY, HudDiagLabelPaint);
+        Renderer.Canvas.DrawText(viewName, valColX, rowY, HudDiagValuePaint);
+        rowY += rowGap;
+
+        // Row 4: Memory Usage
+        double memMb = (double)GC.GetTotalMemory(false) / (1024.0 * 1024.0);
+        Renderer.Canvas.DrawText("MEM", panelX + 14, rowY, HudDiagLabelPaint);
+        Renderer.Canvas.DrawText($"{memMb:0.0} MB", valColX, rowY, HudDiagValuePaint);
+        rowY += rowGap;
+
+        // Row 5: Frame Counter
+        Renderer.Canvas.DrawText("FRAME", panelX + 14, rowY, HudDiagLabelPaint);
+        Renderer.Canvas.DrawText($"#{TotalRenders}", valColX, rowY, HudDiagValuePaint);
+
+        // Clean-up
+        PostMarkers.Clear();
+    }
 
     private static void Render(double time)
     {
@@ -572,45 +840,28 @@ public static class Browser
         if (window.Title != title)
             window.Title = title;
 
-        frameTimes[frameCounter] = frameTimer.ElapsedMilliseconds;
+        double drawMs = frameTimer.Elapsed.TotalMilliseconds;
+        frameTimes[frameCounter] = drawMs;
+        frameCounter = (frameCounter + 1) % frameTimes.Length;
 
-        frameCounter++;
-        if (frameCounter == frameTimes.Length)
-            frameCounter = 0;
-
-        double AverageFrame = 0;
+        double totalMs = 0;
+        int count = 0;
         foreach (double t in frameTimes)
-            AverageFrame += t;
+        {
+            if (t > 0)
+            {
+                totalMs += t;
+                count++;
+            }
+        }
+        double avgDrawMs = count > 0 ? totalMs / count : drawMs;
+
+        // Theoretical FPS: calculated directly from frame draw time (1000.0 / avgDrawMs)
+        double theoreticalFps = avgDrawMs > 0.05 ? 1000.0 / avgDrawMs : 9999.0;
 
         if (ShowDebugOverlay)
         {
-            // Draw informational markers
-            foreach (var (rect, color) in PostMarkers)
-            {
-                PostMarkerPaint.Color = color;
-                PostMarkerPaint.PathEffect?.Dispose();
-                PostMarkerPaint.PathEffect = SKPathEffect.CreateDash(new float[] { 3, 10 }, Random.Shared.Next(0, 1000));
-
-                Renderer.Canvas.DrawRect(rect, PostMarkerPaint);
-            }
-
-            double avgMs = AverageFrame / frameTimes.Length;
-            string msText = $"FT {avgMs:0.00} ms";
-            
-            float boxWidth = 130f; // Fixed width to prevent size jittering and smears
-            float boxHeight = 36f;
-            SKRect bgRect = new SKRect(10, 10, 10 + boxWidth, 10 + boxHeight);
-            
-            Renderer.Canvas.DrawRoundRect(bgRect, 6, 6, InfoBackgroundPaint);
-            Renderer.Canvas.DrawRoundRect(bgRect, 6, 6, InfoBorderPaint);
-            
-            float textWidth = InfoTextPaint.MeasureText(msText);
-            float textX = 10f + (boxWidth - textWidth) / 2f;
-            float textY = 10f + 25f; // Baseline aligned inside the 36px box
-            Renderer.Canvas.DrawText(msText, textX, textY, InfoTextPaint);
-            
-            // Clean-up
-            PostMarkers.Clear();
+            DrawDebugOverlay(avgDrawMs, theoreticalFps);
         }
         else if (PostMarkers.Count > 0)
         {

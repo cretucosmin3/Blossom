@@ -102,6 +102,7 @@ Browser (static host)
 | Style | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/*` |
 | Scroll | `src/Blossom/Visual/ScrollContainer.cs` |
 | Draw commands | `src/Blossom/Core/CommandLedger.cs`, `VisualElement.RecordDrawCommands` |
+| GPU context / offscreen surfaces | `src/Blossom/Core/Gpu.cs`, `docs/gpu.md` |
 | Shaders / effects | `src/Blossom/Visual/Style/SKSLShaders.cs` |
 | Demo shell | `src/Blossom.Demo/TestingApp.cs`, `src/Blossom.Demo/Views/*` |
 | Sample widgets | `src/Blossom.Demo/Components/*` (not formal public controls) |
@@ -203,6 +204,7 @@ Other apps consume the framework with a project (or later package) reference to 
 | Design canvas & units | `docs/design_canvas.md`, `src/Blossom/Core/Design/`, `plans/adr-design-canvas.md` |
 | Plugin embed & isolation | `src/Blossom/Core/Design/PluginEmbed.cs`, `src/Blossom/Core/Design/PluginRoot.cs`, `src/Blossom.Demo/Views/ComponentDesignView.cs` |
 | Custom control recipes & samples | `docs/custom_controls.md`, `docs/platform_samples.md` |
+| GPU surfaces / app shaders | `docs/gpu.md`, `src/Blossom/Core/Gpu.cs` |
 | Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
 | Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
 | Platform roadmap | `plans/visual-element-platform-must-have.md` |

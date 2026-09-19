@@ -36,6 +36,7 @@ namespace Blossom.Core
                     arg.Equals("-b", StringComparison.OrdinalIgnoreCase))
                 {
                     IsBenchmarkMode = true;
+                    Browser.MaxFps = 0;
                 }
             }
         }

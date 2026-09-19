@@ -32,47 +32,47 @@ public class Transform : IDisposable
     public float RotationX
     {
         get => _rotationX;
-        set { if (_rotationX != value) { _rotationX = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_rotationX != value) { _rotationX = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float RotationY
     {
         get => _rotationY;
-        set { if (_rotationY != value) { _rotationY = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_rotationY != value) { _rotationY = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float RotationZ
     {
         get => _rotationZ;
-        set { if (_rotationZ != value) { _rotationZ = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_rotationZ != value) { _rotationZ = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float ScaleX
     {
         get => _scaleX;
-        set { if (_scaleX != value) { _scaleX = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_scaleX != value) { _scaleX = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float ScaleY
     {
         get => _scaleY;
-        set { if (_scaleY != value) { _scaleY = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_scaleY != value) { _scaleY = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float ScaleZ
     {
         get => _scaleZ;
-        set { if (_scaleZ != value) { _scaleZ = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_scaleZ != value) { _scaleZ = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float Perspective
     {
         get => _perspective;
-        set { if (_perspective != value) { _perspective = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.ScheduleRender(); } }
+        set { if (_perspective != value) { _perspective = value; _matrixDirty = true; UpdateHas3DTransforms(); ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float TransformOriginX
     {
         get => _originX;
-        set { if (_originX != value) { _originX = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+        set { if (_originX != value) { _originX = value; _matrixDirty = true; ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
     public float TransformOriginY
     {
         get => _originY;
-        set { if (_originY != value) { _originY = value; _matrixDirty = true; ParentElement?.ScheduleRender(); } }
+        set { if (_originY != value) { _originY = value; _matrixDirty = true; ParentElement?.InvalidateSubtreeBounds(); ParentElement?.ScheduleRender(); } }
     }
 
     public SKMatrix44 GetLocalM44()

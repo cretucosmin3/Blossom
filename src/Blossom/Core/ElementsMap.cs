@@ -20,6 +20,7 @@ public class ElementTree : IDisposable
     );
 
     public VisualElement[] Items { get => _byId.Values.Select(x => x.Item1).ToArray(); }
+    public int Count => _byId.Count;
 
     internal ElementTree() { }
 

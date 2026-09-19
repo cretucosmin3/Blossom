@@ -694,6 +694,11 @@ namespace Blossom.Core
                     element.EvaluateVisibilityAndClipping();
                     element._visibilityClippingDirty = false;
                 }
+
+                if (element._isPaintDirty && !element.IsDirty)
+                {
+                    element.IsDirty = true;
+                }
             }
 
             LayoutRequired = false;

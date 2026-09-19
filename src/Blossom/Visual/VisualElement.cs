@@ -977,9 +977,8 @@ public class VisualElement : IDisposable
         {
             if (_BackgroundImage != value)
             {
-                _BackgroundImage?.Dispose();
                 _BackgroundImage = value;
-                ScheduleRender();
+                InvalidatePaint();
             }
         }
     }
@@ -1124,9 +1123,8 @@ public class VisualElement : IDisposable
         {
             if (_BackgroundSvg != value)
             {
-                _BackgroundSvg?.Picture?.Dispose();
                 _BackgroundSvg = value;
-                ScheduleRender();
+                InvalidatePaint();
             }
         }
     }
@@ -1411,12 +1409,13 @@ public class VisualElement : IDisposable
             Math.Abs(_lastRecordedWidth - w) > 0.5f ||
             Math.Abs(_lastRecordedHeight - h) > 0.5f;
 
-        if (IsDirty || sizeChanged || ParentView.Ledger.GetCommands(drawKey) == null)
+        if (IsDirty || _isPaintDirty || sizeChanged || ParentView.Ledger.GetCommands(drawKey) == null)
         {
             RecordDrawCommands(ParentView.Ledger);
             _lastRecordedWidth = w;
             _lastRecordedHeight = h;
             _IsDirty = false;
+            _isPaintDirty = false;
         }
 
         var cmds = ParentView.Ledger.GetCommands(drawKey);
