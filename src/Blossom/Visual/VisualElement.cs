@@ -1470,12 +1470,47 @@ public class VisualElement : IDisposable
                 float cw = Transform.Computed.Width;
                 float ch = Transform.Computed.Height;
                 if (cw > 0 && ch > 0)
-                    targetCanvas.ClipRect(new SKRect(0, 0, cw, ch), SKClipOperation.Intersect, true);
-            }
+                {
+                    int startIdx = 0;
+                    if (cmds.Count > 0 && Style?.Shadow?.HasValidValues() == true)
+                    {
+                        cmds[0].Execute(targetCanvas);
+                        startIdx = 1;
+                    }
 
-            for (int i = 0; i < cmds.Count; i++)
+                    using (new SKAutoCanvasRestore(targetCanvas))
+                    {
+                        using var localRoundRect = GetLocalRoundRect();
+                        using var path = new SKPath();
+                        path.AddRoundRect(localRoundRect);
+                        targetCanvas.ClipPath(path, SKClipOperation.Intersect, true);
+
+                        for (int i = startIdx; i < cmds.Count; i++)
+                        {
+                            var cmd = cmds[i];
+                            if (!IsBorderCommand(cmd))
+                            {
+                                cmd.Execute(targetCanvas);
+                            }
+                        }
+                    }
+
+                    for (int i = startIdx; i < cmds.Count; i++)
+                    {
+                        var cmd = cmds[i];
+                        if (IsBorderCommand(cmd))
+                        {
+                            cmd.Execute(targetCanvas);
+                        }
+                    }
+                }
+            }
+            else
             {
-                cmds[i].Execute(targetCanvas);
+                for (int i = 0; i < cmds.Count; i++)
+                {
+                    cmds[i].Execute(targetCanvas);
+                }
             }
 
             if (saveCount != -1)
@@ -1505,6 +1540,12 @@ public class VisualElement : IDisposable
                 targetCanvas.RestoreToCount(saveCount);
             }
         }
+    }
+
+    private static bool IsBorderCommand(DrawCommand cmd)
+    {
+        return (cmd is DrawRoundRectCommand rrc && rrc.Paint?.Style == SKPaintStyle.Stroke)
+            || cmd is DrawBorderCommand;
     }
 
     private SKRoundRect? _cachedRoundRect;
