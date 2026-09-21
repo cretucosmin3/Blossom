@@ -1824,14 +1824,20 @@ public class VisualElement : IDisposable
                 };
                 
                 var borderRect = rect;
-                borderRect.Inflate(Style.Border.Width / 2f, Style.Border.Width / 2f);
+                float halfBw = Style.Border.Width / 2f;
+                borderRect.Inflate(halfBw, halfBw);
+
+                float rTL = Style.Border.RoundnessTopLeft > 0 ? Style.Border.RoundnessTopLeft + halfBw : 0;
+                float rTR = Style.Border.RoundnessTopRight > 0 ? Style.Border.RoundnessTopRight + halfBw : 0;
+                float rBR = Style.Border.RoundnessBottomRight > 0 ? Style.Border.RoundnessBottomRight + halfBw : 0;
+                float rBL = Style.Border.RoundnessBottomLeft > 0 ? Style.Border.RoundnessBottomLeft + halfBw : 0;
                 
                 cmds.Add(new DrawRoundRectCommand(
                     borderRect,
-                    Style.Border.RoundnessTopLeft,
-                    Style.Border.RoundnessTopRight,
-                    Style.Border.RoundnessBottomRight,
-                    Style.Border.RoundnessBottomLeft,
+                    rTL,
+                    rTR,
+                    rBR,
+                    rBL,
                     strokePaint
                 ));
             }
