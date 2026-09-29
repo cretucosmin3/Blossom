@@ -1,5 +1,7 @@
 using System;
+using Blossom.Core;
 using Blossom.Core.Visual;
+using Blossom.Core.Visual.Enums;
 using Silk.NET.Input;
 using SkiaSharp;
 
@@ -7,6 +9,11 @@ namespace Blossom.Testing.Components;
 
 public class InputField : VisualElement
 {
+    private const float PadLeft = 10f;
+    private const float PadRight = 10f;
+    private const float CaretWidth = 1.5f;
+    private const float CaretHeight = 16f;
+
     private string _value = "";
     private string _placeholder = "Type here...";
     private readonly VisualElement _selectionHighlight;
@@ -15,9 +22,9 @@ public class InputField : VisualElement
     private bool _isFocused;
     private bool _isMouseDown;
 
-    private int _caretIndex = 0;
-    private int _selectionAnchor = 0;
-    private float _scrollOffset = 0f;
+    private int _caretIndex;
+    private int _selectionAnchor;
+    private float _scrollOffset;
 
     public Action<string>? Changed;
     public Action<string>? OnValueChanged;
@@ -47,15 +54,14 @@ public class InputField : VisualElement
         set
         {
             var newVal = value ?? "";
-            if (_value != newVal)
-            {
-                _value = newVal;
-                _caretIndex = Math.Clamp(_caretIndex, 0, _value.Length);
-                _selectionAnchor = _caretIndex;
-                UpdateText();
-                Changed?.Invoke(_value);
-                OnValueChanged?.Invoke(_value);
-            }
+            if (_value == newVal) return;
+
+            _value = newVal;
+            _caretIndex = Math.Clamp(_caretIndex, 0, _value.Length);
+            _selectionAnchor = _caretIndex;
+            UpdateText();
+            Changed?.Invoke(_value);
+            OnValueChanged?.Invoke(_value);
         }
     }
 
@@ -79,14 +85,16 @@ public class InputField : VisualElement
 
         ReceivesKeyboard = true;
         Cursor = StandardCursor.IBeam;
+        OverflowX = OverflowMode.Clip;
+        OverflowY = OverflowMode.Clip;
 
         Style = new ElementStyle
         {
-            BackColor = new SKColor(23, 23, 23), // Gray 900
+            BackColor = new SKColor(23, 23, 23),
             Border = new BorderStyle
             {
                 Width = 1,
-                Color = new SKColor(58, 58, 58), // Gray 700
+                Color = new SKColor(58, 58, 58),
                 Roundness = 6
             }
         };
@@ -98,7 +106,7 @@ public class InputField : VisualElement
             Visible = false,
             Style = new ElementStyle
             {
-                BackColor = new SKColor(59, 130, 246, 120), // Translucent Accent Blue
+                BackColor = new SKColor(59, 130, 246, 120),
                 Border = new BorderStyle { Width = 0, Color = SKColors.Transparent, Roundness = 2 }
             }
         };
@@ -109,12 +117,19 @@ public class InputField : VisualElement
             IsClickthrough = true,
             Style = new ElementStyle
             {
+                BackColor = SKColors.Transparent,
+                Border = new BorderStyle { Width = 0, Color = SKColors.Transparent },
                 Text = new TextStyle
                 {
-                    Color = new SKColor(120, 120, 120), // Gray 500
+                    Color = new SKColor(120, 120, 120),
                     Size = 13,
                     Weight = 400,
-                    Alignment = TextAlign.Left
+                    Spacing = 0,
+                    Alignment = TextAlign.Left,
+                    Overflow = TextOverflow.Visible,
+                    MaxLines = 1,
+                    Font = "Roboto",
+                    Padding = 0
                 }
             }
         };
@@ -126,7 +141,8 @@ public class InputField : VisualElement
             Visible = false,
             Style = new ElementStyle
             {
-                BackColor = new SKColor(220, 220, 220) // Bright accent
+                BackColor = new SKColor(230, 230, 230),
+                Border = new BorderStyle { Width = 0, Color = SKColors.Transparent, Roundness = 1 }
             }
         };
 
@@ -136,92 +152,82 @@ public class InputField : VisualElement
 
         UpdateText();
 
-        OnFocused = (s) =>
+        OnFocused = _ =>
         {
             _isFocused = true;
-            Style.Border.Color = new SKColor(170, 170, 170); // Gray accent focus border
+            Style.Border.Color = new SKColor(170, 170, 170);
             _caret.Visible = true;
             UpdateText();
             InvalidatePaint();
         };
 
-        OnFocusLost = (s) =>
+        OnFocusLost = _ =>
         {
             _isFocused = false;
             _isMouseDown = false;
             _selectionAnchor = _caretIndex;
-            Style.Border.Color = new SKColor(58, 58, 58); // Gray 700 border
+            Style.Border.Color = new SKColor(58, 58, 58);
             _caret.Visible = false;
             _selectionHighlight.Visible = false;
+            if (HasPointerCapture) ReleasePointer();
             UpdateText();
             InvalidatePaint();
         };
 
         Events.OnMouseDown += (s, args) =>
         {
-            if (!_isFocused && ParentView != null)
+            if (args.Button != 0) return;
+
+            if (ParentView != null)
             {
                 ParentView.SetActiveKeyboardElement(this);
             }
 
             _isMouseDown = true;
-            float localX = args.Global.X - (Transform.Computed.X + 10f) + _scrollOffset;
-            int clickedIdx = GetCharIndexAt(localX);
+            CapturePointer();
+            args.Handled = true;
 
-            if (Events.IsShiftDown)
+            int clickedIdx = GetCharIndexAtPointer(args.Global.X);
+            _caretIndex = clickedIdx;
+            if (!Events.IsShiftDown)
             {
-                _caretIndex = clickedIdx;
-            }
-            else
-            {
-                _caretIndex = clickedIdx;
                 _selectionAnchor = clickedIdx;
             }
 
-            _caret.Visible = true;
             UpdateCaretAndSelection();
         };
 
         Events.OnMouseMove += (s, args) =>
         {
-            if (_isMouseDown && _isFocused)
-            {
-                float localX = args.Global.X - (Transform.Computed.X + 10f) + _scrollOffset;
-                _caretIndex = GetCharIndexAt(localX);
-                UpdateCaretAndSelection();
-            }
+            if (!_isMouseDown) return;
+            args.Handled = true;
+            _caretIndex = GetCharIndexAtPointer(args.Global.X);
+            UpdateCaretAndSelection();
         };
 
         Events.OnMouseUp += (s, args) =>
         {
+            if (args.Button != 0) return;
             _isMouseDown = false;
+            if (HasPointerCapture) ReleasePointer();
         };
 
         Events.OnMouseDoubleClick += (s, args) =>
         {
-            SelectAll();
+            SelectWordAt(_caretIndex);
+            args.Handled = true;
         };
 
-        Events.OnKeyType += (ch) =>
+        Events.OnKeyType += ch =>
         {
             if (!_isFocused) return;
+            if (Events.IsControlDown || Events.IsAltDown) return;
             if (char.IsControl(ch) || ch == 127 || ch < 32) return;
 
-            if (HasSelection)
-            {
-                DeleteSelection();
-            }
-
-            _value = _value.Insert(_caretIndex, ch.ToString());
-            _caretIndex++;
-            _selectionAnchor = _caretIndex;
-
-            UpdateText();
-            Changed?.Invoke(_value);
-            OnValueChanged?.Invoke(_value);
+            InsertText(ch.ToString());
         };
 
-        Events.OnKeyDown += (k) =>
+        Events.OnKeyDown += k =>
         {
             if (!_isFocused) return;
             Key key = (Key)k;
@@ -233,68 +239,44 @@ public class InputField : VisualElement
                 case Key.Backspace:
                     HandleBackspace(isCtrl);
                     break;
-
                 case Key.Delete:
                     HandleDelete(isCtrl);
                     break;
-
                 case Key.Left:
                     HandleLeft(isCtrl, isShift);
                     break;
-
                 case Key.Right:
                     HandleRight(isCtrl, isShift);
                     break;
-
                 case Key.Home:
-                    _caretIndex = 0;
-                    if (!isShift) _selectionAnchor = 0;
-                    UpdateCaretAndSelection();
+                    MoveCaret(0, isShift);
                     break;
-
                 case Key.End:
-                    _caretIndex = _value.Length;
-                    if (!isShift) _selectionAnchor = _value.Length;
-                    UpdateCaretAndSelection();
+                    MoveCaret(_value.Length, isShift);
                     break;
-
                 case Key.A when isCtrl:
                     SelectAll();
                     break;
-
                 case Key.C when isCtrl:
-                    if (HasSelection)
-                    {
-                        Browser.SetClipboardText(SelectedText);
-                    }
-                    else
-                    {
-                        Browser.SetClipboardText(_value);
-                    }
+                    Browser.SetClipboardText(HasSelection ? SelectedText : _value);
                     break;
-
                 case Key.X when isCtrl:
                     if (HasSelection)
                     {
                         Browser.SetClipboardText(SelectedText);
                         DeleteSelection();
-                        UpdateText();
-                        Changed?.Invoke(_value);
-                        OnValueChanged?.Invoke(_value);
+                        NotifyChanged();
                     }
                     break;
-
                 case Key.V when isCtrl:
                     HandlePaste();
                     break;
-
                 case Key.Enter:
                 case Key.KeypadEnter:
                     Submitted?.Invoke(_value);
                     OnSubmit?.Invoke(_value);
                     ParentView?.SetActiveKeyboardElement(null);
                     break;
-
                 case Key.Escape:
                     Escaped?.Invoke();
                     ParentView?.SetActiveKeyboardElement(null);
@@ -318,35 +300,75 @@ public class InputField : VisualElement
         UpdateText();
     }
 
+    private void SelectWordAt(int index)
+    {
+        if (_value.Length == 0)
+        {
+            SelectAll();
+            return;
+        }
+
+        int i = Math.Clamp(index, 0, _value.Length);
+        if (i == _value.Length) i--;
+
+        int start = i;
+        int end = i;
+        if (char.IsWhiteSpace(_value[i]))
+        {
+            while (start > 0 && char.IsWhiteSpace(_value[start - 1])) start--;
+            while (end < _value.Length && char.IsWhiteSpace(_value[end])) end++;
+        }
+        else
+        {
+            while (start > 0 && !char.IsWhiteSpace(_value[start - 1])) start--;
+            while (end < _value.Length && !char.IsWhiteSpace(_value[end])) end++;
+        }
+
+        _selectionAnchor = start;
+        _caretIndex = end;
+        UpdateCaretAndSelection();
+    }
+
+    private void InsertText(string text)
+    {
+        if (HasSelection) DeleteSelection();
+        _value = _value.Insert(_caretIndex, text);
+        _caretIndex += text.Length;
+        _selectionAnchor = _caretIndex;
+        NotifyChanged();
+    }
+
+    private void NotifyChanged()
+    {
+        UpdateText();
+        Changed?.Invoke(_value);
+        OnValueChanged?.Invoke(_value);
+    }
+
     private void HandleBackspace(bool isCtrl)
     {
         if (HasSelection)
         {
             DeleteSelection();
-            UpdateText();
-            Changed?.Invoke(_value);
-            OnValueChanged?.Invoke(_value);
+            NotifyChanged();
+            return;
         }
-        else if (_caretIndex > 0)
+
+        if (_caretIndex <= 0) return;
+
+        if (isCtrl)
         {
-            if (isCtrl)
-            {
-                int prevWordIdx = FindPreviousWordBoundary(_caretIndex);
-                int count = _caretIndex - prevWordIdx;
-                _value = _value.Remove(prevWordIdx, count);
-                _caretIndex = prevWordIdx;
-                _selectionAnchor = _caretIndex;
-            }
-            else
-            {
-                _value = _value.Remove(_caretIndex - 1, 1);
-                _caretIndex--;
-                _selectionAnchor = _caretIndex;
-            }
-            UpdateText();
-            Changed?.Invoke(_value);
-            OnValueChanged?.Invoke(_value);
+            int prev = FindPreviousWordBoundary(_caretIndex);
+            _value = _value.Remove(prev, _caretIndex - prev);
+            _caretIndex = prev;
         }
+        else
+        {
+            _value = _value.Remove(_caretIndex - 1, 1);
+            _caretIndex--;
+        }
+        _selectionAnchor = _caretIndex;
+        NotifyChanged();
     }
 
     private void HandleDelete(bool isCtrl)
@@ -354,63 +376,48 @@ public class InputField : VisualElement
         if (HasSelection)
         {
             DeleteSelection();
-            UpdateText();
-            Changed?.Invoke(_value);
-            OnValueChanged?.Invoke(_value);
+            NotifyChanged();
+            return;
         }
-        else if (_caretIndex < _value.Length)
+
+        if (_caretIndex >= _value.Length) return;
+
+        if (isCtrl)
         {
-            if (isCtrl)
-            {
-                int nextWordIdx = FindNextWordBoundary(_caretIndex);
-                int count = nextWordIdx - _caretIndex;
-                _value = _value.Remove(_caretIndex, count);
-            }
-            else
-            {
-                _value = _value.Remove(_caretIndex, 1);
-            }
-            UpdateText();
-            Changed?.Invoke(_value);
-            OnValueChanged?.Invoke(_value);
+            int next = FindNextWordBoundary(_caretIndex);
+            _value = _value.Remove(_caretIndex, next - _caretIndex);
         }
+        else
+        {
+            _value = _value.Remove(_caretIndex, 1);
+        }
+        NotifyChanged();
     }
 
     private void HandleLeft(bool isCtrl, bool isShift)
     {
-        int targetIdx = isCtrl ? FindPreviousWordBoundary(_caretIndex) : Math.Max(0, _caretIndex - 1);
-        if (isShift)
+        int target = isCtrl ? FindPreviousWordBoundary(_caretIndex) : Math.Max(0, _caretIndex - 1);
+        if (!isShift && HasSelection)
         {
-            _caretIndex = targetIdx;
+            target = SelectionStart;
         }
-        else
-        {
-            if (HasSelection)
-            {
-                targetIdx = SelectionStart;
-            }
-            _caretIndex = targetIdx;
-            _selectionAnchor = targetIdx;
-        }
-        UpdateCaretAndSelection();
+        MoveCaret(target, isShift);
     }
 
     private void HandleRight(bool isCtrl, bool isShift)
     {
-        int targetIdx = isCtrl ? FindNextWordBoundary(_caretIndex) : Math.Min(_value.Length, _caretIndex + 1);
-        if (isShift)
+        int target = isCtrl ? FindNextWordBoundary(_caretIndex) : Math.Min(_value.Length, _caretIndex + 1);
+        if (!isShift && HasSelection)
         {
-            _caretIndex = targetIdx;
+            target = SelectionStart + SelectionLength;
         }
-        else
-        {
-            if (HasSelection)
-            {
-                targetIdx = SelectionStart + SelectionLength;
-            }
-            _caretIndex = targetIdx;
-            _selectionAnchor = targetIdx;
-        }
+        MoveCaret(target, isShift);
+    }
+
+    private void MoveCaret(int index, bool isShift)
+    {
+        _caretIndex = Math.Clamp(index, 0, _value.Length);
+        if (!isShift) _selectionAnchor = _caretIndex;
         UpdateCaretAndSelection();
     }
 
@@ -418,22 +425,8 @@ public class InputField : VisualElement
     {
         string paste = Browser.GetClipboardText();
         if (string.IsNullOrEmpty(paste)) return;
-
-        // Clean single line text
         paste = paste.Replace("\r", "").Replace("\n", " ");
-
-        if (HasSelection)
-        {
-            DeleteSelection();
-        }
-
-        _value = _value.Insert(_caretIndex, paste);
-        _caretIndex += paste.Length;
-        _selectionAnchor = _caretIndex;
-
-        UpdateText();
-        Changed?.Invoke(_value);
-        OnValueChanged?.Invoke(_value);
+        InsertText(paste);
     }
 
     private void DeleteSelection()
@@ -463,52 +456,66 @@ public class InputField : VisualElement
         return Math.Min(_value.Length, idx);
     }
 
+    private SKPaint TextPaint => _textElement.Style.Text.Paint;
+
+    private TextLayout LayoutFor(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return new TextLayout();
+        return TextLayout.Build(text, TextPaint, float.MaxValue, float.MaxValue, TextOverflow.Visible, 1);
+    }
+
+    private float MeasurePrefix(int length)
+    {
+        if (string.IsNullOrEmpty(_value) || length <= 0) return 0f;
+        int safe = Math.Clamp(length, 0, _value.Length);
+        if (safe == 0) return 0f;
+        return LayoutFor(_value.Substring(0, safe)).Width;
+    }
+
+    private int GetCharIndexAtPointer(float globalX)
+    {
+        float textOriginX = Transform.Computed.X + PadLeft - _scrollOffset;
+        float localX = globalX - textOriginX;
+        return GetCharIndexAt(localX);
+    }
+
     private int GetCharIndexAt(float localX)
     {
         if (string.IsNullOrEmpty(_value) || localX <= 0f) return 0;
 
-        using var paint = GetMeasurePaint();
-        float currentX = 0f;
-        for (int i = 0; i < _value.Length; i++)
+        var layout = LayoutFor(_value);
+        if (layout.Runs.Count == 0)
+            return localX > 0f ? _value.Length : 0;
+
+        using var paint = TextPaint.Clone();
+        int charIndex = 0;
+        foreach (var run in layout.Runs)
         {
-            float charW = paint.MeasureText(_value[i].ToString());
-            if (localX < currentX + charW / 2f)
+            if (string.IsNullOrEmpty(run.Text))
+                continue;
+
+            paint.Typeface = run.Typeface;
+            paint.TextSize = run.Size;
+            float x = run.X;
+            int i = 0;
+            while (i < run.Text.Length)
             {
-                return i;
+                int len = char.IsSurrogatePair(run.Text, i) ? 2 : 1;
+                float charW = paint.MeasureText(run.Text.Substring(i, len));
+                if (localX < x + charW * 0.5f)
+                    return Math.Clamp(charIndex, 0, _value.Length);
+                x += charW;
+                charIndex += len;
+                i += len;
             }
-            currentX += charW;
         }
+
         return _value.Length;
-    }
-
-    private SKPaint GetMeasurePaint()
-    {
-        return new SKPaint
-        {
-            Typeface = Blossom.Utils.Fonts.GetTypeface("Roboto", 400),
-            TextSize = 13,
-            IsAntialias = true
-        };
-    }
-
-    private float MeasureSubstr(int start, int length)
-    {
-        if (string.IsNullOrEmpty(_value) || length <= 0 || start >= _value.Length) return 0f;
-        int safeLength = Math.Min(length, _value.Length - start);
-        using var paint = GetMeasurePaint();
-        return paint.MeasureText(_value.Substring(start, safeLength));
     }
 
     protected override void LayoutChildren()
     {
-        float originX = Transform.Computed.X;
-        float originY = Transform.Computed.Y;
-        const float padLeft = 10f;
-        const float padRight = 10f;
-        float textW = Math.Max(0, Transform.Width - (padLeft + padRight));
-        float textH = Math.Max(1f, Transform.Height);
-
-        _textElement.Transform.SetAbsoluteFrame(originX + padLeft - _scrollOffset, originY, textW + _scrollOffset, textH);
         UpdateCaretAndSelection();
     }
 
@@ -517,7 +524,7 @@ public class InputField : VisualElement
         if (string.IsNullOrEmpty(_value))
         {
             _textElement.Text = _placeholder;
-            _textElement.Style.Text.Color = new SKColor(120, 120, 120); // Gray 500
+            _textElement.Style.Text.Color = new SKColor(120, 120, 120);
         }
         else
         {
@@ -531,57 +538,55 @@ public class InputField : VisualElement
 
     private void UpdateCaretAndSelection()
     {
-        const float padLeft = 10f;
-        const float padRight = 10f;
-        float viewW = Math.Max(10f, Transform.Width - (padLeft + padRight));
+        float originX = Transform.Computed.X;
+        float originY = Transform.Computed.Y;
+        float fieldW = Math.Max(1f, Transform.Width);
+        float fieldH = Math.Max(1f, Transform.Height);
+        float viewW = Math.Max(10f, fieldW - PadLeft - PadRight);
 
-        float caretTextW = MeasureSubstr(0, _caretIndex);
+        bool showingPlaceholder = string.IsNullOrEmpty(_value);
+        var displayLayout = LayoutFor(showingPlaceholder ? (_placeholder ?? "") : _value);
+        float caretTextW = showingPlaceholder ? 0f : MeasurePrefix(_caretIndex);
+        float fullTextW = displayLayout.Width;
+        float lineBox = displayLayout.Height > 1f ? displayLayout.Height : CaretHeight;
 
-        // Adjust scroll offset to keep caret inside viewable area
-        if (caretTextW - _scrollOffset > viewW)
+        if (caretTextW - _scrollOffset > viewW - 4f)
         {
-            _scrollOffset = caretTextW - viewW + 12f;
+            _scrollOffset = caretTextW - viewW + 8f;
         }
-        else if (caretTextW - _scrollOffset < 0)
+        else if (caretTextW - _scrollOffset < 0f)
         {
-            _scrollOffset = Math.Max(0f, caretTextW - 12f);
+            _scrollOffset = Math.Max(0f, caretTextW - 8f);
         }
 
-        if (string.IsNullOrEmpty(_value))
+        if (showingPlaceholder || fullTextW <= viewW)
         {
             _scrollOffset = 0f;
         }
 
-        float originX = Transform.Computed.X;
-        float originY = Transform.Computed.Y;
+        float textX = originX + PadLeft - _scrollOffset;
+        float textW = Math.Max(viewW, fullTextW + 8f);
+        _textElement.Transform.SetAbsoluteFrame(textX, originY, textW, fieldH);
 
-        // Position text element with scroll offset
-        float textW = Math.Max(0, Transform.Width - (padLeft + padRight));
-        float textH = Math.Max(1f, Transform.Height);
-        _textElement.Transform.SetAbsoluteFrame(originX + padLeft - _scrollOffset, originY, textW + _scrollOffset, textH);
-
-        // Position selection highlight
-        if (_isFocused && HasSelection)
+        if (_isFocused && HasSelection && !showingPlaceholder)
         {
-            float selStartW = MeasureSubstr(0, SelectionStart);
-            float selLenW = MeasureSubstr(SelectionStart, SelectionLength);
-            float selX = originX + padLeft + selStartW - _scrollOffset;
-            float selH = 18f;
-            float selY = originY + Math.Max(0, (Transform.Height - selH) / 2f);
-
+            float selStartW = MeasurePrefix(SelectionStart);
+            float selEndW = MeasurePrefix(SelectionStart + SelectionLength);
+            float selX = originX + PadLeft + selStartW - _scrollOffset;
+            float selW = Math.Max(2f, selEndW - selStartW);
+            float selH = lineBox;
+            float selY = originY + Math.Max(0, (fieldH - selH) / 2f);
             _selectionHighlight.Visible = true;
-            _selectionHighlight.Transform.SetAbsoluteFrame(selX, selY, selLenW, selH);
+            _selectionHighlight.Transform.SetAbsoluteFrame(selX, selY, selW, selH);
         }
         else
         {
             _selectionHighlight.Visible = false;
         }
 
-        // Position caret
-        float caretX = originX + padLeft + caretTextW - _scrollOffset;
-        float caretHeight = 16f;
-        float caretY = originY + Math.Max(0, (Transform.Height - caretHeight) / 2f);
-        _caret.Transform.SetAbsoluteFrame(caretX, caretY, 2f, caretHeight);
+        float caretX = originX + PadLeft + caretTextW - _scrollOffset;
+        float caretY = originY + Math.Max(0, (fieldH - lineBox) / 2f);
+        _caret.Transform.SetAbsoluteFrame(caretX, caretY, CaretWidth, lineBox);
         _caret.Visible = _isFocused;
 
         InvalidatePaint();

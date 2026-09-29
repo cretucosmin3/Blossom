@@ -121,7 +121,7 @@ public class ScrollContainer : VisualElement
             for (int i = 0; i < children.Count; i++)
             {
                 var child = children[i];
-                if (child == null || !child.Visible) continue;
+                if (child == null || !child.Visible || IsScrollbarChrome(child)) continue;
                 float childLocalRight = (child.Transform.Computed.X - containerX + ScrollX) + child.Transform.Computed.Width;
                 if (childLocalRight > max) max = childLocalRight;
             }
@@ -142,7 +142,7 @@ public class ScrollContainer : VisualElement
             for (int i = 0; i < children.Count; i++)
             {
                 var child = children[i];
-                if (child == null || !child.Visible) continue;
+                if (child == null || !child.Visible || IsScrollbarChrome(child)) continue;
                 float childLocalBottom = (child.Transform.Computed.Y - containerY + ScrollY) + child.Transform.Computed.Height;
                 if (childLocalBottom > max) max = childLocalBottom;
             }
@@ -200,9 +200,11 @@ public class ScrollContainer : VisualElement
                 FixedHeight = true
             }
         };
-        // Parent after construct so transform Parent links correctly without AddChild (chrome only).
-        VScrollbar.Parent = this;
-        HScrollbar.Parent = this;
+        // Chrome only: attach transform parent without adding to Children.
+        // The public Parent setter calls AddChild, which would make For.Each / card
+        // stacks treat the scrollbar as another list item.
+        VScrollbar.SetParentInternal(this);
+        HScrollbar.SetParentInternal(this);
 
         Events.OnScroll += (sender, args) =>
         {
@@ -470,8 +472,11 @@ public class ScrollContainer : VisualElement
             (ScrollbarVisibilityX == ScrollbarVisibility.Auto && MaxScrollX > 0)
         );
 
+        bool visChanged = VScrollbar.Visible != showV || HScrollbar.Visible != showH;
         VScrollbar.Visible = showV;
         HScrollbar.Visible = showH;
+        if (visChanged)
+            ParentView?.MarkHierarchyDirty();
 
         float thickness = ScrollbarThickness;
 
@@ -502,12 +507,27 @@ public class ScrollContainer : VisualElement
         }
     }
 
+    public override void AddedToView()
+    {
+        base.AddedToView();
+        if (ParentView == null)
+            return;
+        if (VScrollbar != null)
+            RegisterSubtree(VScrollbar, ParentView);
+        if (HScrollbar != null)
+            RegisterSubtree(HScrollbar, ParentView);
+    }
+
+    internal bool IsScrollbarChrome(VisualElement? child) =>
+        child != null && (ReferenceEquals(child, VScrollbar) || ReferenceEquals(child, HScrollbar));
+
     internal override IEnumerable<VisualElement> GetVisualChildren()
     {
         foreach (var child in Children)
         {
-            if (child != null)
-                yield return child;
+            if (child == null || IsScrollbarChrome(child))
+                continue;
+            yield return child;
         }
 
         if (VScrollbar != null && VScrollbar.Visible)

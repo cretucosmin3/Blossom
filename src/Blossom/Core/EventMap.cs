@@ -127,13 +127,13 @@ public class EventMap : IDisposable
                 }
             }
         }
-        else
+
+        // Always deliver OnKeyDown when no hotkey claimed the press.
+        // Otherwise Ctrl+A/C/V/X never reach text fields (IsCommand skips the old else).
+        if (!FoundEvent && OnKeyDown != null)
         {
-            if (OnKeyDown != null)
-            {
-                OnKeyDown.Invoke((int)key);
-                FoundEvent = true;
-            }
+            OnKeyDown.Invoke((int)key);
+            FoundEvent = true;
         }
 
         return FoundEvent;

@@ -43,6 +43,7 @@ namespace Blossom.Core.Visual
             uniform float2 u_resolution;
             uniform float4 u_color;
             uniform float u_hover;
+            uniform float u_speed;
 
             float my_smoothstep(float edge0, float edge1, float x) {
                 float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
@@ -51,7 +52,7 @@ namespace Blossom.Core.Visual
 
             half4 main(float2 fragCoord) {
                 float2 uv = fragCoord / u_resolution;
-                float gridSpeed = u_time * 0.8;
+                float gridSpeed = u_time * 0.8 * max(u_speed, 0.0);
                 
                 // Perspective warp
                 float px = (uv.x - 0.5) / (uv.y + 0.1);
@@ -585,7 +586,7 @@ namespace Blossom.Core.Visual
             }
         }
 
-        public static SKShader CreateShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress)
+        public static SKShader CreateShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, float antialias = 1f, float speed = 1f)
         {
             if (type == BackgroundShaderType.None) return null!;
 
@@ -595,11 +596,13 @@ namespace Blossom.Core.Visual
             TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
             TrySetUniform(uniforms, "u_color", new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f });
             TrySetUniform(uniforms, "u_hover", hoverProgress);
+            TrySetUniform(uniforms, "u_aa", antialias);
+            TrySetUniform(uniforms, "u_speed", speed);
 
             return effect.ToShader(true, uniforms);
         }
 
-        public static SKShader CreateGlassShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float scaleX = 1f, float scaleY = 1f, float mixingRate = 0.25f)
+        public static SKShader CreateGlassShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float scaleX = 1f, float scaleY = 1f, float mixingRate = 0.25f, float antialias = 1f)
         {
             if (type == BackgroundShaderType.None) return null!;
 
@@ -607,6 +610,7 @@ namespace Blossom.Core.Visual
             var uniforms = new SKRuntimeEffectUniforms(effect);
             TrySetUniform(uniforms, "u_time", time);
             TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
+            TrySetUniform(uniforms, "u_aa", antialias);
             TrySetUniform(uniforms, "u_color", new float[] { color.Red / 255f, color.Green / 255f, color.Blue / 255f, color.Alpha / 255f });
             TrySetUniform(uniforms, "u_hover", hoverProgress);
             TrySetUniform(uniforms, "u_elementPos", new float[] { elementBounds.Left, elementBounds.Top });

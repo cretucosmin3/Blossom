@@ -619,7 +619,7 @@ public class DrawBackdropBlurCommand : DrawCommand
 
                 using var paint = new SKPaint
                 {
-                    IsAntialias = true,
+                    IsAntialias = _element.IsAntialias,
                     ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
                 };
                 // Draw snapshot offset so the element's screen location aligns with 0, 0 in cached image
@@ -637,12 +637,12 @@ public class DrawBackdropBlurCommand : DrawCommand
             canvas.SetMatrix(SKMatrix.Identity);
 
             // Clip drawing to the element's actual shape
-            canvas.ClipPath(path, SKClipOperation.Intersect, true);
+            canvas.ClipPath(path, SKClipOperation.Intersect, _element.IsAntialias);
 
             // Blur paint
             using var paint = new SKPaint
             {
-                IsAntialias = true,
+                IsAntialias = _element.IsAntialias,
                 ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
             };
 
@@ -709,16 +709,29 @@ public class DrawShaderBackgroundCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
+        bool aa = _element.IsAntialias;
+        float w = Math.Max(1f, _element.Transform.Computed.Width);
+        float h = Math.Max(1f, _element.Transform.Computed.Height);
+        var dest = new SKRect(0, 0, w, h);
+        using var blitPaint = new SKPaint
+        {
+            IsAntialias = aa,
+            FilterQuality = aa ? SKFilterQuality.High : SKFilterQuality.Low
+        };
+
         if (_renderMode == EffectRenderMode.OnDemand && _element.CachedShaderBackground != null)
         {
-            canvas.DrawImage(_element.CachedShaderBackground, 0, 0);
+            canvas.DrawImage(_element.CachedShaderBackground, dest, blitPaint);
             return;
         }
 
         float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
         float hoverProgress = _element.HoverProgress;
-        float w = _element.Transform.Computed.Width;
-        float h = _element.Transform.Computed.Height;
+        float aaAmount = aa ? 1f : 0f;
+        float speed = _element.Style?.ShaderSpeed ?? 1f;
+        float ss = aa ? 2f : 1f;
+        float shaderW = Math.Max(1f, w * ss);
+        float shaderH = Math.Max(1f, h * ss);
 
         SKShader? shader = null;
         SKShader? backdropShader = null;
@@ -735,7 +748,7 @@ public class DrawShaderBackgroundCommand : DrawCommand
                     var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
                     var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
                     shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
-                        _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                        _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, mixingRate: 0.25f, antialias: aaAmount);
                 }
             }
             else if (_type == Blossom.Core.Visual.BackgroundShaderType.LiquidPaint)
@@ -752,13 +765,13 @@ public class DrawShaderBackgroundCommand : DrawCommand
                         var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
                         var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
                         shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
-                            _type, time, w, h, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, _element.ShaderMixingRate);
+                            _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, _element.ShaderMixingRate, aaAmount);
                     }
                 }
             }
             else
             {
-                shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, w, h, _baseColor, hoverProgress);
+                shader = Blossom.Core.Visual.SKSLShaderManager.CreateShader(_type, time, shaderW, shaderH, _baseColor, hoverProgress, aaAmount, speed);
             }
 
             if (shader == null) return;
@@ -766,27 +779,43 @@ public class DrawShaderBackgroundCommand : DrawCommand
             using var paint = new SKPaint
             {
                 Style = SKPaintStyle.Fill,
-                IsAntialias = true,
+                IsAntialias = aa,
+                FilterQuality = aa ? SKFilterQuality.High : SKFilterQuality.Low,
                 Shader = shader,
                 PathEffect = _element.Style?.BackgroundPathEffect
             };
 
-            if (_renderMode == EffectRenderMode.OnDemand)
+            bool useOffscreen = _renderMode == EffectRenderMode.OnDemand || aa;
+            if (useOffscreen)
             {
-                var info = new SKImageInfo((int)Math.Max(1, w), (int)Math.Max(1, h), SKColorType.Rgba8888, SKAlphaType.Premul);
+                var info = new SKImageInfo((int)Math.Max(1, shaderW), (int)Math.Max(1, shaderH), SKColorType.Rgba8888, SKAlphaType.Premul);
                 using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
                 if (tempSurface != null)
                 {
                     var tempCanvas = tempSurface.Canvas;
                     tempCanvas.Clear(SKColors.Transparent);
-                    tempCanvas.DrawRoundRect(_roundRect, paint);
+                    using var ssRound = new SKRoundRect(new SKRect(0, 0, shaderW, shaderH));
+                    ssRound.SetRectRadii(ssRound.Rect, new SKPoint[] {
+                        new(_rTopLeft * ss, _rTopLeft * ss),
+                        new(_rTopRight * ss, _rTopRight * ss),
+                        new(_rBottomRight * ss, _rBottomRight * ss),
+                        new(_rBottomLeft * ss, _rBottomLeft * ss),
+                    });
+                    tempCanvas.DrawRoundRect(ssRound, paint);
                     using var gpuSnapshot = tempSurface.Snapshot();
-                    _element.CachedShaderBackground = gpuSnapshot?.ToRasterImage();
+                    if (_renderMode == EffectRenderMode.OnDemand)
+                    {
+                        _element.CachedShaderBackground = gpuSnapshot?.ToRasterImage();
+                    }
+                    else if (gpuSnapshot != null)
+                    {
+                        canvas.DrawImage(gpuSnapshot, dest, blitPaint);
+                    }
                 }
 
-                if (_element.CachedShaderBackground != null)
+                if (_renderMode == EffectRenderMode.OnDemand && _element.CachedShaderBackground != null)
                 {
-                    canvas.DrawImage(_element.CachedShaderBackground, 0, 0);
+                    canvas.DrawImage(_element.CachedShaderBackground, dest, blitPaint);
                 }
             }
             else
@@ -892,7 +921,7 @@ public class DrawBorderCommand : DrawCommand
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
-            IsAntialias = true,
+            IsAntialias = _element.IsAntialias,
             StrokeWidth = _width,
             Color = _color,
             PathEffect = effect

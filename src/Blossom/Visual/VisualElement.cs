@@ -421,6 +421,25 @@ public class VisualElement : IDisposable
     /// </summary>
     public float EffectiveOpacity => Opacity * (Parent?.EffectiveOpacity ?? 1f);
 
+    private bool _isAntialias = true;
+    /// <summary>
+    /// When true, this element's fills, strokes, clips, and background shaders are antialiased.
+    /// Shader backgrounds also receive a wider line filter and 2x supersampling.
+    /// Default is true.
+    /// </summary>
+    [BuilderProperty("Antialias", "Appearance")]
+    public bool IsAntialias
+    {
+        get => _isAntialias;
+        set
+        {
+            if (_isAntialias == value) return;
+            _isAntialias = value;
+            ClearRenderCache();
+            InvalidatePaint();
+        }
+    }
+
     /// <summary>
     /// Standard mouse cursor displayed when hovering over this element.
     /// If null, inherits cursor from the nearest ancestor with a non-null Cursor, or standard default.
@@ -808,8 +827,12 @@ public class VisualElement : IDisposable
         }
     }
 
+    public object? Tag { get; set; }
+    public event Action<VisualElement?>? ParentChanged;
+
     internal void SetParentInternal(VisualElement? value)
     {
+        var oldParent = _Parent;
         if (_Parent != null)
             _Parent.TransformChanged -= ParentTransformChanged;
 
@@ -828,6 +851,10 @@ public class VisualElement : IDisposable
         }
 
         ScheduleRender();
+        if (oldParent != value)
+        {
+            ParentChanged?.Invoke(value);
+        }
     }
 
     internal bool TransformIsChanged = false;
@@ -1304,6 +1331,12 @@ public class VisualElement : IDisposable
         InvalidateLayout();
     }
 
+    public int IndexOfChild(VisualElement child)
+    {
+        if (child == null) return -1;
+        return _children.IndexOf(child);
+    }
+
     /// <summary>
     /// Embeds a plugin root into this element as a host slot, executing synthetic resize reflow (Strategy S2).
     /// </summary>
@@ -1683,7 +1716,7 @@ public class VisualElement : IDisposable
                 var matrix2D = globalMatrix3D.Matrix;
                 
                 path.Transform(matrix2D);
-                canvas.ClipPath(path, SKClipOperation.Intersect, true);
+                canvas.ClipPath(path, SKClipOperation.Intersect, IsAntialias);
             }
             ancestor = ancestor.Parent;
         }
@@ -1700,6 +1733,7 @@ public class VisualElement : IDisposable
         if (Style?.Shadow?.HasValidValues() == true)
         {
             var paint = Style.Shadow.Paint.Clone();
+            paint.IsAntialias = IsAntialias;
             paint.PathEffect = Style.BackgroundPathEffect;
             
             cmds.Add(new DrawRoundRectCommand(
@@ -1745,7 +1779,7 @@ public class VisualElement : IDisposable
             var fillPaint = new SKPaint
             {
                 Style = SKPaintStyle.Fill,
-                IsAntialias = true,
+                IsAntialias = IsAntialias,
                 Color = Style.BackColor,
                 PathEffect = Style.BackgroundPathEffect
             };
@@ -1817,7 +1851,7 @@ public class VisualElement : IDisposable
                 var strokePaint = new SKPaint
                 {
                     Style = SKPaintStyle.Stroke,
-                    IsAntialias = true,
+                    IsAntialias = IsAntialias,
                     StrokeWidth = Style.Border.Width,
                     Color = Style.Border.Color,
                     PathEffect = Style.Border.PathEffect
@@ -2198,12 +2232,14 @@ public class VisualElement : IDisposable
 
     private bool _isDisposed = false;
     public bool IsDisposed => _isDisposed;
+    public event Action<VisualElement>? Disposed;
 
     public virtual void Dispose()
     {
         if (_isDisposed) return;
         _isDisposed = true;
 
+        Disposed?.Invoke(this);
         OnDisposing?.Invoke(this);
 
         if (HasPointerCapture)

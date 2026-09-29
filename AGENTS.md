@@ -41,6 +41,7 @@ Blossom/
 │   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
 │   │   ├── Utils/          # Fonts, imaging helpers
 │   │   └── External/       # Vendored quadtree helpers
+│   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
 │   └── Blossom.Demo/       # Sample host app (not the public API)
 │       ├── Blossom.Demo.csproj
 │       ├── Program.cs
@@ -65,7 +66,7 @@ Ignore `bin/`, `obj/`, and large build outputs under `dist/` or `production/` if
 | TFM | **.NET 10** (`net10.0`) |
 | Window / input | Silk.NET 2.15 (GLFW) |
 | Graphics | SkiaSharp 2.88 (+ SVG, ImageSharp) |
-| Solution | `Blossom.sln` — library `src/Blossom/Blossom.csproj` + demo `src/Blossom.Demo/Blossom.Demo.csproj` |
+| Solution | `Blossom.sln` — library `src/Blossom/Blossom.csproj` + reactive `src/Blossom.Reactive/Blossom.Reactive.csproj` + demo `src/Blossom.Demo/Blossom.Demo.csproj` |
 
 ---
 
@@ -123,9 +124,9 @@ Browser (static host)
 
 `src/Blossom.Demo` hosts the primary manual test harness and sample test components (not the framework API boundary):
 
-- Single active application view: **Todo Kanban Board** (`KanbanView`), exercising pointer capture, whole-card drag-and-drop, scrollable columns, modals, and input fields.
-- Isolation designer view: **Component Design View** (`ComponentDesignView`), exercising independent plugin canvases, slot reflow presets, and live embed attachment.
-- Components under `Blossom.Demo/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **StackPanel**, **TodoCard**, **SampleBoardMetricsPlugin**, and **SampleBoardStatsPlugin**.
+- Single active application view: **Blossom Studio** (`StudioView`), exercising fine-grained reactive signals (`Blossom.Reactive`), keyed list reconciliation (`For.Each`), two-way and derived form bindings.
+- Tabs under `Blossom.Demo/Tabs`: **TasksTab** (reactive 3-column Kanban board with keyed list reconciliation, search, and progress metrics), and **ControlsTab** (two-way signal inputs, sliders, switches, live preview, and batch updates).
+- Components under `Blossom.Demo/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **Slider**, **StackPanel**.
 - Benchmarks: `./Blossom --benchmark` (isolated benchmark views).
 
 When hardening core, update demos only as needed for compile/regression — do not expand the control library as the main deliverable unless asked.
@@ -185,6 +186,7 @@ Other apps consume the framework with a project (or later package) reference to 
 | GPU surfaces / app shaders | `src/Blossom/Core/Gpu.cs` |
 | Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
 | Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
+| Reactive signals / flow | `src/Blossom.Reactive/` (see that project's README) |
 
 ---
 

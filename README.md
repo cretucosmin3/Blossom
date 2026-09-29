@@ -3,6 +3,8 @@ A rich .Net browser.<br>
 
 Blossom is a framework / browser and app distribuitor for .Net C# applications with rich web like controls.
 
+**Blossom.Reactive** is an optional SolidJS-inspired layer on top of the retained `VisualElement` tree: signals, memos, effects, and keyed list / conditional flow. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
+
 ## Building and Running
 
 Blossom is a **class library** (`src/Blossom`) plus a sample host (`src/Blossom.Demo`). Other C# apps reference the library and call `Browser.Initialize(yourApplication)`.

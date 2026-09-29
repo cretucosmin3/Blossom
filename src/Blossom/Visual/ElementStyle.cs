@@ -16,12 +16,45 @@ public class ElementStyle : IDisposable
     private float _BorderEffectAmount = 5f;
     private float _BackdropBlur = 0f;
     private EffectRenderMode _ShaderRenderMode = EffectRenderMode.OnDemand;
+    private float _ShaderSpeed = 1f;
     private TransitionEffectType _TransitionType = TransitionEffectType.None;
     private float _TransitionProgress = 1.0f;
 
-    public TextStyle Text { get; set; }
-    public BorderStyle Border { get; set; }
-    public ShadowStyle Shadow { get; set; }
+    private TextStyle _text;
+    public TextStyle Text
+    {
+        get => _text;
+        set
+        {
+            _text = value;
+            if (_text != null) _text.StyleContext = this;
+            ScheduleRender();
+        }
+    }
+
+    private BorderStyle _border;
+    public BorderStyle Border
+    {
+        get => _border;
+        set
+        {
+            _border = value;
+            if (_border != null) _border.StyleContext = this;
+            ScheduleRender();
+        }
+    }
+
+    private ShadowStyle _shadow;
+    public ShadowStyle Shadow
+    {
+        get => _shadow;
+        set
+        {
+            _shadow = value;
+            if (_shadow != null) _shadow.StyleContext = this;
+            ScheduleRender();
+        }
+    }
 
     [BuilderProperty("Background Shader", "Effects")]
     public BackgroundShaderType BackgroundShader
@@ -94,7 +127,24 @@ public class ElementStyle : IDisposable
         get => _ShaderRenderMode;
         set
         {
+            if (_ShaderRenderMode == value) return;
             _ShaderRenderMode = value;
+            ScheduleRender();
+        }
+    }
+
+    /// <summary>
+    /// Multiplier for time-based background shaders. 1 is the authored speed; larger values run the effect faster.
+    /// </summary>
+    [BuilderProperty("Shader Speed", "Effects", min: 0f, max: 120f, step: 0.25f)]
+    public float ShaderSpeed
+    {
+        get => _ShaderSpeed;
+        set
+        {
+            float next = Math.Max(0f, value);
+            if (Math.Abs(_ShaderSpeed - next) < 0.0001f) return;
+            _ShaderSpeed = next;
             ScheduleRender();
         }
     }

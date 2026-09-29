@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Blossom\Blossom.csproj" />
+        <ProjectReference Include="..\Blossom.Reactive\Blossom.Reactive.csproj" />
     </ItemGroup>
 
     <ItemGroup>

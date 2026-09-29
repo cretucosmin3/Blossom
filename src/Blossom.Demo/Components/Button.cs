@@ -129,16 +129,20 @@ public class Button : VisualElement
         Events.OnMouseLeave += (s) =>
         {
             _isHovered = false;
-            _isPressed = false;
+            if (!HasPointerCapture)
+            {
+                _isPressed = false;
+            }
             ApplyCurrentVisualState();
         };
 
         Events.OnMouseDown += (s, e) =>
         {
-            if (e.Button == 0)
+            if (e.Button == 0 && EffectiveInteractive)
             {
                 _isPressed = true;
                 e.Handled = true;
+                CapturePointer();
                 ApplyCurrentVisualState();
             }
         };
@@ -148,6 +152,7 @@ public class Button : VisualElement
             if (e.Button == 0)
             {
                 _isPressed = false;
+                ReleasePointer();
                 ApplyCurrentVisualState();
             }
         };
@@ -158,6 +163,16 @@ public class Button : VisualElement
             Clicked?.Invoke();
             OnClick?.Invoke();
         };
+
+        Disposed += _ => ResetVisualState();
+    }
+
+    public void ResetVisualState()
+    {
+        _isPressed = false;
+        _isHovered = false;
+        ReleasePointer();
+        ApplyCurrentVisualState();
     }
 
     private void ApplyCurrentVisualState()
