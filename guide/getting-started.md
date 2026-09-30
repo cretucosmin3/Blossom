@@ -8,7 +8,7 @@
 | Window / input | Silk.NET **2.23.0** (GLFW) |
 | Graphics | SkiaSharp **4.153.0** + `SkiaSharp.NativeAssets.Linux` |
 | Images | ImageSharp **3.1.12**, Svg.Skia **5.2.3** |
-| Solution | `Blossom.sln` — library, `Blossom.Reactive`, demo |
+| Solution | `Blossom.sln` — library, reactive, primitives, pack, demo |
 
 Linux uses `SkiaSharp.NativeAssets.Linux` (fontconfig). Do not switch to `NoDependencies` unless you are building a stripped container and you register every face yourself.
 
@@ -28,7 +28,13 @@ Packaging script (Linux): `./build.sh` (see the script for `--self-contained` / 
 
 ## Consume the library
 
-Reference `src/Blossom/Blossom.csproj` (and optionally `src/Blossom.Reactive`). Then:
+From NuGet (`Blossom` includes core, reactive, and primitives):
+
+```bash
+dotnet add package Blossom
+```
+
+From this repo, reference `src/Blossom/Blossom.csproj` plus `src/Blossom.Reactive` and `src/Blossom.Primitives` (the demo already does). Then:
 
 ```csharp
 using Blossom.Core;
@@ -77,8 +83,9 @@ Shell.Initialize(new MyApplication());
 Blossom/
 ├── guide/                  # this guide
 ├── src/Blossom/            # framework (class lib); Shell.cs is the host
-├── src/Blossom.Reactive/   # optional SolidJS-inspired signals
-├── src/Blossom.Primitives/ # optional layout hosts (Stack, Grid, Split)
+├── src/Blossom.Reactive/   # SolidJS-inspired signals
+├── src/Blossom.Primitives/ # layout hosts (Stack, Grid, Split)
+├── src/Blossom.Pack/       # packs the three libraries into one NuGet id `Blossom`
 ├── src/Blossom.Demo/       # Blossom Studio (not the public API)
 ├── tests/Blossom.Reactive.Tests/
 ├── assets/                 # fonts, images (copied to demo output)

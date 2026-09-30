@@ -41,7 +41,7 @@ Components authored at a design size embed into a slot with `PluginEmbed`: the p
 
 Override `VisualElement.LayoutChildren` and position children with `SetAbsoluteFrame` / `SetLocalFrame`. That is the extension point. Core does not ship Flexbox or Grid as element properties.
 
-For row/column/grid/split **hosts** that place and size children, reference [`Blossom.Primitives`](../src/Blossom.Primitives/README.md) (`Stack`, `Grid`, `Split`). See [Primitives](primitives.md).
+For row/column/grid/split **hosts** that place and size children, use [`Blossom.Primitives`](../src/Blossom.Primitives/README.md) (`Stack`, `Grid`, `Split`), included in the `Blossom` package. See [Primitives](primitives.md).
 
 While `LayoutMutationDepth` is non-zero, `Transform.OnChanged` is suppressed (avoids a layout loop). **Width/height changes still raise `SizeChanged`**, so a nested primitive can relayout itself.
 

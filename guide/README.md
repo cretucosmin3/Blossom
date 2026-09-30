@@ -16,7 +16,7 @@ Shell (static process host)
 
 ## Who this is for
 
-- App authors who reference `src/Blossom/Blossom.csproj` and call `Shell.Initialize`.
+- App authors who reference the `Blossom` package (or `src/Blossom/Blossom.csproj`) and call `Shell.Initialize`.
 - Anyone building a custom primitive (field, terminal, chart) on `VisualElement`.
 - Contributors who need the current public surface.
 

@@ -1,11 +1,11 @@
 # Blossom.Primitives
 
-Optional **custom elements** for Blossom, in the same role as [`Blossom.Reactive`](../Blossom.Reactive/README.md) for state: a library on top of `VisualElement`, not a second platform.
+**Custom elements** for Blossom, in the same role as [`Blossom.Reactive`](../Blossom.Reactive/README.md) for state: a library on top of `VisualElement`, not a second platform.
 
-This package is where layout hosts and (later) widgets live. Core stays hooks; you opt in with a project reference.
+Shipped in the **`Blossom`** NuGet package together with core and reactive. Layout hosts and (later) widgets live here. Core stays hooks.
 
-```xml
-<ProjectReference Include="..\Blossom.Primitives\Blossom.Primitives.csproj" />
+```bash
+dotnet add package Blossom
 ```
 
 ```csharp

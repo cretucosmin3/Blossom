@@ -33,11 +33,13 @@ The SolidJS analog of JSX is **C# object construction** plus `Bind*` helpers. A 
 
 ## Install
 
-Project reference from an app that already uses Blossom:
+Shipped in the **`Blossom`** NuGet package together with core and primitives.
 
-```xml
-<ProjectReference Include="..\Blossom.Reactive\Blossom.Reactive.csproj" />
+```bash
+dotnet add package Blossom
 ```
+
+From this repo, project-reference `src/Blossom.Reactive/Blossom.Reactive.csproj` next to core.
 
 ```csharp
 using Blossom.Reactive;

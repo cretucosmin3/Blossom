@@ -10,13 +10,27 @@ Retained-mode UI framework for **C#**. Native desktop host for rich 2D/3D UI —
 
 **Guide (capabilities, APIs, pitfalls):** [`guide/README.md`](guide/README.md)
 
-**Blossom.Reactive** is an optional [SolidJS](https://www.solidjs.com/)-inspired layer on the retained tree: signals, memos, effects, keyed lists. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
+**Blossom.Reactive** is the [SolidJS](https://www.solidjs.com/)-inspired layer on the retained tree: signals, memos, effects, keyed lists. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
 
-**Blossom.Primitives** is the optional element library (Stack, Grid, Split, `Colours`, `Theme`; later widgets). See [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md).
+**Blossom.Primitives** is the element library (Stack, Grid, Split, `Colours`, `Theme`; later widgets). See [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md).
+
+The published NuGet id is **`Blossom`**. One package contains `Blossom.dll`, `Blossom.Reactive.dll`, and `Blossom.Primitives.dll`.
+
+```bash
+dotnet add package Blossom
+```
+
+Pack from this repo:
+
+```bash
+dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
+```
+
+The nupkg lands in `artifacts/`.
 
 ## Building and running
 
-Blossom is a **class library** (`src/Blossom`) plus a sample host (`src/Blossom.Demo`). Other C# apps reference the library and call `Shell.Initialize(yourApplication)`.
+Blossom is a **class library** (`src/Blossom`) plus reactive and primitives libraries and a sample host (`src/Blossom.Demo`). Other C# apps reference the `Blossom` package (or the three project references in this repo) and call `Shell.Initialize(yourApplication)`.
 
 ```bash
 dotnet build Blossom.sln

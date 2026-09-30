@@ -1,0 +1,13 @@
+<Project>
+    <PropertyGroup>
+        <Version>0.1.0</Version>
+        <Authors>Cosmin Crețu</Authors>
+        <Company>Blossom</Company>
+        <Copyright>Copyright (c) 2023-2026 Cosmin Crețu</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/cretucosmin3/Blossom</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageProjectUrl>https://github.com/cretucosmin3/Blossom</PackageProjectUrl>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+</Project>

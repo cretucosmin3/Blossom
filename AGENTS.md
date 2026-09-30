@@ -44,6 +44,7 @@ Blossom/
 │   │   └── External/       # Vendored quadtree helpers
 │   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
 │   ├── Blossom.Primitives/ # Layout hosts, Colours, Theme, future widgets
+│   ├── Blossom.Pack/       # One NuGet id `Blossom` (all three libraries)
 │   └── Blossom.Demo/       # Sample host app (not the public API)
 │       ├── Blossom.Demo.csproj
 │       ├── Program.cs
@@ -68,7 +69,7 @@ Ignore `bin/`, `obj/`, and large build outputs under `dist/` or `production/` if
 | TFM | **.NET 10** (`net10.0`) |
 | Window / input | Silk.NET 2.23 (GLFW) |
 | Graphics | SkiaSharp 4.153 (+ SVG, ImageSharp) |
-| Solution | `Blossom.sln` — `Blossom` + `Blossom.Reactive` + `Blossom.Primitives` + demo |
+| Solution | `Blossom.sln` — libraries + pack (`Blossom` nupkg) + demo |
 
 ---
 
@@ -156,6 +157,9 @@ Agents may **build** (and run short verification) to check changes. Prefer not s
 # From repo root
 dotnet build Blossom.sln
 
+# One NuGet package (artifacts/Blossom.*.nupkg) with all three libraries
+dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
+
 # Or packaging script (Linux; see build.sh for flags)
 ./build.sh
 ```
@@ -167,7 +171,7 @@ dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
 # optional: --builder | --benchmark
 ```
 
-Other apps consume the framework with a project (or later package) reference to `src/Blossom/Blossom.csproj`, then `Shell.Initialize(new MyApplication())`.
+Other apps consume the framework with `dotnet add package Blossom`, or with project references to `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(new MyApplication())`.
 
 ---
 

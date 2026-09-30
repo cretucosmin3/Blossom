@@ -1,8 +1,8 @@
 # Primitives package
 
-[`Blossom.Primitives`](../src/Blossom.Primitives/README.md) is the optional element library, parallel to [`Blossom.Reactive`](../src/Blossom.Reactive/README.md):
+[`Blossom.Primitives`](../src/Blossom.Primitives/README.md) is the element library, parallel to [`Blossom.Reactive`](../src/Blossom.Reactive/README.md). All three ship in the **`Blossom`** NuGet package.
 
-| Package | Job |
+| Assembly | Job |
 |---|---|
 | `Blossom` | Platform: window, tree, draw, input |
 | `Blossom.Reactive` | Signals / memos / `For.Each` |
