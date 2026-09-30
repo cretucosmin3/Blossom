@@ -4,7 +4,7 @@
 <table width="600" align="center">
   <tr>
     <td align="center">
-      <strong>Blossom is a retained-mode UI framework for C#. Native desktop host for 2D/3D UI; apps are VisualElement trees inside Views, hosted by Shell.</strong>
+      <strong>Blossom is a new way to build fast, efficient C# desktop apps with a web-like look and feel.</strong>
     </td>
   </tr>
 </table>
@@ -22,61 +22,46 @@
 dotnet add package Blossom
 ```
 
-| | |
-|---|---|
-| Package id | `Blossom` |
-| Assemblies | `Blossom.dll`, `Blossom.Reactive.dll`, `Blossom.Primitives.dll` |
-| TFM | `net10.0` |
+The `Blossom` package (`net10.0`) includes `Blossom.dll`, `Blossom.Reactive.dll`, and `Blossom.Primitives.dll`.
 
 From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(yourApplication)`.
 
 ## Projects
 
-| Path | Role |
-|---|---|
-| [`src/Blossom`](src/Blossom) | Window, tree, draw, input |
-| [`src/Blossom.Reactive`](src/Blossom.Reactive/README.md) | Signals, memos, effects, `Bind*`, `For.Each`, `Show.When` |
-| [`src/Blossom.Primitives`](src/Blossom.Primitives/README.md) | Stack, Grid, Split, `Colours`, `Theme` |
-| [`src/Blossom.Demo`](src/Blossom.Demo) | Sample host (Blossom Studio) |
-| [`src/Blossom.Pack`](src/Blossom.Pack) | Packs the three libraries into one nupkg |
+- [`src/Blossom`](src/Blossom) — window, tree, draw, input
+- [`src/Blossom.Reactive`](src/Blossom.Reactive/README.md) — signals, memos, effects, `Bind*`, `For.Each`, `Show.When`
+- [`src/Blossom.Primitives`](src/Blossom.Primitives/README.md) — Stack, Grid, Split, `Colours`, `Theme`
+- [`src/Blossom.Demo`](src/Blossom.Demo) — sample host (Blossom Studio)
+- [`src/Blossom.Pack`](src/Blossom.Pack) — packs the three libraries into one nupkg
 
 ## Build
 
-| | |
-|---|---|
-| Solution | `dotnet build Blossom.sln` |
-| Demo | `dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj` |
-| Pack | `dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release` → `artifacts/` |
-| Linux | `./build.sh` (`--self-contained` / `--framework-dependent`) |
+```bash
+dotnet build Blossom.sln
+dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release   # → artifacts/
+./build.sh   # Linux; --self-contained / --framework-dependent
+```
 
 Demo flags: `--benchmark`, `--fps`.
 
 ## Docs
 
-| | |
-|---|---|
-| Guide | [`guide/README.md`](guide/README.md) |
-| Reactive | [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md) |
-| Primitives | [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md) |
+- Guide: [`guide/README.md`](guide/README.md)
+- Reactive: [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md)
+- Primitives: [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md)
 
 ## Versioning
 
-| | |
-|---|---|
-| Source | `version.json` (`"0.1"` → `0.1.{git height}`) |
-| Patch | Automatic per commit |
-| Minor / major | Edit `"version"` (e.g. `"1.0"`) |
-| Publish | Tag `v*.*.*` → GitHub Release + nuget.org (workflow `nuget.yml`) |
+`version.json` (`"0.1"` → `0.1.{git height}`). Patch increments per commit. Edit `"version"` for a minor or major line (e.g. `"1.0"`). Tag `v*.*.*` for a GitHub Release and nuget.org push (`nuget.yml`).
+
+## Built with
+
+- [Silk.NET](https://github.com/dotnet/Silk.NET) 2.23.0 — window + input (GLFW)
+- [SkiaSharp](https://github.com/mono/SkiaSharp) 4.153.0 — GPU drawing (`SkiaSharp.NativeAssets.Linux`)
+- [ImageSharp](https://github.com/SixLabors/ImageSharp) 3.1.12 — raster images
+- [Svg.Skia](https://github.com/wieslawsoltes/Svg.Skia) 5.2.3 — SVG
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Built with
-
-| | |
-|---|---|
-| [Silk.NET](https://github.com/dotnet/Silk.NET) 2.23.0 | Window + input (GLFW) |
-| [SkiaSharp](https://github.com/mono/SkiaSharp) 4.153.0 | GPU drawing (`SkiaSharp.NativeAssets.Linux`) |
-| [ImageSharp](https://github.com/SixLabors/ImageSharp) 3.1.12 | Raster images |
-| [Svg.Skia](https://github.com/wieslawsoltes/Svg.Skia) 5.2.3 | SVG |
