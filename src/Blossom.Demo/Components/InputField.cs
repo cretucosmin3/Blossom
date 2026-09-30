@@ -1,7 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using Blossom.Core;
+using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using Blossom.Core.Visual.Enums;
+using Blossom.Primitives;
 using Silk.NET.Input;
 using SkiaSharp;
 
@@ -37,7 +42,7 @@ public class InputField : VisualElement
         get => _caretIndex;
         set
         {
-            _caretIndex = Math.Clamp(value, 0, _value.Length);
+            _caretIndex = Math.Clamp(value, 0, GraphemeCountOf(_value));
             _selectionAnchor = _caretIndex;
             UpdateCaretAndSelection();
         }
@@ -46,7 +51,16 @@ public class InputField : VisualElement
     public int SelectionStart => Math.Min(_selectionAnchor, _caretIndex);
     public int SelectionLength => Math.Abs(_selectionAnchor - _caretIndex);
     public bool HasSelection => SelectionLength > 0;
-    public string SelectedText => HasSelection ? _value.Substring(SelectionStart, SelectionLength) : "";
+    public string SelectedText
+    {
+        get
+        {
+            if (!HasSelection) return "";
+            int start = GraphemeToUtf16(_value, SelectionStart);
+            int end = GraphemeToUtf16(_value, SelectionStart + SelectionLength);
+            return _value.Substring(start, end - start);
+        }
+    }
 
     public string Value
     {
@@ -57,7 +71,7 @@ public class InputField : VisualElement
             if (_value == newVal) return;
 
             _value = newVal;
-            _caretIndex = Math.Clamp(_caretIndex, 0, _value.Length);
+            _caretIndex = Math.Clamp(_caretIndex, 0, GraphemeCountOf(_value));
             _selectionAnchor = _caretIndex;
             UpdateText();
             Changed?.Invoke(_value);
@@ -80,7 +94,7 @@ public class InputField : VisualElement
         Name = $"InputField_{Guid.NewGuid().ToString()[..4]}";
         _placeholder = placeholder;
         _value = initialValue ?? "";
-        _caretIndex = _value.Length;
+        _caretIndex = GraphemeCountOf(_value);
         _selectionAnchor = _caretIndex;
 
         ReceivesKeyboard = true;
@@ -150,12 +164,26 @@ public class InputField : VisualElement
         AddChild(_textElement);
         AddChild(_caret);
 
+        Action<Theme> onTheme = _ =>
+        {
+            UpdateText();
+            if (!_isFocused && Themes.Current.TryColour("border", out var idle))
+                Style.Border.Color = idle;
+            if (_isFocused && Themes.Current.TryColour("accent", out var focus))
+                Style.Border.Color = focus;
+            InvalidatePaint();
+        };
+        Themes.CurrentChanged += onTheme;
+        Disposed += _ => Themes.CurrentChanged -= onTheme;
+
         UpdateText();
 
         OnFocused = _ =>
         {
             _isFocused = true;
-            Style.Border.Color = new SKColor(170, 170, 170);
+            Style.Border.Color = Themes.Current.TryColour("accent", out var accent)
+                ? accent
+                : new SKColor(170, 170, 170);
             _caret.Visible = true;
             UpdateText();
             InvalidatePaint();
@@ -166,7 +194,9 @@ public class InputField : VisualElement
             _isFocused = false;
             _isMouseDown = false;
             _selectionAnchor = _caretIndex;
-            Style.Border.Color = new SKColor(58, 58, 58);
+            Style.Border.Color = Themes.Current.TryColour("border", out var border)
+                ? border
+                : new SKColor(58, 58, 58);
             _caret.Visible = false;
             _selectionHighlight.Visible = false;
             if (HasPointerCapture) ReleasePointer();
@@ -187,7 +217,7 @@ public class InputField : VisualElement
             CapturePointer();
             args.Handled = true;
 
-            int clickedIdx = GetCharIndexAtPointer(args.Global.X);
+            int clickedIdx = GetGraphemeIndexAtPointer(args.Global.X, args.Global.Y);
             _caretIndex = clickedIdx;
             if (!Events.IsShiftDown)
             {
@@ -201,7 +231,7 @@ public class InputField : VisualElement
         {
             if (!_isMouseDown) return;
             args.Handled = true;
-            _caretIndex = GetCharIndexAtPointer(args.Global.X);
+            _caretIndex = GetGraphemeIndexAtPointer(args.Global.X, args.Global.Y);
             UpdateCaretAndSelection();
         };
 
@@ -218,68 +248,88 @@ public class InputField : VisualElement
             args.Handled = true;
         };
 
-        Events.OnKeyType += ch =>
+        Events.OnTextInput += e =>
         {
             if (!_isFocused) return;
             if (Events.IsControlDown || Events.IsAltDown) return;
-            if (char.IsControl(ch) || ch == 127 || ch < 32) return;
 
-            InsertText(ch.ToString());
+            bool inserted = false;
+            foreach (var rune in e.Text.EnumerateRunes())
+            {
+                if (rune.Value < 32 || rune.Value == 127)
+                    continue;
+                InsertText(rune.ToString());
+                inserted = true;
+            }
+
+            if (inserted)
+                e.Handled = true;
         };
 
-        Events.OnKeyDown += k =>
+        Events.OnKeyDown += e =>
         {
             if (!_isFocused) return;
-            Key key = (Key)k;
-            bool isCtrl = Events.IsControlDown;
-            bool isShift = Events.IsShiftDown;
+            bool isCtrl = e.Control;
+            bool isShift = e.Shift;
 
-            switch (key)
+            switch (e.Key)
             {
                 case Key.Backspace:
                     HandleBackspace(isCtrl);
+                    e.Handled = true;
                     break;
                 case Key.Delete:
                     HandleDelete(isCtrl);
+                    e.Handled = true;
                     break;
                 case Key.Left:
                     HandleLeft(isCtrl, isShift);
+                    e.Handled = true;
                     break;
                 case Key.Right:
                     HandleRight(isCtrl, isShift);
+                    e.Handled = true;
                     break;
                 case Key.Home:
                     MoveCaret(0, isShift);
+                    e.Handled = true;
                     break;
                 case Key.End:
-                    MoveCaret(_value.Length, isShift);
+                    MoveCaret(GraphemeCountOf(_value), isShift);
+                    e.Handled = true;
                     break;
                 case Key.A when isCtrl:
                     SelectAll();
+                    e.Handled = true;
                     break;
                 case Key.C when isCtrl:
-                    Browser.SetClipboardText(HasSelection ? SelectedText : _value);
+                    Shell.SetClipboardText(HasSelection ? SelectedText : _value);
+                    e.Handled = true;
                     break;
                 case Key.X when isCtrl:
                     if (HasSelection)
                     {
-                        Browser.SetClipboardText(SelectedText);
+                        Shell.SetClipboardText(SelectedText);
                         DeleteSelection();
                         NotifyChanged();
                     }
+                    e.Handled = true;
                     break;
                 case Key.V when isCtrl:
                     HandlePaste();
+                    e.Handled = true;
                     break;
                 case Key.Enter:
                 case Key.KeypadEnter:
                     Submitted?.Invoke(_value);
                     OnSubmit?.Invoke(_value);
                     ParentView?.SetActiveKeyboardElement(null);
+                    e.Handled = true;
                     break;
                 case Key.Escape:
                     Escaped?.Invoke();
                     ParentView?.SetActiveKeyboardElement(null);
+                    e.Handled = true;
                     break;
             }
         };
@@ -288,7 +338,7 @@ public class InputField : VisualElement
     public void SelectAll()
     {
         _selectionAnchor = 0;
-        _caretIndex = _value.Length;
+        _caretIndex = GraphemeCountOf(_value);
         UpdateCaretAndSelection();
     }
 
@@ -302,27 +352,37 @@ public class InputField : VisualElement
 
     private void SelectWordAt(int index)
     {
-        if (_value.Length == 0)
+        int count = GraphemeCountOf(_value);
+        if (count == 0)
         {
             SelectAll();
             return;
         }
 
-        int i = Math.Clamp(index, 0, _value.Length);
-        if (i == _value.Length) i--;
+        int i = Math.Clamp(index, 0, count);
+        if (i == count) i--;
 
+        var clusters = new List<string>(count);
+        var e = StringInfo.GetTextElementEnumerator(_value);
+        while (e.MoveNext())
+            clusters.Add(e.GetTextElement());
+
+        static bool IsWs(string g)
+        {
+            if (string.IsNullOrEmpty(g)) return true;
+            foreach (var r in g.EnumerateRunes())
+            {
+                if (!Rune.IsWhiteSpace(r))
+                    return false;
+            }
+            return true;
+        }
+
+        bool hitWs = IsWs(clusters[i]);
         int start = i;
         int end = i;
-        if (char.IsWhiteSpace(_value[i]))
-        {
-            while (start > 0 && char.IsWhiteSpace(_value[start - 1])) start--;
-            while (end < _value.Length && char.IsWhiteSpace(_value[end])) end++;
-        }
-        else
-        {
-            while (start > 0 && !char.IsWhiteSpace(_value[start - 1])) start--;
-            while (end < _value.Length && !char.IsWhiteSpace(_value[end])) end++;
-        }
+        while (start > 0 && IsWs(clusters[start - 1]) == hitWs) start--;
+        while (end < clusters.Count && IsWs(clusters[end]) == hitWs) end++;
 
         _selectionAnchor = start;
         _caretIndex = end;
@@ -332,8 +392,9 @@ public class InputField : VisualElement
     private void InsertText(string text)
     {
         if (HasSelection) DeleteSelection();
-        _value = _value.Insert(_caretIndex, text);
-        _caretIndex += text.Length;
+        int utf = GraphemeToUtf16(_value, _caretIndex);
+        _value = _value.Insert(utf, text);
+        _caretIndex += GraphemeCountOf(text);
         _selectionAnchor = _caretIndex;
         NotifyChanged();
     }
@@ -356,17 +417,14 @@ public class InputField : VisualElement
 
         if (_caretIndex <= 0) return;
 
-        if (isCtrl)
-        {
-            int prev = FindPreviousWordBoundary(_caretIndex);
-            _value = _value.Remove(prev, _caretIndex - prev);
-            _caretIndex = prev;
-        }
-        else
-        {
-            _value = _value.Remove(_caretIndex - 1, 1);
-            _caretIndex--;
-        }
+        var layout = LayoutFor(_value);
+        int from = isCtrl
+            ? layout.MoveByWord(_caretIndex, -1)
+            : layout.MoveByGrapheme(_caretIndex, -1);
+        int utfFrom = GraphemeToUtf16(_value, from);
+        int utfTo = GraphemeToUtf16(_value, _caretIndex);
+        _value = _value.Remove(utfFrom, utfTo - utfFrom);
+        _caretIndex = from;
         _selectionAnchor = _caretIndex;
         NotifyChanged();
     }
@@ -380,23 +438,24 @@ public class InputField : VisualElement
             return;
         }
 
-        if (_caretIndex >= _value.Length) return;
+        var layout = LayoutFor(_value);
+        if (_caretIndex >= layout.GraphemeCount) return;
 
-        if (isCtrl)
-        {
-            int next = FindNextWordBoundary(_caretIndex);
-            _value = _value.Remove(_caretIndex, next - _caretIndex);
-        }
-        else
-        {
-            _value = _value.Remove(_caretIndex, 1);
-        }
+        int to = isCtrl
+            ? layout.MoveByWord(_caretIndex, 1)
+            : layout.MoveByGrapheme(_caretIndex, 1);
+        int utfFrom = GraphemeToUtf16(_value, _caretIndex);
+        int utfTo = GraphemeToUtf16(_value, to);
+        _value = _value.Remove(utfFrom, utfTo - utfFrom);
         NotifyChanged();
     }
 
     private void HandleLeft(bool isCtrl, bool isShift)
     {
-        int target = isCtrl ? FindPreviousWordBoundary(_caretIndex) : Math.Max(0, _caretIndex - 1);
+        var layout = LayoutFor(_value);
+        int target = isCtrl
+            ? layout.MoveByWord(_caretIndex, -1)
+            : layout.MoveByGrapheme(_caretIndex, -1);
         if (!isShift && HasSelection)
         {
             target = SelectionStart;
@@ -406,7 +465,10 @@ public class InputField : VisualElement
 
     private void HandleRight(bool isCtrl, bool isShift)
     {
-        int target = isCtrl ? FindNextWordBoundary(_caretIndex) : Math.Min(_value.Length, _caretIndex + 1);
+        var layout = LayoutFor(_value);
+        int target = isCtrl
+            ? layout.MoveByWord(_caretIndex, 1)
+            : layout.MoveByGrapheme(_caretIndex, 1);
         if (!isShift && HasSelection)
         {
             target = SelectionStart + SelectionLength;
@@ -416,14 +478,14 @@ public class InputField : VisualElement
 
     private void MoveCaret(int index, bool isShift)
     {
-        _caretIndex = Math.Clamp(index, 0, _value.Length);
+        _caretIndex = Math.Clamp(index, 0, GraphemeCountOf(_value));
         if (!isShift) _selectionAnchor = _caretIndex;
         UpdateCaretAndSelection();
     }
 
     private void HandlePaste()
     {
-        string paste = Browser.GetClipboardText();
+        string paste = Shell.GetClipboardText();
         if (string.IsNullOrEmpty(paste)) return;
         paste = paste.Replace("\r", "").Replace("\n", " ");
         InsertText(paste);
@@ -433,85 +495,63 @@ public class InputField : VisualElement
     {
         if (!HasSelection) return;
         int start = SelectionStart;
-        _value = _value.Remove(start, SelectionLength);
+        int utfStart = GraphemeToUtf16(_value, start);
+        int utfEnd = GraphemeToUtf16(_value, start + SelectionLength);
+        _value = _value.Remove(utfStart, utfEnd - utfStart);
         _caretIndex = start;
         _selectionAnchor = start;
     }
 
-    private int FindPreviousWordBoundary(int fromIdx)
-    {
-        if (fromIdx <= 0) return 0;
-        int idx = fromIdx - 1;
-        while (idx > 0 && char.IsWhiteSpace(_value[idx])) idx--;
-        while (idx > 0 && !char.IsWhiteSpace(_value[idx - 1])) idx--;
-        return Math.Max(0, idx);
-    }
-
-    private int FindNextWordBoundary(int fromIdx)
-    {
-        if (fromIdx >= _value.Length) return _value.Length;
-        int idx = fromIdx;
-        while (idx < _value.Length && !char.IsWhiteSpace(_value[idx])) idx++;
-        while (idx < _value.Length && char.IsWhiteSpace(_value[idx])) idx++;
-        return Math.Min(_value.Length, idx);
-    }
-
     private SKPaint TextPaint => _textElement.Style.Text.Paint;
+    private SKFont TextFont => _textElement.Style.Text.SkFont;
 
     private TextLayout LayoutFor(string text)
     {
         if (string.IsNullOrEmpty(text))
             return new TextLayout();
-        return TextLayout.Build(text, TextPaint, float.MaxValue, float.MaxValue, TextOverflow.Visible, 1);
+        return TextLayout.Build(text, TextFont, TextPaint.Color, float.MaxValue, float.MaxValue, TextOverflow.Visible, 1);
     }
 
-    private float MeasurePrefix(int length)
+    private static int GraphemeCountOf(string text)
     {
-        if (string.IsNullOrEmpty(_value) || length <= 0) return 0f;
-        int safe = Math.Clamp(length, 0, _value.Length);
-        if (safe == 0) return 0f;
-        return LayoutFor(_value.Substring(0, safe)).Width;
+        if (string.IsNullOrEmpty(text))
+            return 0;
+        return new StringInfo(text).LengthInTextElements;
     }
 
-    private int GetCharIndexAtPointer(float globalX)
+    private static int GraphemeToUtf16(string text, int graphemeIndex)
+    {
+        if (string.IsNullOrEmpty(text) || graphemeIndex <= 0)
+            return 0;
+        var e = StringInfo.GetTextElementEnumerator(text);
+        int i = 0;
+        int utf = 0;
+        while (e.MoveNext())
+        {
+            if (i >= graphemeIndex)
+                break;
+            utf += e.GetTextElement().Length;
+            i++;
+        }
+        return Math.Min(utf, text.Length);
+    }
+
+    private int GetGraphemeIndexAtPointer(float globalX, float globalY)
     {
         float textOriginX = Transform.Computed.X + PadLeft - _scrollOffset;
-        float localX = globalX - textOriginX;
-        return GetCharIndexAt(localX);
+        float textOriginY = Transform.Computed.Y;
+        var layout = LayoutFor(_value);
+        return layout.CaretIndexFromPoint(globalX - textOriginX, globalY - textOriginY);
     }
 
-    private int GetCharIndexAt(float localX)
+    public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
     {
-        if (string.IsNullOrEmpty(_value) || localX <= 0f) return 0;
-
-        var layout = LayoutFor(_value);
-        if (layout.Runs.Count == 0)
-            return localX > 0f ? _value.Length : 0;
-
-        using var paint = TextPaint.Clone();
-        int charIndex = 0;
-        foreach (var run in layout.Runs)
-        {
-            if (string.IsNullOrEmpty(run.Text))
-                continue;
-
-            paint.Typeface = run.Typeface;
-            paint.TextSize = run.Size;
-            float x = run.X;
-            int i = 0;
-            while (i < run.Text.Length)
-            {
-                int len = char.IsSurrogatePair(run.Text, i) ? 2 : 1;
-                float charW = paint.MeasureText(run.Text.Substring(i, len));
-                if (localX < x + charW * 0.5f)
-                    return Math.Clamp(charIndex, 0, _value.Length);
-                x += charW;
-                charIndex += len;
-                i += len;
-            }
-        }
-
-        return _value.Length;
+        float w = Transform.Width > 0 ? Transform.Width : 160f;
+        float h = Transform.Height > 0 ? Transform.Height : 34f;
+        h = Math.Max(h, 34f);
+        if (maxWidth > 0) w = Math.Min(Math.Max(w, 80f), maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+        return new SKSize(w, h);
     }
 
     protected override void LayoutChildren()
@@ -521,16 +561,26 @@ public class InputField : VisualElement
 
     private void UpdateText()
     {
-        if (string.IsNullOrEmpty(_value))
+        bool empty = string.IsNullOrEmpty(_value);
+        if (empty)
         {
             _textElement.Text = _placeholder;
-            _textElement.Style.Text.Color = new SKColor(120, 120, 120);
+            _textElement.Style.Text.Color = Themes.Current.TryColour("muted", out var muted)
+                ? muted
+                : new SKColor(120, 120, 120);
         }
         else
         {
             _textElement.Text = _value;
-            _textElement.Style.Text.Color = SKColors.White;
+            _textElement.Style.Text.Color = Themes.Current.TryColour("text", out var text)
+                ? text
+                : SKColors.White;
         }
+
+        if (Themes.Current.TryColour("text", out var caret))
+            _caret.Style.BackColor = caret;
+        if (Themes.Current.TryColour("accent", out var accent))
+            _selectionHighlight.Style.BackColor = accent.WithAlpha(80);
 
         UpdateCaretAndSelection();
         InvalidatePaint();
@@ -546,7 +596,7 @@ public class InputField : VisualElement
 
         bool showingPlaceholder = string.IsNullOrEmpty(_value);
         var displayLayout = LayoutFor(showingPlaceholder ? (_placeholder ?? "") : _value);
-        float caretTextW = showingPlaceholder ? 0f : MeasurePrefix(_caretIndex);
+        float caretTextW = showingPlaceholder ? 0f : displayLayout.CaretRect(_caretIndex).Left;
         float fullTextW = displayLayout.Width;
         float lineBox = displayLayout.Height > 1f ? displayLayout.Height : CaretHeight;
 
@@ -570,8 +620,8 @@ public class InputField : VisualElement
 
         if (_isFocused && HasSelection && !showingPlaceholder)
         {
-            float selStartW = MeasurePrefix(SelectionStart);
-            float selEndW = MeasurePrefix(SelectionStart + SelectionLength);
+            float selStartW = displayLayout.CaretRect(SelectionStart).Left;
+            float selEndW = displayLayout.CaretRect(SelectionStart + SelectionLength).Left;
             float selX = originX + PadLeft + selStartW - _scrollOffset;
             float selW = Math.Max(2f, selEndW - selStartW);
             float selH = lineBox;

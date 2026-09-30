@@ -36,7 +36,7 @@ namespace Blossom.Core
                     arg.Equals("-b", StringComparison.OrdinalIgnoreCase))
                 {
                     IsBenchmarkMode = true;
-                    Browser.MaxFps = 0;
+                    Shell.MaxFps = 0;
                 }
             }
         }
@@ -64,9 +64,9 @@ namespace Blossom.Core
             else
             {
                 // Force continuous rendering
-                if (Browser.BrowserApp.ActiveView != null)
+                if (Shell.ShellApp.ActiveView != null)
                 {
-                    Browser.BrowserApp.ActiveView.RenderRequired = true;
+                    Shell.ShellApp.ActiveView.RenderRequired = true;
                 }
             }
         }
@@ -98,7 +98,7 @@ namespace Blossom.Core
             FrameCount = 0;
             CurrentViewFrameTimes.Clear();
 
-            var app = Browser.BrowserApp;
+            var app = Shell.ShellApp;
             if (app == null) return;
 
             // Simple state machine: if we were on BenchmarkStatic, switch to BenchmarkDynamic

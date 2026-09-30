@@ -222,4 +222,14 @@ public class Button : VisualElement
             (byte)Math.Max(0, _normalColor.Blue - 25),
             _normalColor.Alpha);
     }
+
+    public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
+    {
+        var size = base.GetPreferredSize(maxWidth, maxHeight);
+        float w = Math.Max(size.Width, 48f);
+        float h = Math.Max(size.Height, 28f);
+        if (maxWidth > 0) w = Math.Min(w, maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+        return new SKSize(w, h);
+    }
 }

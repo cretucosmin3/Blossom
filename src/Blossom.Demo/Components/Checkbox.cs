@@ -98,6 +98,7 @@ public class Checkbox : VisualElement
         AddChild(_box);
         AddChild(_labelElement);
 
+        ThemeChrome.Bind(this, ApplyTheme);
         UpdateVisualState();
 
         Events.OnMouseDown += (s, e) =>
@@ -113,7 +114,7 @@ public class Checkbox : VisualElement
             if (!EffectiveInteractive) return;
             if (!_isChecked)
             {
-                _box.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
+                _box.Style.Border.Color = ThemeChrome.Colour("accent", new SKColor(170, 170, 170));
                 InvalidatePaint();
             }
         };
@@ -145,19 +146,41 @@ public class Checkbox : VisualElement
         _labelElement.Visible = !string.IsNullOrEmpty(_label);
     }
 
+    public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
+    {
+        float w = 18f + 8f + Padding.Horizontal;
+        if (!string.IsNullOrEmpty(_label))
+        {
+            var text = _labelElement.GetPreferredSize(maxWidth, maxHeight);
+            w += Math.Max(40f, text.Width);
+        }
+        float h = Math.Max(24f, Transform.Height);
+        if (maxWidth > 0) w = Math.Min(w, maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+        return new SKSize(w, h);
+    }
+
+    private void ApplyTheme()
+    {
+        _labelElement.Style.Text.Color = ThemeChrome.Colour("text", new SKColor(220, 220, 220));
+        _box.Style.Text.Color = ThemeChrome.Colour("on-accent", SKColors.White);
+        _box.Style.Border.Width = ThemeChrome.Number("stroke", 1.5f);
+        ThemeChrome.Square(_box);
+        UpdateVisualState();
+    }
+
     private void UpdateVisualState()
     {
         if (_isChecked)
         {
-            _box.Style.BackColor = new SKColor(100, 100, 100); // Gray accent
-            _box.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
-            // ASCII "v" — bundled Roboto has no ✓ glyph
+            _box.Style.BackColor = ThemeChrome.Colour("accent", new SKColor(100, 100, 100));
+            _box.Style.Border.Color = ThemeChrome.Colour("accent", new SKColor(170, 170, 170));
             _box.Text = "v";
         }
         else
         {
-            _box.Style.BackColor = new SKColor(23, 23, 23, 180); // Gray 900
-            _box.Style.Border.Color = new SKColor(120, 120, 120); // Gray 500
+            _box.Style.BackColor = ThemeChrome.Colour("field", new SKColor(23, 23, 23, 180));
+            _box.Style.Border.Color = ThemeChrome.Colour("border", new SKColor(120, 120, 120));
             _box.Text = "";
         }
         InvalidatePaint();

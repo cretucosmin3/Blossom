@@ -208,7 +208,7 @@ public class ScrollContainer : VisualElement
 
         Events.OnScroll += (sender, args) =>
         {
-            bool isShift = ParentView?.Events.IsShiftDown ?? Browser.BrowserApp?.Events.IsShiftDown ?? false;
+            bool isShift = ParentView?.Events.IsShiftDown ?? Shell.ShellApp?.Events.IsShiftDown ?? false;
 
             float deltaX = args.Offset.X;
             float deltaY = args.Offset.Y;
@@ -458,9 +458,8 @@ public class ScrollContainer : VisualElement
 
         float viewW = Transform.Computed.Width;
         float viewH = Transform.Computed.Height;
-        // Transform.X/Y setters expect absolute (computed) coordinates, not parent-local.
-        float originX = Transform.Computed.X;
-        float originY = Transform.Computed.Y;
+        float originX = Transform.AbsoluteX;
+        float originY = Transform.AbsoluteY;
 
         bool showV = (OverflowY == OverflowMode.Scroll) && (
             ScrollbarVisibilityY == ScrollbarVisibility.Always ||
@@ -485,11 +484,12 @@ public class ScrollContainer : VisualElement
             // Right edge of the viewport, absolute coords
             VScrollbar.Transform.Width = thickness;
             VScrollbar.Transform.Height = Math.Max(0, viewH - (showH ? thickness : 0f));
-            VScrollbar.Transform.X = originX + viewW - thickness;
-            VScrollbar.Transform.Y = originY;
+            VScrollbar.Transform.AbsoluteX = originX + viewW - thickness;
+            VScrollbar.Transform.AbsoluteY = originY;
             VScrollbar.Transform.Anchor = Anchor.Top | Anchor.Right;
             VScrollbar.Transform.FixedWidth = true;
             VScrollbar.Transform._transformDirty = true;
+            VScrollbar.MarkVisibilityClippingDirty();
             VScrollbar.InvalidatePaint();
         }
 
@@ -498,11 +498,12 @@ public class ScrollContainer : VisualElement
             // Bottom edge of the viewport, absolute coords
             HScrollbar.Transform.Width = Math.Max(0, viewW - (showV ? thickness : 0f));
             HScrollbar.Transform.Height = thickness;
-            HScrollbar.Transform.X = originX;
-            HScrollbar.Transform.Y = originY + viewH - thickness;
+            HScrollbar.Transform.AbsoluteX = originX;
+            HScrollbar.Transform.AbsoluteY = originY + viewH - thickness;
             HScrollbar.Transform.Anchor = Anchor.Bottom | Anchor.Left;
             HScrollbar.Transform.FixedHeight = true;
             HScrollbar.Transform._transformDirty = true;
+            HScrollbar.MarkVisibilityClippingDirty();
             HScrollbar.InvalidatePaint();
         }
     }
@@ -530,10 +531,10 @@ public class ScrollContainer : VisualElement
             yield return child;
         }
 
-        if (VScrollbar != null && VScrollbar.Visible)
+        if (VScrollbar != null)
             yield return VScrollbar;
 
-        if (HScrollbar != null && HScrollbar.Visible)
+        if (HScrollbar != null)
             yield return HScrollbar;
     }
 

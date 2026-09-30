@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SkiaSharp;
+using Svg.Skia;
 using Blossom.Core.Visual;
 
 namespace Blossom.Core;
@@ -70,18 +71,20 @@ public class DrawTextCommand : DrawCommand
 {
     public string Text { get; }
     public SKPoint Position { get; }
+    public SKFont Font { get; }
     public SKPaint Paint { get; }
 
-    public DrawTextCommand(string text, SKPoint position, SKPaint paint)
+    public DrawTextCommand(string text, SKPoint position, SKFont font, SKPaint paint)
     {
         Text = text;
         Position = position;
+        Font = font;
         Paint = paint.Clone();
     }
 
     public override void Execute(SKCanvas canvas)
     {
-        canvas.DrawText(Text, Position, Paint);
+        canvas.DrawText(Text, Position, SKTextAlign.Left, Font, Paint);
     }
 
     public override void Dispose()
@@ -104,7 +107,6 @@ public sealed class DrawRichTextCommand : DrawCommand
         _origin = origin;
         _clip = clip;
         _paint = prototype.Clone();
-        _paint.TextAlign = SKTextAlign.Left;
     }
 
     public override void Execute(SKCanvas canvas)
@@ -137,10 +139,14 @@ public sealed class DrawRichTextCommand : DrawCommand
             if (x + run.Width < clipLeft - 0.5f || x > clipRight + 0.5f)
                 continue;
 
-            _paint.Typeface = run.Typeface;
-            _paint.TextSize = run.Size;
             _paint.Color = run.Color;
-            canvas.DrawText(run.Text, x, baseline, _paint);
+            using var font = new SKFont(run.Typeface, run.Size, 1f, 0f)
+            {
+                Subpixel = true,
+                Edging = SKFontEdging.SubpixelAntialias,
+                Hinting = SKFontHinting.Normal,
+            };
+            canvas.DrawText(run.Text, x, baseline, SKTextAlign.Left, font, _paint);
         }
 
         if (save != -1)
@@ -224,7 +230,7 @@ public class DrawImageCommand : DrawCommand
             });
         }
 
-        _paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+        _paint = new SKPaint { IsAntialias = true };
 
         if (blurSigma > 0)
         {
@@ -278,7 +284,7 @@ public class DrawImageCommand : DrawCommand
                 canvas.ClipRoundRect(_clipRoundRect, SKClipOperation.Intersect, true);
             }
 
-            canvas.DrawBitmap(_bitmap, _drawRect, _paint);
+            canvas.DrawBitmap(_bitmap, _drawRect, new SKSamplingOptions(SKFilterMode.Linear), _paint);
         }
     }
 
@@ -392,13 +398,13 @@ public class DrawCallbackCommand : DrawCommand
 /// </summary>
 public class DrawSvgCommand : DrawCommand
 {
-    private readonly SkiaSharp.Extended.Svg.SKSvg _svg;
+    private readonly SKSvg _svg;
     private readonly SKRoundRect? _clipRoundRect;
     private readonly SKPaint _paint;
     private readonly SKMatrix _transformMatrix;
 
     public DrawSvgCommand(
-        SkiaSharp.Extended.Svg.SKSvg svg,
+        SKSvg svg,
         SKRect dest,
         ImageScaleMode scaleMode,
         float rTopLeft,
@@ -412,8 +418,9 @@ public class DrawSvgCommand : DrawCommand
     {
         _svg = svg;
 
-        float sw = svg.CanvasSize.Width;
-        float sh = svg.CanvasSize.Height;
+        var cull = svg.Picture?.CullRect ?? SKRect.Empty;
+        float sw = cull.Width;
+        float sh = cull.Height;
         SKRect drawRect;
 
         if (scaleMode == ImageScaleMode.Contain && sw > 0 && sh > 0)
@@ -442,7 +449,7 @@ public class DrawSvgCommand : DrawCommand
         _transformMatrix = SKMatrix.CreateTranslation(drawRect.Left, drawRect.Top);
         if (sw > 0 && sh > 0)
         {
-            SKMatrix.PreConcat(ref _transformMatrix, SKMatrix.CreateScale(drawRect.Width / sw, drawRect.Height / sh));
+            _transformMatrix = _transformMatrix.PreConcat(SKMatrix.CreateScale(drawRect.Width / sw, drawRect.Height / sh));
         }
 
         if (rTopLeft > 0 || rTopRight > 0 || rBottomRight > 0 || rBottomLeft > 0)
@@ -456,7 +463,7 @@ public class DrawSvgCommand : DrawCommand
             });
         }
 
-        _paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+        _paint = new SKPaint { IsAntialias = true };
 
         if (blurSigma > 0)
         {
@@ -501,7 +508,8 @@ public class DrawSvgCommand : DrawCommand
 
     public override void Execute(SKCanvas canvas)
     {
-        if (_svg == null || _svg.Picture == null || _svg.CanvasSize.Width <= 0 || _svg.CanvasSize.Height <= 0) return;
+        var cull = _svg.Picture?.CullRect ?? SKRect.Empty;
+        if (_svg == null || _svg.Picture == null || cull.Width <= 0 || cull.Height <= 0) return;
 
         using (new SKAutoCanvasRestore(canvas))
         {
@@ -593,12 +601,11 @@ public class DrawBackdropBlurCommand : DrawCommand
             new(_rBottomLeft, _rBottomLeft),
         });
 
-        using var path = new SKPath();
-        path.AddRoundRect(localRoundRect);
+        using var localPath = new SKPath();
+        localPath.AddRoundRect(localRoundRect);
 
-        // Transform the path to global screen space using the element's global matrix
-        var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
-        path.Transform(globalMatrix);
+        var global44 = _element.Transform.GetGlobalM44();
+        using var path = Transform.MapPath(localPath, global44);
 
         var globalBounds = path.Bounds;
 
@@ -716,12 +723,12 @@ public class DrawShaderBackgroundCommand : DrawCommand
         using var blitPaint = new SKPaint
         {
             IsAntialias = aa,
-            FilterQuality = aa ? SKFilterQuality.High : SKFilterQuality.Low
         };
+        var blitSampling = new SKSamplingOptions(aa ? SKFilterMode.Linear : SKFilterMode.Nearest);
 
         if (_renderMode == EffectRenderMode.OnDemand && _element.CachedShaderBackground != null)
         {
-            canvas.DrawImage(_element.CachedShaderBackground, dest, blitPaint);
+            canvas.DrawImage(_element.CachedShaderBackground, dest, blitSampling, blitPaint);
             return;
         }
 
@@ -745,8 +752,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
                 if (snapshot != null)
                 {
                     backdropShader = snapshot.ToShader();
-                    var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
-                    var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
+                    var global44 = _element.Transform.GetGlobalM44();
+                    var globalMatrix = global44.Matrix;
+                    var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
                     shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
                         _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, mixingRate: 0.25f, antialias: aaAmount);
                 }
@@ -762,8 +770,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
                         var scaleY = h / bitmap.Height;
                         var matrix = SKMatrix.CreateScale(scaleX, scaleY);
                         backdropShader = SKShader.CreateBitmap(bitmap, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, matrix);
-                        var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
-                        var screenRect = globalMatrix.MapRect(new SKRect(0, 0, w, h));
+                        var global44 = _element.Transform.GetGlobalM44();
+                        var globalMatrix = global44.Matrix;
+                        var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
                         shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
                             _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, _element.ShaderMixingRate, aaAmount);
                     }
@@ -780,7 +789,6 @@ public class DrawShaderBackgroundCommand : DrawCommand
             {
                 Style = SKPaintStyle.Fill,
                 IsAntialias = aa,
-                FilterQuality = aa ? SKFilterQuality.High : SKFilterQuality.Low,
                 Shader = shader,
                 PathEffect = _element.Style?.BackgroundPathEffect
             };
@@ -948,10 +956,11 @@ public class DrawBorderCommand : DrawCommand
                         if (snapshot != null)
                         {
                             using var backdropShader = snapshot.ToShader();
-                            var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                            var global44 = _element.Transform.GetGlobalM44();
+                            var globalMatrix = global44.Matrix;
                             float localW = _element.Transform.Computed.Width;
                             float localH = _element.Transform.Computed.Height;
-                            var screenRect = globalMatrix.MapRect(new SKRect(0, 0, localW, localH));
+                            var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
                             
                             using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
                                 _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);
@@ -985,10 +994,11 @@ public class DrawBorderCommand : DrawCommand
             if (snapshot != null)
             {
                 using var backdropShader = snapshot.ToShader();
-                var globalMatrix = _element.Transform.GetGlobalM44().Matrix;
+                var global44 = _element.Transform.GetGlobalM44();
+                var globalMatrix = global44.Matrix;
                 float localW = _element.Transform.Computed.Width;
                 float localH = _element.Transform.Computed.Height;
-                var screenRect = globalMatrix.MapRect(new SKRect(0, 0, localW, localH));
+                var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
                 
                 using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
                     _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);

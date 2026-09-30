@@ -68,15 +68,15 @@ namespace Blossom.Core
         private float GetLayoutWidth()
         {
             // Apps fill the window: layout size is the client size so anchors reflow on resize.
-            if (Browser.RenderRect.Width > 0)
-                return Browser.RenderRect.Width;
+            if (Shell.RenderRect.Width > 0)
+                return Shell.RenderRect.Width;
             return Canvas.Width;
         }
 
         private float GetLayoutHeight()
         {
-            if (Browser.RenderRect.Height > 0)
-                return Browser.RenderRect.Height;
+            if (Shell.RenderRect.Height > 0)
+                return Shell.RenderRect.Height;
             return Canvas.Height;
         }
 
@@ -109,7 +109,7 @@ namespace Blossom.Core
         /// Maps a window coordinate to host design canvas units.
         /// </summary>
         public Vector2 PointToDesign(float winX, float winY) =>
-            Canvas.PointToDesign(winX, winY, Browser.RenderRect.Width, Browser.RenderRect.Height);
+            Canvas.PointToDesign(winX, winY, Shell.RenderRect.Width, Shell.RenderRect.Height);
 
         /// <summary>
         /// Maps a design canvas unit point to window coordinates.
@@ -121,7 +121,7 @@ namespace Blossom.Core
         /// Maps a design canvas unit point to window coordinates.
         /// </summary>
         public Vector2 PointToWindow(float desX, float desY) =>
-            Canvas.PointToWindow(desX, desY, Browser.RenderRect.Width, Browser.RenderRect.Height);
+            Canvas.PointToWindow(desX, desY, Shell.RenderRect.Width, Shell.RenderRect.Height);
 
         public event ForVoid Loop;
 
@@ -135,6 +135,8 @@ namespace Blossom.Core
 
         public VisualElement? PointerCaptureElement { get; private set; }
         public VisualElement? ActiveKeyboardElement { get; private set; }
+
+        private readonly List<OverlayEntry> _overlays = new();
 
         // Legacy compatibility
         public VisualElement? FocusedElement
@@ -181,15 +183,27 @@ namespace Blossom.Core
         private readonly List<SKRect> _localDirtyRects = new();
 
         private bool _hierarchyDirty = true;
-        internal void MarkHierarchyDirty() { _hierarchyDirty = true; }
+        internal void MarkHierarchyDirty()
+        {
+            _hierarchyDirty = true;
+            RenderRequired = true;
+        }
         internal readonly List<VisualElement> CachedRenderQueue = new();
         internal readonly List<VisualElement> CachedSortedElements = new();
 
         /// <summary>
         /// Front-to-back hit test using last paint order so overlapping siblings
         /// (e.g. a top bar behind toolbar buttons) resolve to the control on top.
+        /// Overlay layers are hit-tested first; <see cref="OverlayOptions.BlockHitsUnderneath"/>
+        /// prevents the hit from falling through to the app.
         /// </summary>
         internal VisualElement? HitTest(float x, float y)
+        {
+            var hit = HitTestUnconstrained(x, y);
+            return ConstrainHitToOverlays(hit);
+        }
+
+        private VisualElement? HitTestUnconstrained(float x, float y)
         {
             var list = CachedSortedElements;
             if (list.Count > 0)
@@ -207,6 +221,25 @@ namespace Blossom.Core
                 }
             }
             return Elements.FirstFromPoint(x, y);
+        }
+
+        private VisualElement? ConstrainHitToOverlays(VisualElement? hit)
+        {
+            if (_overlays.Count == 0)
+                return hit;
+
+            for (int i = _overlays.Count - 1; i >= 0; i--)
+            {
+                var entry = _overlays[i];
+                if (entry.Layer == null || entry.Layer.IsDisposed)
+                    continue;
+                if (entry.Layer.ContainsElement(hit))
+                    return hit;
+                if (entry.Options.BlockHitsUnderneath)
+                    return entry.Layer;
+            }
+
+            return hit;
         }
 
         internal void AddDirtyRect(SKRect rect)
@@ -281,7 +314,7 @@ namespace Blossom.Core
             _lastCursor = next;
             try
             {
-                Browser.ChangeCursor(next);
+                Shell.ChangeCursor(next);
             }
             catch { }
         }
@@ -336,6 +369,12 @@ namespace Blossom.Core
 
         private void OnMouseDown(object _, MouseEventArgs args)
         {
+            if (HandleOverlayPointerDown(args.Global.X, args.Global.Y))
+            {
+                _clickCandidateElement = null;
+                return;
+            }
+
             VisualElement element = HitTest(args.Global.X, args.Global.Y);
 
             // Find first element walking up the parent chain with ReceivesKeyboard and EffectiveInteractive
@@ -507,6 +546,109 @@ namespace Blossom.Core
 
         internal void TriggerLoop() => Loop?.Invoke();
 
+        /// <summary>
+        /// Keyboard-capable elements in tree order: <c>Visible &amp;&amp; EffectiveInteractive &amp;&amp; ReceivesKeyboard</c>.
+        /// Overlay layers are listed after non-overlay roots, in stack order (bottom to top).
+        /// </summary>
+        public IEnumerable<VisualElement> KeyboardTargets()
+        {
+            var results = new List<VisualElement>();
+            var overlayLayers = OverlayLayerSet();
+
+            foreach (var root in EnumerateAppRoots(overlayLayers))
+                CollectKeyboardTargets(root, results);
+
+            for (int i = 0; i < _overlays.Count; i++)
+                CollectKeyboardTargets(_overlays[i].Layer, results);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Pushes <paramref name="layer"/> as a sibling of the view root: painted last,
+        /// hit-tested first, not clipped by the opener's overflow.
+        /// </summary>
+        public IDisposable PushOverlay(VisualElement layer, OverlayOptions? options = null)
+        {
+            if (layer == null)
+                throw new ArgumentNullException(nameof(layer));
+            if (layer.IsDisposed)
+                throw new ObjectDisposedException(nameof(layer));
+
+            for (int i = 0; i < _overlays.Count; i++)
+            {
+                if (_overlays[i].Layer == layer)
+                    return new OverlayLease(this, layer);
+            }
+
+            var opts = options ?? new OverlayOptions();
+            var copy = new OverlayOptions
+            {
+                BlockHitsUnderneath = opts.BlockHitsUnderneath,
+                CloseOnPointerOutside = opts.CloseOnPointerOutside,
+                RestoreKeyboardTo = opts.RestoreKeyboardTo
+            };
+
+            var previousKeyboard = ActiveKeyboardElement;
+
+            if (layer.Parent != null)
+                layer.Parent.RemoveChild(layer);
+
+            if (layer.ParentView != this)
+                AddElement(layer);
+
+            _overlays.Add(new OverlayEntry(layer, copy, previousKeyboard));
+
+            if (layer.ReceivesKeyboard && layer.EffectiveInteractive)
+                SetActiveKeyboardElement(layer);
+
+            layer.InvalidateLayout();
+            layer.Transform._transformDirty = true;
+            _hierarchyDirty = true;
+            FullRenderRequired = true;
+            RenderRequired = true;
+            return new OverlayLease(this, layer);
+        }
+
+        /// <summary>
+        /// Removes <paramref name="layer"/> from the overlay stack. Idempotent.
+        /// Restores the keyboard target remembered at push (or <see cref="OverlayOptions.RestoreKeyboardTo"/>).
+        /// </summary>
+        public void PopOverlay(VisualElement layer)
+        {
+            if (layer == null) return;
+
+            int index = -1;
+            for (int i = _overlays.Count - 1; i >= 0; i--)
+            {
+                if (_overlays[i].Layer == layer)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) return;
+
+            var entry = _overlays[index];
+            _overlays.RemoveAt(index);
+
+            if (layer.ParentView == this && layer.Parent == null)
+                RemoveElement(layer);
+
+            var restore = entry.Options.RestoreKeyboardTo ?? entry.PreviousKeyboard;
+            if (restore != null
+                && !restore.IsDisposed
+                && restore.ParentView == this
+                && restore.EffectiveInteractive)
+            {
+                SetActiveKeyboardElement(restore);
+            }
+
+            _hierarchyDirty = true;
+            FullRenderRequired = true;
+            RenderRequired = true;
+        }
+
         public void AddElement(VisualElement element)
         {
             if (element == null) return;
@@ -583,7 +725,7 @@ namespace Blossom.Core
 
         internal void Render()
         {
-            if (Browser.WasResized)
+            if (Shell.WasResized)
             {
                 FullRenderRequired = true;
                 // Anchors re-evaluate on resize, but LayoutChildren only runs when layout-dirty.
@@ -601,15 +743,15 @@ namespace Blossom.Core
 
             lock (_dirtyRectsLock)
             {
-                if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired) return;
+                if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired && !_hierarchyDirty && !LayoutRequired) return;
 
                 if (FullRenderRequired)
                 {
                     // Full redraw required (e.g. view switch or resize)
                     DirtyRects.Clear();
                     // Use framebuffer-sized dirty in logical pixels (RenderRect)
-                    float rw = Math.Max(1, Browser.RenderRect.Width);
-                    float rh = Math.Max(1, Browser.RenderRect.Height);
+                    float rw = Math.Max(1, Shell.RenderRect.Width);
+                    float rh = Math.Max(1, Shell.RenderRect.Height);
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                     FullRenderRequired = false;
 
@@ -620,8 +762,8 @@ namespace Blossom.Core
                 }
                 else if (RenderRequired && DirtyRects.Count == 0)
                 {
-                    float rw = Math.Max(1, Browser.RenderRect.Width);
-                    float rh = Math.Max(1, Browser.RenderRect.Height);
+                    float rw = Math.Max(1, Shell.RenderRect.Width);
+                    float rh = Math.Max(1, Shell.RenderRect.Height);
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                 }
 
@@ -647,14 +789,22 @@ namespace Blossom.Core
             if (_hierarchyDirty)
             {
                 CachedRenderQueue.Clear();
+                var overlayLayers = OverlayLayerSet();
                 var rootElements = Elements.Items
-                    .Where(e => e.Parent == null)
+                    .Where(e => e.Parent == null && !overlayLayers.Contains(e))
                     .OrderBy(e => e.ZIndex)
                     .ToList();
-                
+
                 foreach (var element in rootElements)
                 {
                     CollectElements(element, CachedRenderQueue);
+                }
+
+                for (int i = 0; i < _overlays.Count; i++)
+                {
+                    var layer = _overlays[i].Layer;
+                    if (layer == null || layer.IsDisposed) continue;
+                    CollectElements(layer, CachedRenderQueue);
                 }
 
                 CachedSortedElements.Clear();
@@ -723,8 +873,8 @@ namespace Blossom.Core
                     unionRect = SKRect.Union(unionRect, _localDirtyRects[i]);
                 unionRect.Inflate(8, 8);
                 // Clamp to view
-                float rw = Math.Max(1, Browser.RenderRect.Width);
-                float rh = Math.Max(1, Browser.RenderRect.Height);
+                float rw = Math.Max(1, Shell.RenderRect.Width);
+                float rh = Math.Max(1, Shell.RenderRect.Height);
                 unionRect.Intersect(new SKRect(0, 0, rw, rh));
                 _localDirtyRects.Clear();
                 if (unionRect.Width > 0 && unionRect.Height > 0)
@@ -735,8 +885,8 @@ namespace Blossom.Core
 
             using (new SKAutoCanvasRestore(Renderer.Canvas))
             {
-                float scaleX = Browser.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Browser.RenderRect.Width : 1f;
-                float scaleY = Browser.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Browser.RenderRect.Height : 1f;
+                float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+                float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
                 if (scaleX > 0 && scaleY > 0 && (scaleX != 1f || scaleY != 1f))
                 {
                     Renderer.Canvas.Scale(scaleX, scaleY);
@@ -812,6 +962,7 @@ namespace Blossom.Core
             hoveredElement = null;
             UpdateCursorForTarget(null);
             _clickCandidateElement = null;
+            _overlays.Clear();
 
             var roots = Elements.Items.Where(e => e.Parent == null).ToList();
             foreach (var root in roots)
@@ -836,6 +987,168 @@ namespace Blossom.Core
 
             CachedRenderQueue.Clear();
             CachedSortedElements.Clear();
+        }
+
+        internal bool TryHandleDefaultTab(bool reverse)
+        {
+            var targets = KeyboardTargetsForTab();
+            if (targets.Count == 0)
+                return false;
+
+            int idx = ActiveKeyboardElement != null ? targets.IndexOf(ActiveKeyboardElement) : -1;
+            if (!reverse)
+                idx = idx < 0 || idx >= targets.Count - 1 ? 0 : idx + 1;
+            else
+                idx = idx <= 0 ? targets.Count - 1 : idx - 1;
+
+            SetActiveKeyboardElement(targets[idx]);
+            return true;
+        }
+
+        private List<VisualElement> KeyboardTargetsForTab()
+        {
+            int blockingIndex = -1;
+            for (int i = _overlays.Count - 1; i >= 0; i--)
+            {
+                if (_overlays[i].Options.BlockHitsUnderneath)
+                {
+                    blockingIndex = i;
+                    break;
+                }
+            }
+
+            if (blockingIndex < 0)
+                return KeyboardTargets().ToList();
+
+            var restricted = new List<VisualElement>();
+            for (int i = blockingIndex; i < _overlays.Count; i++)
+                CollectKeyboardTargets(_overlays[i].Layer, restricted);
+
+            return restricted.Count > 0 ? restricted : KeyboardTargets().ToList();
+        }
+
+        private static void CollectKeyboardTargets(VisualElement? root, List<VisualElement> results)
+        {
+            if (root == null || root.IsDisposed)
+                return;
+            if (!root.Visible)
+                return;
+
+            if (root.EffectiveInteractive && root.ReceivesKeyboard)
+                results.Add(root);
+
+            var children = root.Children;
+            for (int i = 0; i < children.Count; i++)
+                CollectKeyboardTargets(children[i], results);
+        }
+
+        private bool HandleOverlayPointerDown(float x, float y)
+        {
+            bool swallow = false;
+            for (int i = _overlays.Count - 1; i >= 0; i--)
+            {
+                if (i >= _overlays.Count)
+                    break;
+
+                var entry = _overlays[i];
+                if (OverlayContainsPoint(entry.Layer, x, y))
+                    break;
+
+                if (entry.Options.CloseOnPointerOutside)
+                {
+                    bool blocking = entry.Options.BlockHitsUnderneath;
+                    PopOverlay(entry.Layer);
+                    if (blocking)
+                    {
+                        swallow = true;
+                        break;
+                    }
+                    continue;
+                }
+
+                if (entry.Options.BlockHitsUnderneath)
+                    break;
+            }
+
+            return swallow;
+        }
+
+        private bool OverlayContainsPoint(VisualElement? layer, float x, float y)
+        {
+            if (layer == null || layer.IsDisposed || !layer.EffectiveVisible)
+                return false;
+
+            var list = new List<VisualElement>();
+            CollectElements(layer, list);
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var el = list[i];
+                if (el == null || el.IsDisposed || !el.EffectiveVisible)
+                    continue;
+                if (el.ComputedVisibility == Visibility.Hidden)
+                    continue;
+                if (ElementTree.Hits(el, x, y))
+                    return true;
+            }
+            return false;
+        }
+
+        private HashSet<VisualElement> OverlayLayerSet()
+        {
+            var set = new HashSet<VisualElement>();
+            for (int i = 0; i < _overlays.Count; i++)
+            {
+                var layer = _overlays[i].Layer;
+                if (layer != null)
+                    set.Add(layer);
+            }
+            return set;
+        }
+
+        private IEnumerable<VisualElement> EnumerateAppRoots(HashSet<VisualElement> overlayLayers)
+        {
+            foreach (var e in Elements.Items)
+            {
+                if (e == null || e.IsDisposed || e.Parent != null)
+                    continue;
+                if (overlayLayers.Contains(e))
+                    continue;
+                yield return e;
+            }
+        }
+
+        private sealed class OverlayEntry
+        {
+            public OverlayEntry(VisualElement layer, OverlayOptions options, VisualElement? previousKeyboard)
+            {
+                Layer = layer;
+                Options = options;
+                PreviousKeyboard = previousKeyboard;
+            }
+
+            public VisualElement Layer { get; }
+            public OverlayOptions Options { get; }
+            public VisualElement? PreviousKeyboard { get; }
+        }
+
+        private sealed class OverlayLease : IDisposable
+        {
+            private readonly View _view;
+            private readonly VisualElement _layer;
+            private bool _disposed;
+
+            public OverlayLease(View view, VisualElement layer)
+            {
+                _view = view;
+                _layer = layer;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+                _disposed = true;
+                _view.PopOverlay(_layer);
+            }
         }
     }
 }

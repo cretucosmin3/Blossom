@@ -1,6 +1,9 @@
 using System;
+using Blossom.Core;
 using Blossom.Core.Design;
+using Blossom.Core.Input;
 using Blossom.Core.Visual;
+using Blossom.Primitives;
 using Silk.NET.Input;
 using SkiaSharp;
 
@@ -9,37 +12,27 @@ namespace Blossom.Testing.Components;
 public class Modal : VisualElement
 {
     private string _title = "Modal";
-    private readonly Container _card;
+    private readonly Stack _card;
     private readonly VisualElement _titleElement;
     private readonly Button _closeBtn;
     private readonly Button _cancelBtn;
     private readonly Button _confirmBtn;
 
-    public Container ContentContainer { get; }
+    public Stack ContentContainer { get; }
 
     public float CardWidth { get; set; } = 420f;
     public float CardHeight { get; set; } = 280f;
     public bool CloseOnBackdropClick { get; set; } = true;
+
+    private View? _overlayHost;
 
     public bool IsOpen
     {
         get => Visible;
         set
         {
-            if (Visible != value)
-            {
-                Visible = value;
-                if (Visible)
-                {
-                    InvalidateLayout();
-                    InvalidatePaint();
-                }
-                else
-                {
-                    Closed?.Invoke();
-                    InvalidatePaint();
-                }
-            }
+            if (value) Show();
+            else Close();
         }
     }
 
@@ -66,6 +59,7 @@ public class Modal : VisualElement
         _title = title;
         ZIndex = 1000;
         Visible = false;
+        ReceivesKeyboard = true;
 
         Transform = new Transform(0, 0, DesignCanvas.DefaultDesignWidth, DesignCanvas.DefaultDesignHeight)
         {
@@ -79,7 +73,13 @@ public class Modal : VisualElement
             Border = new BorderStyle { Width = 0, Color = SKColors.Transparent }
         };
 
-        _card = new Container(new SKColor(38, 38, 38), 10f); // Gray 800 card
+        _card = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Gap = 12,
+            Padding = new Thickness(18)
+        };
+        DemoLayout.Panel(_card, new SKColor(38, 38, 38), 10f);
 
         _titleElement = new VisualElement
         {
@@ -103,43 +103,72 @@ public class Modal : VisualElement
         {
             Name = $"{Name}_CloseBtn"
         };
+        _closeBtn.MinWidth = 30;
+        _closeBtn.MinHeight = 30;
+        _closeBtn.Transform.Width = 30;
+        _closeBtn.Transform.Height = 30;
         _closeBtn.Clicked += Close;
 
-        ContentContainer = new Container(SKColors.Transparent, 0f)
+        var header = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Gap = 8,
+            Align = LayoutAlign.Center
+        };
+        header.Transform.Height = 30;
+        header.AddChild(_titleElement);
+        header.AddChild(_closeBtn);
+        Stack.SetGrow(_titleElement, 1f);
+
+        ContentContainer = new Stack
         {
             Name = $"{Name}_Content",
-            Style = new ElementStyle
-            {
-                BackColor = SKColors.Transparent,
-                Border = new BorderStyle { Width = 0, Color = SKColors.Transparent },
-                Shadow = null!
-            }
+            Orientation = Orientation.Vertical,
+            Gap = 10
         };
+        ContentContainer.Style.BackColor = SKColors.Transparent;
+        ContentContainer.Style.Border.Width = 0;
+        ContentContainer.Style.Shadow = null!;
+        Stack.SetGrow(ContentContainer, 1f);
 
         _cancelBtn = new Button("Cancel", new SKColor(58, 58, 58))
         {
             Name = $"{Name}_CancelBtn"
         };
+        _cancelBtn.MinWidth = 96;
+        _cancelBtn.Transform.Width = 96;
+        _cancelBtn.Transform.Height = 36;
         _cancelBtn.Clicked += Close;
 
-        _confirmBtn = new Button("Confirm", new SKColor(100, 100, 100)) // Gray accent
+        _confirmBtn = new Button("Confirm", new SKColor(100, 100, 100))
         {
             Name = $"{Name}_ConfirmBtn"
         };
+        _confirmBtn.MinWidth = 96;
+        _confirmBtn.Transform.Width = 96;
+        _confirmBtn.Transform.Height = 36;
         _confirmBtn.Clicked += () =>
         {
             Confirmed?.Invoke();
-            // Confirmed handlers may close themselves; default still closes
             if (IsOpen)
                 Close();
         };
 
+        var footer = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Gap = 10,
+            Align = LayoutAlign.Center
+        };
+        footer.Transform.Height = 36;
+        footer.AddChild(DemoLayout.GrowSpacer());
+        footer.AddChild(_cancelBtn);
+        footer.AddChild(_confirmBtn);
+
         AddChild(_card);
-        _card.AddChild(_titleElement);
-        _card.AddChild(_closeBtn);
+        _card.AddChild(header);
         _card.AddChild(ContentContainer);
-        _card.AddChild(_cancelBtn);
-        _card.AddChild(_confirmBtn);
+        _card.AddChild(footer);
 
         Events.OnClick += (target, args) =>
         {
@@ -150,12 +179,13 @@ public class Modal : VisualElement
             }
         };
 
-        Events.OnKeyDown += (k) =>
+        Events.OnKeyDown += e =>
         {
             if (!IsOpen) return;
-            if ((Key)k == Key.Escape)
+            if (e.Key == Key.Escape)
             {
                 Close();
+                e.Handled = true;
             }
         };
     }
@@ -167,21 +197,40 @@ public class Modal : VisualElement
 
     public void Show()
     {
-        IsOpen = true;
+        if (!Visible)
+        {
+            Visible = true;
+            InvalidateLayout();
+            InvalidatePaint();
+        }
+
+        var view = ParentView ?? _overlayHost;
+        if (view != null)
+        {
+            _overlayHost = view;
+            view.PushOverlay(this, new OverlayOptions
+            {
+                BlockHitsUnderneath = true
+            });
+        }
     }
 
     public void Hide()
     {
-        IsOpen = false;
+        Close();
     }
 
     public void Close()
     {
-        if (ParentView?.ActiveKeyboardElement != null)
+        var view = ParentView ?? _overlayHost;
+        view?.PopOverlay(this);
+
+        if (Visible)
         {
-            ParentView.SetActiveKeyboardElement(null);
+            Visible = false;
+            Closed?.Invoke();
+            InvalidatePaint();
         }
-        IsOpen = false;
     }
 
     protected override void LayoutChildren()
@@ -191,56 +240,11 @@ public class Modal : VisualElement
         float w = Math.Max(1f, Transform.Width);
         float h = Math.Max(1f, Transform.Height);
 
-        // Calculate required content height from visible children
-        float requiredContentH = 8f;
-        foreach (var child in ContentContainer.Children)
-        {
-            if (child == null || !child.Visible) continue;
-            float childH = child.Transform.Height > 1f ? child.Transform.Height : 38f;
-            requiredContentH += childH + 10f;
-        }
-
-        const float pad = 18f;
-        const float headerH = 40f;
-        const float btnH = 36f;
-        const float btnW = 96f;
-        float footerH = btnH + 16f;
-
-        float minCardH = pad * 2 + headerH + requiredContentH + footerH;
-        float desiredH = Math.Max(CardHeight, minCardH);
-
         float cardW = Math.Min(w - 40f, CardWidth);
-        float cardH = Math.Min(h - 40f, desiredH);
+        float prefH = _card.GetPreferredSize(cardW, 0).Height;
+        float cardH = Math.Min(h - 40f, Math.Max(CardHeight, prefH));
         float cardX = originX + Math.Max(0, (w - cardW) / 2f);
         float cardY = originY + Math.Max(0, (h - cardH) / 2f);
-
         _card.Transform.SetAbsoluteFrame(cardX, cardY, cardW, cardH);
-
-        _titleElement.Transform.SetAbsoluteFrame(cardX + pad, cardY + pad, Math.Max(40f, cardW - pad * 2 - 36f), 28f);
-        _closeBtn.Transform.SetAbsoluteFrame(cardX + cardW - pad - 30f, cardY + pad, 30f, 30f);
-
-        float footerY = cardY + cardH - pad - btnH;
-        _confirmBtn.Transform.SetAbsoluteFrame(cardX + cardW - pad - btnW, footerY, btnW, btnH);
-        if (_cancelBtn.Visible)
-        {
-            _cancelBtn.Transform.SetAbsoluteFrame(cardX + cardW - pad - btnW * 2 - 10f, footerY, btnW, btnH);
-        }
-
-        float contentX = cardX + pad;
-        float contentY = cardY + pad + headerH;
-        float contentW = Math.Max(40f, cardW - pad * 2);
-        float contentH = Math.Max(40f, footerY - contentY - 12f);
-        ContentContainer.Transform.SetAbsoluteFrame(contentX, contentY, contentW, contentH);
-
-        // Stack content children vertically inside the content box
-        float y = contentY + 4f;
-        foreach (var child in ContentContainer.Children)
-        {
-            if (child == null || !child.Visible) continue;
-            float childH = child.Transform.Height > 1f ? child.Transform.Height : 38f;
-            float childW = contentW;
-            child.Transform.SetAbsoluteFrame(contentX, y, childW, childH);
-            y += childH + 10f;
-        }
     }
 }

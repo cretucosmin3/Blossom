@@ -1,43 +1,38 @@
 # Blossom
-A rich .Net browser.<br>
 
-Blossom is a framework / browser and app distribuitor for .Net C# applications with rich web like controls.
+Retained-mode UI framework for **C#**. Native desktop host for rich 2D/3D UI — not an HTML/CSS engine.
 
-**Blossom.Reactive** is an optional SolidJS-inspired layer on top of the retained `VisualElement` tree: signals, memos, effects, and keyed list / conditional flow. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
+- Window + input: **Silk.NET** (GLFW)
+- Drawing: **SkiaSharp** (GPU, dirty-rect retained pipeline)
+- Apps are C# object graphs of **`VisualElement`** nodes inside **`View`s**, owned by an **`Application`**, hosted by **`Shell`**
 
-## Building and Running
+`VisualElement` is the platform. Buttons, fields, terminals, and charts are subclasses of that node. Core ships host contracts (window, keyboard, fonts, overlays, layout, threading) so other apps can build those primitives without reflection.
 
-Blossom is a **class library** (`src/Blossom`) plus a sample host (`src/Blossom.Demo`). Other C# apps reference the library and call `Browser.Initialize(yourApplication)`.
+**Guide (capabilities, APIs, pitfalls):** [`guide/README.md`](guide/README.md)
 
-You can compile the demo on Linux using the build script:
+**Blossom.Reactive** is an optional [SolidJS](https://www.solidjs.com/)-inspired layer on the retained tree: signals, memos, effects, keyed lists. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
+
+**Blossom.Primitives** is the optional element library (Stack, Grid, Split, `Colours`, `Theme`; later widgets). See [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md).
+
+## Building and running
+
+Blossom is a **class library** (`src/Blossom`) plus a sample host (`src/Blossom.Demo`). Other C# apps reference the library and call `Shell.Initialize(yourApplication)`.
+
+```bash
+dotnet build Blossom.sln
+dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+```
+
+Linux packaging script:
 
 ```bash
 ./build.sh
+# --framework-dependent / -fd   needs a machine-wide .NET 10 runtime
+# --self-contained / -s         copies the runtime into ./dist/
 ```
 
-By default, the script compiles Blossom in Release mode targeting Linux x64 with ReadyToRun (R2R) ahead-of-time compilation enabled to ensure rapid startup.
-
-### Build Options
-
-- **Framework-Dependent Build**: Run with `--framework-dependent` (or `-fd`). This requires the .NET 10 runtime to be installed on the system.
-- **Self-Contained Build**: Run with the `--self-contained` (or `-s`) flag:
-  ```bash
-  ./build.sh --self-contained
-  ```
-  This packages the entire .NET runtime inside the build output directory `./dist/` so the application can run on any machine without .NET pre-installed.
-
-### Launching the Application
-
-Once built, launch Blossom using the root-level generated runner:
-```bash
-./Blossom
-```
-
-Or run the rendering benchmarks with:
-```bash
-./Blossom --benchmark
-```
+After a script build, `./Blossom` runs the demo. `./Blossom --benchmark` runs isolated benchmark views. `--fps` opts into the F12 stats overlay.
 
 ## License
 
-Blossom is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT. See [LICENSE](LICENSE).

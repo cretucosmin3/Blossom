@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using Blossom.Core.Visual.Enums;
 using Blossom.Utils;
 using SkiaSharp;
@@ -45,9 +46,15 @@ public sealed class TextLayout
     public float Width { get; private set; }
     public float Height { get; private set; }
 
+    private readonly List<GraphemePlacement> _graphemes = new();
+
+    /// <summary>Number of grapheme clusters in the laid-out text (caret stops = count + 1 including end).</summary>
+    public int GraphemeCount => _graphemes.Count;
+
     public static TextLayout Build(
         IReadOnlyList<TextSpan> spans,
-        SKPaint basePaint,
+        SKFont baseFont,
+        SKColor baseColor,
         float maxWidth,
         float maxHeight,
         TextOverflow overflow,
@@ -55,14 +62,14 @@ public sealed class TextLayout
         float lineHeightMul = 1.15f)
     {
         var layout = new TextLayout();
-        if (basePaint == null || spans == null || spans.Count == 0)
+        if (baseFont == null || spans == null || spans.Count == 0)
             return layout;
 
         if (maxWidth <= 0) maxWidth = float.MaxValue;
         if (maxHeight <= 0) maxHeight = float.MaxValue;
         if (maxLines <= 0) maxLines = 1;
 
-        var tokens = Tokenize(spans, basePaint);
+        var tokens = Tokenize(spans, baseFont, baseColor);
         if (tokens.Count == 0)
             return layout;
 
@@ -93,7 +100,7 @@ public sealed class TextLayout
             if (tok.IsNewline)
             {
                 if (current.Count == 0)
-                    current.Add(tok.AsEmptyLine(basePaint));
+                    current.Add(tok.AsEmptyLine(baseFont, baseColor));
                 FlushLine();
                 if (lines.Count >= maxLines)
                 {
@@ -122,7 +129,7 @@ public sealed class TextLayout
 
             if (wrap && tok.Width > maxWidth && !tok.IsSpace)
             {
-                foreach (var piece in BreakToken(tok, maxWidth, basePaint))
+                foreach (var piece in BreakToken(tok, maxWidth, baseFont))
                 {
                     if (lineW + piece.Width > maxWidth && current.Count > 0)
                     {
@@ -158,11 +165,11 @@ public sealed class TextLayout
             lines.RemoveRange(maxLines, lines.Count - maxLines);
 
         if (ellipsis && (stoppedEarly || lineWouldOverflow(tokens, maxWidth, maxLines)))
-            ApplyEllipsis(lines, maxWidth, basePaint);
+            ApplyEllipsis(lines, maxWidth, baseFont, baseColor);
 
         float y = 0f;
         float maxW = 0f;
-        using var measure = basePaint.Clone();
+        int lineIndex = 0;
         foreach (var line in lines)
         {
             float x = 0f;
@@ -172,16 +179,14 @@ public sealed class TextLayout
             {
                 if (tok.Width <= 0 && string.IsNullOrEmpty(tok.Text))
                     continue;
-                measure.Typeface = tok.Typeface;
-                measure.TextSize = tok.Size;
-                measure.Color = tok.Color;
-                var m = measure.FontMetrics;
+                using var measure = FontOf(tok.Typeface, tok.Size, baseFont);
+                var m = measure.Metrics;
                 ascent = Math.Max(ascent, -m.Ascent);
                 descent = Math.Max(descent, m.Descent);
             }
             if (ascent <= 0)
             {
-                var m = basePaint.FontMetrics;
+                var m = baseFont.Metrics;
                 ascent = -m.Ascent;
                 descent = m.Descent;
             }
@@ -197,10 +202,12 @@ public sealed class TextLayout
                 if (string.IsNullOrEmpty(tok.Text))
                     continue;
                 layout.Runs.Add(new Run(tok.Text, x, baseline, tok.Width, ascent, descent, tok.Typeface, tok.Size, tok.Color));
+                layout.AddGraphemes(tok, x, baseline, ascent, descent, lineIndex, baseFont);
                 x += tok.Width;
             }
             maxW = Math.Max(maxW, x);
             y += lineH;
+            lineIndex++;
         }
 
         layout.Width = maxW;
@@ -210,7 +217,8 @@ public sealed class TextLayout
 
     public static TextLayout Build(
         string text,
-        SKPaint paint,
+        SKFont font,
+        SKColor color,
         float maxWidth,
         float maxHeight,
         TextOverflow overflow,
@@ -220,7 +228,178 @@ public sealed class TextLayout
         var spans = new List<TextSpan>(1);
         if (!string.IsNullOrEmpty(text))
             spans.Add(new TextSpan(text));
-        return Build(spans, paint, maxWidth, maxHeight, overflow, maxLines, lineHeightMul);
+        return Build(spans, font, color, maxWidth, maxHeight, overflow, maxLines, lineHeightMul);
+    }
+
+    /// <summary>
+    /// Grapheme caret index closest to <paramref name="x"/>, <paramref name="y"/> in layout-local coordinates.
+    /// Uses a 50% glyph split; Y picks the nearest line.
+    /// </summary>
+    public int CaretIndexFromPoint(float x, float y)
+    {
+        int n = _graphemes.Count;
+        if (n == 0)
+            return 0;
+
+        int bestLine = _graphemes[0].Line;
+        float bestDist = float.MaxValue;
+        int line = int.MinValue;
+        for (int i = 0; i < n; i++)
+        {
+            var g = _graphemes[i];
+            if (g.Line == line)
+                continue;
+            line = g.Line;
+            float top = g.Baseline - g.Ascent;
+            float bottom = g.Baseline + g.Descent;
+            float dist = y < top ? top - y : (y > bottom ? y - bottom : 0f);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                bestLine = line;
+            }
+        }
+
+        int lastOnLine = -1;
+        for (int i = 0; i < n; i++)
+        {
+            var g = _graphemes[i];
+            if (g.Line != bestLine)
+                continue;
+            lastOnLine = i;
+            if (x < g.X + g.Width * 0.5f)
+                return i;
+        }
+
+        return lastOnLine >= 0 ? lastOnLine + 1 : n;
+    }
+
+    /// <summary>
+    /// Zero-width caret rectangle in layout-local coordinates for the grapheme boundary at
+    /// <paramref name="graphemeIndex"/> (0..GraphemeCount).
+    /// </summary>
+    public SKRect CaretRect(int graphemeIndex)
+    {
+        int n = _graphemes.Count;
+        if (n == 0)
+            return SKRect.Empty;
+
+        int i = Math.Clamp(graphemeIndex, 0, n);
+        if (i < n)
+        {
+            var g = _graphemes[i];
+            float top = g.Baseline - g.Ascent;
+            return new SKRect(g.X, top, g.X, top + g.Ascent + g.Descent);
+        }
+
+        var last = _graphemes[n - 1];
+        float lastTop = last.Baseline - last.Ascent;
+        float x = last.X + last.Width;
+        return new SKRect(x, lastTop, x, lastTop + last.Ascent + last.Descent);
+    }
+
+    /// <summary>Moves a grapheme caret by <paramref name="delta"/> clusters, clamped to [0, GraphemeCount].</summary>
+    public int MoveByGrapheme(int index, int delta)
+    {
+        int n = GraphemeCount;
+        if (n == 0)
+            return 0;
+        long next = (long)index + delta;
+        if (next < 0) return 0;
+        if (next > n) return n;
+        return (int)next;
+    }
+
+    /// <summary>
+    /// Moves a grapheme caret by word. Positive <paramref name="direction"/> is forward;
+    /// negative is backward. Magnitude is the number of word steps.
+    /// </summary>
+    public int MoveByWord(int index, int direction)
+    {
+        int n = GraphemeCount;
+        if (n == 0 || direction == 0)
+            return n == 0 ? 0 : Math.Clamp(index, 0, n);
+
+        index = Math.Clamp(index, 0, n);
+        int steps = Math.Abs(direction);
+        bool forward = direction > 0;
+        for (int s = 0; s < steps; s++)
+            index = MoveOneWord(index, forward);
+        return index;
+    }
+
+    private int MoveOneWord(int index, bool forward)
+    {
+        int n = GraphemeCount;
+        if (forward)
+        {
+            int i = index;
+            while (i < n && !IsWordSeparator(i)) i++;
+            while (i < n && IsWordSeparator(i)) i++;
+            return i;
+        }
+
+        int j = index;
+        if (j > 0) j--;
+        while (j > 0 && IsWordSeparator(j)) j--;
+        while (j > 0 && !IsWordSeparator(j - 1)) j--;
+        return j;
+    }
+
+    private bool IsWordSeparator(int graphemeIndex)
+    {
+        if ((uint)graphemeIndex >= (uint)_graphemes.Count)
+            return true;
+        string cluster = _graphemes[graphemeIndex].Cluster;
+        if (string.IsNullOrEmpty(cluster))
+            return true;
+        foreach (var rune in cluster.EnumerateRunes())
+        {
+            if (!Rune.IsWhiteSpace(rune) && rune.Value != '\n' && rune.Value != '\r')
+                return false;
+        }
+        return true;
+    }
+
+    private void AddGraphemes(GlyphTok tok, float runX, float baseline, float ascent, float descent, int line, SKFont baseFont)
+    {
+        var clusters = Clusters(tok.Text);
+        if (clusters.Count == 0)
+            return;
+
+        using var font = FontOf(tok.Typeface, tok.Size, baseFont);
+        float x = runX;
+        for (int i = 0; i < clusters.Count; i++)
+        {
+            string cluster = clusters[i];
+            float w = i == clusters.Count - 1
+                ? Math.Max(0f, (runX + tok.Width) - x)
+                : font.MeasureText(cluster);
+            _graphemes.Add(new GraphemePlacement(cluster, x, baseline, w, ascent, descent, line));
+            x += w;
+        }
+    }
+
+    private readonly struct GraphemePlacement
+    {
+        public GraphemePlacement(string cluster, float x, float baseline, float width, float ascent, float descent, int line)
+        {
+            Cluster = cluster;
+            X = x;
+            Baseline = baseline;
+            Width = width;
+            Ascent = ascent;
+            Descent = descent;
+            Line = line;
+        }
+
+        public string Cluster { get; }
+        public float X { get; }
+        public float Baseline { get; }
+        public float Width { get; }
+        public float Ascent { get; }
+        public float Descent { get; }
+        public int Line { get; }
     }
 
     private static bool lineWouldOverflow(List<GlyphTok> tokens, float maxWidth, int maxLines)
@@ -250,12 +429,12 @@ public sealed class TextLayout
         return false;
     }
 
-    private static void ApplyEllipsis(List<List<GlyphTok>> lines, float maxWidth, SKPaint basePaint)
+    private static void ApplyEllipsis(List<List<GlyphTok>> lines, float maxWidth, SKFont baseFont, SKColor baseColor)
     {
         if (lines.Count == 0)
             return;
         var last = lines[^1];
-        var ell = MakeTok(Ellipsis, basePaint.Typeface, basePaint.TextSize, basePaint.Color, basePaint);
+        var ell = MakeTok(Ellipsis, baseFont.Typeface, baseFont.Size, baseColor, baseFont);
         float avail = maxWidth - ell.Width;
         if (avail < 0) avail = 0;
 
@@ -275,7 +454,7 @@ public sealed class TextLayout
         last.Add(ell);
     }
 
-    private static List<GlyphTok> BreakToken(GlyphTok tok, float maxWidth, SKPaint basePaint)
+    private static List<GlyphTok> BreakToken(GlyphTok tok, float maxWidth, SKFont baseFont)
     {
         var parts = new List<GlyphTok>();
         var clusters = Clusters(tok.Text);
@@ -286,30 +465,30 @@ public sealed class TextLayout
         foreach (var c in clusters)
         {
             string next = current + c;
-            var piece = MakeTok(next, tf, size, color, basePaint);
+            var piece = MakeTok(next, tf, size, color, baseFont);
             if (piece.Width > maxWidth && current.Length > 0)
             {
-                parts.Add(MakeTok(current, tf, size, color, basePaint));
+                parts.Add(MakeTok(current, tf, size, color, baseFont));
                 current = c;
             }
             else
                 current = next;
         }
         if (current.Length > 0)
-            parts.Add(MakeTok(current, tf, size, color, basePaint));
+            parts.Add(MakeTok(current, tf, size, color, baseFont));
         return parts;
     }
 
-    private static List<GlyphTok> Tokenize(IReadOnlyList<TextSpan> spans, SKPaint basePaint)
+    private static List<GlyphTok> Tokenize(IReadOnlyList<TextSpan> spans, SKFont baseFont, SKColor baseColor)
     {
         var list = new List<GlyphTok>();
         foreach (var span in spans)
         {
             if (span == null || string.IsNullOrEmpty(span.Text))
                 continue;
-            float size = span.Size ?? basePaint.TextSize;
-            SKColor color = span.Color ?? basePaint.Color;
-            SKTypeface primary = span.Typeface ?? ResolveWeight(basePaint.Typeface, span.Weight);
+            float size = span.Size ?? baseFont.Size;
+            SKColor color = span.Color ?? baseColor;
+            SKTypeface primary = span.Typeface ?? ResolveWeight(baseFont.Typeface, span.Weight);
 
             int i = 0;
             string s = span.Text;
@@ -335,7 +514,7 @@ public sealed class TextLayout
                     while (i < s.Length && char.IsWhiteSpace(s[i]) && s[i] != '\n' && s[i] != '\r' && s[i] != '\u00A0')
                         i++;
                     string ws = s[start..i];
-                    list.Add(MakeTok(ws, primary, size, color, basePaint, isSpace: true));
+                    list.Add(MakeTok(ws, primary, size, color, baseFont, isSpace: true));
                     continue;
                 }
 
@@ -343,7 +522,7 @@ public sealed class TextLayout
                 while (i < s.Length && !IsBreak(s, i))
                     i += ClusterLen(s, i);
                 string word = s[wordStart..i];
-                foreach (var run in SplitByFont(word, primary, size, color, basePaint))
+                foreach (var run in SplitByFont(word, primary, size, color, baseFont))
                     list.Add(run);
             }
         }
@@ -375,7 +554,7 @@ public sealed class TextLayout
         return list;
     }
 
-    private static List<GlyphTok> SplitByFont(string word, SKTypeface primary, float size, SKColor color, SKPaint basePaint)
+    private static List<GlyphTok> SplitByFont(string word, SKTypeface primary, float size, SKColor color, SKFont baseFont)
     {
         var result = new List<GlyphTok>();
         if (string.IsNullOrEmpty(word))
@@ -392,14 +571,14 @@ public sealed class TextLayout
                 currentTf = tf;
             if (!ReferenceEquals(tf, currentTf) && acc.Length > 0)
             {
-                result.Add(MakeTok(acc, currentTf, size, color, basePaint));
+                result.Add(MakeTok(acc, currentTf, size, color, baseFont));
                 acc = "";
                 currentTf = tf;
             }
             acc += c;
         }
         if (acc.Length > 0)
-            result.Add(MakeTok(acc, currentTf ?? primary, size, color, basePaint));
+            result.Add(MakeTok(acc, currentTf ?? primary, size, color, baseFont));
         return result;
     }
 
@@ -419,15 +598,23 @@ public sealed class TextLayout
         return Fonts.GetTypeface(primary.FamilyName, weight.Value);
     }
 
-    private static GlyphTok MakeTok(string text, SKTypeface? tf, float size, SKColor color, SKPaint basePaint, bool isSpace = false)
+    private static SKFont FontOf(SKTypeface? typeface, float size, SKFont prototype)
     {
-        tf ??= basePaint.Typeface ?? SKTypeface.Default;
-        using var p = basePaint.Clone();
-        p.Typeface = tf;
-        p.TextSize = size;
-        p.Color = color;
-        float w = p.MeasureText(text);
-        var m = p.FontMetrics;
+        var tf = typeface ?? prototype.Typeface ?? SKTypeface.Default;
+        return new SKFont(tf, size, 1f, 0f)
+        {
+            Subpixel = prototype.Subpixel,
+            Edging = prototype.Edging,
+            Hinting = prototype.Hinting,
+        };
+    }
+
+    private static GlyphTok MakeTok(string text, SKTypeface? tf, float size, SKColor color, SKFont baseFont, bool isSpace = false)
+    {
+        tf ??= baseFont.Typeface ?? SKTypeface.Default;
+        using var font = FontOf(tf, size, baseFont);
+        float w = font.MeasureText(text);
+        var m = font.Metrics;
         return new GlyphTok(text, w, -m.Ascent, m.Descent, tf, size, color, isSpace, isNewline: false);
     }
 
@@ -459,10 +646,10 @@ public sealed class TextLayout
         public static GlyphTok Newline() =>
             new("\n", 0, 0, 0, SKTypeface.Default, 0, SKColors.Transparent, false, true);
 
-        public GlyphTok AsEmptyLine(SKPaint paint)
+        public GlyphTok AsEmptyLine(SKFont font, SKColor color)
         {
-            var m = paint.FontMetrics;
-            return new GlyphTok("", 0, -m.Ascent, m.Descent, paint.Typeface ?? SKTypeface.Default, paint.TextSize, paint.Color, false, false);
+            var m = font.Metrics;
+            return new GlyphTok("", 0, -m.Ascent, m.Descent, font.Typeface ?? SKTypeface.Default, font.Size, color, false, false);
         }
     }
 }

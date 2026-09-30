@@ -33,7 +33,7 @@ namespace Blossom.Testing
                 return;
             }
 
-            // Normal Mode - Modern Blossom Studio (Reactive Showcase)
+            DemoThemes.Ensure();
             _studioView = new StudioView();
             AddView(_studioView);
             SetActiveView(_studioView);

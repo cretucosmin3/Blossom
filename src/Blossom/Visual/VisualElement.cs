@@ -123,22 +123,13 @@ public class VisualElement : IDisposable
     public bool IsPaintDirty => _isPaintDirty;
 
     /// <summary>
-    /// While &gt; 0, transform mutations (SetAbsoluteFrame, X/Y/…) must not re-enter layout/paint
+    /// While &gt; 0, transform mutations (SetAbsoluteFrame, AbsoluteX/Y/…) must not re-enter layout/paint
     /// invalidation — LayoutChildren is already running. Prevents continuous render loops.
     /// </summary>
     internal static int LayoutMutationDepth { get; private set; }
 
     public void InvalidatePaint()
     {
-        if (LayoutMutationDepth > 0)
-        {
-            // Defer: layout will request paint once if bounds actually changed
-            _isPaintDirty = true;
-            _localBoundsDirty = true;
-            _renderBoundsDirty = true;
-            return;
-        }
-
         _isPaintDirty = true;
         IsDirty = true;
         _localBoundsDirty = true;
@@ -146,8 +137,17 @@ public class VisualElement : IDisposable
 
         if (ParentView is not null)
         {
+            if (!_lastRenderBounds.IsEmpty)
+                ParentView.AddDirtyRect(_lastRenderBounds);
+            var bounds = RenderBounds;
+            if (!bounds.IsEmpty)
+                ParentView.AddDirtyRect(bounds);
+
             ParentView.RenderRequired = true;
-            try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+            if (LayoutMutationDepth == 0)
+            {
+                try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+            }
         }
     }
 
@@ -199,6 +199,23 @@ public class VisualElement : IDisposable
         finally
         {
             LayoutMutationDepth--;
+        }
+    }
+
+    /// <summary>
+    /// Marks this node and visual descendants layout-dirty so nested hosts (scroll chrome, stacks)
+    /// re-run <see cref="LayoutChildren"/> after an ancestor is shown or resized.
+    /// </summary>
+    public void InvalidateLayoutSubtree()
+    {
+        _isLayoutDirty = true;
+        Transform._transformDirty = true;
+        for (int i = 0; i < _children.Count; i++)
+            _children[i]?.InvalidateLayoutSubtree();
+        foreach (var visual in GetVisualChildren())
+        {
+            if (visual == null || _children.Contains(visual)) continue;
+            visual.InvalidateLayoutSubtree();
         }
     }
 
@@ -305,7 +322,7 @@ public class VisualElement : IDisposable
         {
             var layout = EnsureTextLayout(maxWidth);
             float textW = layout.Width;
-            float textH = layout.Height > 0 ? layout.Height : (Style.Text.Paint.FontMetrics.Descent - Style.Text.Paint.FontMetrics.Ascent);
+            float textH = layout.Height > 0 ? layout.Height : (Style.Text.SkFont.Metrics.Descent - Style.Text.SkFont.Metrics.Ascent);
 
             w = textW + Padding.Horizontal + (Style.Text.Padding * 2);
             h = textH + Padding.Vertical + (Style.Text.Padding * 2);
@@ -568,6 +585,13 @@ public class VisualElement : IDisposable
         {
             child?.MarkVisibilityClippingDirty();
         }
+
+        foreach (var visual in GetVisualChildren())
+        {
+            if (visual == null) continue;
+            if (_children.Contains(visual)) continue;
+            visual.MarkVisibilityClippingDirty();
+        }
     }
 
     internal SKBitmap CachedRender = null!;
@@ -623,15 +647,7 @@ public class VisualElement : IDisposable
     }
 
     private static SKPoint3 MapPoint3D(SKMatrix44 matrix, float x, float y, float z)
-    {
-        float[] result = matrix.MapScalars(x, y, z, 1f);
-        float w = result[3];
-        if (Math.Abs(w) > 1e-6f)
-        {
-            return new SKPoint3(result[0] / w, result[1] / w, result[2] / w);
-        }
-        return new SKPoint3(result[0], result[1], result[2]);
-    }
+        => Transform.MapPoint3D(matrix, x, y, z);
 
     private SKRect GetLocalCombinedBounds()
     {
@@ -766,6 +782,10 @@ public class VisualElement : IDisposable
             {
                 _Visible = value;
                 MarkVisibilityClippingDirty();
+                if (value)
+                    InvalidateLayoutSubtree();
+                InvalidateLayout();
+                ParentView?.MarkHierarchyDirty();
                 ScheduleRender();
             }
         }
@@ -890,7 +910,7 @@ public class VisualElement : IDisposable
     public VisualElement()
     {
         // Critical: default Transform must own this element and fire OnChanged.
-        // Without ParentElement, SetAbsoluteFrame/X/Y never InvalidateLayout — children
+        // Without ParentElement, SetAbsoluteFrame/AbsoluteX/Y never InvalidateLayout — children
         // stay put when a parent moves (empty drag shells, dirty-rect holes).
         _Transform = new Transform();
         _Transform.ParentElement = this;
@@ -1124,7 +1144,7 @@ public class VisualElement : IDisposable
                 var bmp = SKBitmap.Decode(bytes);
                 if (bmp != null)
                 {
-                    Browser.Post(() =>
+                    Shell.Post(() =>
                     {
                         if (_isDisposed)
                         {
@@ -1142,8 +1162,8 @@ public class VisualElement : IDisposable
         });
     }
 
-    private SkiaSharp.Extended.Svg.SKSvg? _BackgroundSvg;
-    public SkiaSharp.Extended.Svg.SKSvg? BackgroundSvg
+    private Svg.Skia.SKSvg? _BackgroundSvg;
+    public Svg.Skia.SKSvg? BackgroundSvg
     {
         get => _BackgroundSvg;
         set
@@ -1167,7 +1187,7 @@ public class VisualElement : IDisposable
             }
             if (System.IO.File.Exists(filePath))
             {
-                var svg = new SkiaSharp.Extended.Svg.SKSvg();
+                var svg = new Svg.Skia.SKSvg();
                 svg.Load(filePath);
                 BackgroundSvg = svg;
             }
@@ -1199,13 +1219,13 @@ public class VisualElement : IDisposable
                 var bytes = await _httpClient.GetByteArrayAsync(url);
                 using (var ms = new System.IO.MemoryStream(bytes))
                 {
-                    var svg = new SkiaSharp.Extended.Svg.SKSvg();
+                    var svg = new Svg.Skia.SKSvg();
                     svg.Load(ms);
-                    Browser.Post(() =>
+                    Shell.Post(() =>
                     {
                         if (_isDisposed)
                         {
-                            svg.Picture?.Dispose();
+                            svg.Dispose();
                             return;
                         }
                         BackgroundSvg = svg;
@@ -1239,6 +1259,8 @@ public class VisualElement : IDisposable
             RegisterSubtree(child, ParentView);
             ParentView.MarkHierarchyDirty();
         }
+
+        InvalidateLayout();
     }
 
     public void InsertChild(int index, VisualElement child)
@@ -1468,8 +1490,7 @@ public class VisualElement : IDisposable
             }
 
             var globalMatrix3D = Transform.GetGlobalM44();
-            var globalMatrix2D = globalMatrix3D.Matrix;
-            
+
             bool hasTransition = transitionType == TransitionEffectType.HalftoneDots && transitionProgress < 1.0f;
             bool hasOpacity = opacity < 0.999f;
             int saveCount = -1;
@@ -1478,7 +1499,7 @@ public class VisualElement : IDisposable
             {
                 float margin = 32f;
                 var localRect = new SKRect(-margin, -margin, Transform.Computed.Width + margin, Transform.Computed.Height + margin);
-                targetCanvas.Concat(ref globalMatrix2D);
+                targetCanvas.Concat(in globalMatrix3D);
 
                 if (hasOpacity)
                 {
@@ -1493,7 +1514,7 @@ public class VisualElement : IDisposable
             }
             else
             {
-                targetCanvas.Concat(ref globalMatrix2D);
+                targetCanvas.Concat(in globalMatrix3D);
             }
 
             // Clip this element's own draw (custom images, children paint) to its box.
@@ -1553,8 +1574,9 @@ public class VisualElement : IDisposable
                     var host = TransitionHost;
                     float hostW = host.Transform.Computed.Width;
                     float hostH = host.Transform.Computed.Height;
-                    float screenX = globalMatrix2D.TransX;
-                    float screenY = globalMatrix2D.TransY;
+                    var origin = Transform.MapPoint(globalMatrix3D, 0, 0);
+                    float screenX = origin.X;
+                    float screenY = origin.Y;
 
                     using var halftoneShader = SKSLShaderManager.CreateHalftoneShader(transitionProgress, hostW, hostH, screenX, screenY);
                     if (halftoneShader != null)
@@ -1713,10 +1735,17 @@ public class VisualElement : IDisposable
                 path.AddRoundRect(localRoundRect);
                 
                 var globalMatrix3D = ancestor.Transform.GetGlobalM44();
-                var matrix2D = globalMatrix3D.Matrix;
-                
-                path.Transform(matrix2D);
-                canvas.ClipPath(path, SKClipOperation.Intersect, IsAntialias);
+                if (ancestor.Transform.Has3DTransforms)
+                {
+                    using var mapped = Transform.MapPath(path, globalMatrix3D);
+                    canvas.ClipPath(mapped, SKClipOperation.Intersect, IsAntialias);
+                }
+                else
+                {
+                    var matrix2D = globalMatrix3D.Matrix;
+                    path.Transform(matrix2D);
+                    canvas.ClipPath(path, SKClipOperation.Intersect, IsAntialias);
+                }
             }
             ancestor = ancestor.Parent;
         }
@@ -1943,8 +1972,8 @@ public class VisualElement : IDisposable
 
     protected TextLayout EnsureTextLayout(float constraintWidth = 0)
     {
-        var paint = Style?.Text?.Paint;
-        if (paint == null)
+        var text = Style?.Text;
+        if (text?.SkFont == null || text.Paint == null)
             return _textLayout ??= new TextLayout();
 
         float cw = Transform.Computed.Width;
@@ -1961,8 +1990,8 @@ public class VisualElement : IDisposable
         if (constraintWidth > 0)
             innerW = Math.Max(1f, Math.Min(innerW, constraintWidth - padLeft - padRight));
 
-        var overflow = Style.Text.Overflow;
-        int maxLines = Style.Text.MaxLines;
+        var overflow = text.Overflow;
+        int maxLines = text.MaxLines;
         bool scrolling = ScrollsTextContent;
         if (scrolling)
         {
@@ -1972,11 +2001,11 @@ public class VisualElement : IDisposable
         float maxW = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : innerW;
         float maxH = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : (scrolling ? float.MaxValue : innerH);
 
-        string key = $"{Text}|{overflow}|{maxLines}|{innerW:0.#}|{(scrolling ? 0 : innerH):0.#}|{paint.TextSize:0.#}|{paint.Color}|{paint.Typeface?.FamilyName}|s{(scrolling ? 1 : 0)}";
+        string key = $"{Text}|{overflow}|{maxLines}|{innerW:0.#}|{(scrolling ? 0 : innerH):0.#}|{text.SkFont.Size:0.#}|{text.Paint.Color}|{text.SkFont.Typeface?.FamilyName}|s{(scrolling ? 1 : 0)}";
         if (_textLayout != null && _textLayoutKey == key && _textLayoutW == innerW && _textLayoutH == innerH)
             return _textLayout;
 
-        _textLayout = TextLayout.Build(EnumerateTextSpans(), paint, maxW, maxH, overflow, maxLines);
+        _textLayout = TextLayout.Build(EnumerateTextSpans(), text.SkFont, text.Paint.Color, maxW, maxH, overflow, maxLines);
         _textLayoutKey = key;
         _textLayoutW = innerW;
         _textLayoutH = innerH;
@@ -1991,7 +2020,7 @@ public class VisualElement : IDisposable
 
     internal void CalculateText()
     {
-        if (Style?.Text == null || Style.Text.Paint == null)
+        if (Style?.Text == null || Style.Text.SkFont == null || Style.Text.Paint == null)
             return;
 
         var cx = 0f;
@@ -2071,6 +2100,12 @@ public class VisualElement : IDisposable
 
             if (ancestor.IsClipping)
             {
+                if (ancestor is ScrollContainer sc && (ReferenceEquals(this, sc.VScrollbar) || ReferenceEquals(this, sc.HScrollbar)))
+                {
+                    ancestor = ancestor.Parent;
+                    continue;
+                }
+
                 _hasClippingAncestors = true;
                 var bounds = new SKRect(
                     ancestor.Transform.Computed.X,
@@ -2135,6 +2170,8 @@ public class VisualElement : IDisposable
         {
             ClearRenderCache();
             InvalidatePaint();
+            foreach (var visual in GetVisualChildren())
+                visual?.MarkVisibilityClippingDirty();
         }
         else if (previous != Visibility.Hidden && ComputedVisibility == Visibility.Hidden)
         {
@@ -2179,34 +2216,8 @@ public class VisualElement : IDisposable
     public Vector2 PointToClient(float x, float y)
     {
         var globalMatrix = Transform.GetGlobalM44();
-
-        float m00 = globalMatrix[0, 0];
-        float m01 = globalMatrix[0, 1];
-        float m03 = globalMatrix[0, 3];
-
-        float m10 = globalMatrix[1, 0];
-        float m11 = globalMatrix[1, 1];
-        float m13 = globalMatrix[1, 3];
-
-        float m30 = globalMatrix[3, 0];
-        float m31 = globalMatrix[3, 1];
-        float m33 = globalMatrix[3, 3];
-
-        float A1 = x * m30 - m00;
-        float B1 = x * m31 - m01;
-        float C1 = m03 - x * m33;
-
-        float A2 = y * m30 - m10;
-        float B2 = y * m31 - m11;
-        float C2 = m13 - y * m33;
-
-        float D = A1 * B2 - B1 * A2;
-        if (Math.Abs(D) > 1e-6f)
-        {
-            float localX = (C1 * B2 - B1 * C2) / D;
-            float localY = (A1 * C2 - C1 * A2) / D;
+        if (Transform.TryUnproject(globalMatrix, x, y, out float localX, out float localY))
             return new Vector2(localX, localY);
-        }
 
         return new Vector2(
             x - Transform.Computed.X,
@@ -2276,7 +2287,7 @@ public class VisualElement : IDisposable
         paint.Dispose();
         _cachedRoundRect?.Dispose();
         _BackgroundImage?.Dispose();
-        _BackgroundSvg?.Picture?.Dispose();
+        _BackgroundSvg?.Dispose();
     }
 }
 

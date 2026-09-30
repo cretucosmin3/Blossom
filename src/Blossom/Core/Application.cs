@@ -6,6 +6,15 @@ namespace Blossom.Core;
 
 public abstract class Application : IDisposable
 {
+    /// <summary>Initial window size, min size, resizable border, and center-on-load. Read by <see cref="Shell"/> at create time.</summary>
+    public WindowOptions Window { get; } = new();
+
+    /// <summary>
+    /// When true, F12 toggles Blossom’s stats overlay and is consumed by the host
+    /// before any element, view, or application key bind. Default false.
+    /// </summary>
+    public bool EnableStatsOverlay { get; set; }
+
     private string _title = "";
     public string Title
     {
@@ -39,18 +48,9 @@ public abstract class Application : IDisposable
 
         _ActiveView = name;
 
-        if (Browser.IsLoaded && !ActiveView.IsLoaded)
+        if (Shell.IsLoaded && !ActiveView.IsLoaded)
         {
-            var actualRect = Browser.RenderRect;
-            Browser.RenderRect = new System.Drawing.RectangleF(0, 0, ActiveView.ReferenceWidth, ActiveView.ReferenceHeight);
-            try
-            {
-                ActiveView.Init();
-            }
-            finally
-            {
-                Browser.RenderRect = actualRect;
-            }
+            ActiveView.Init();
             ActiveView.IsLoaded = true;
         }
 

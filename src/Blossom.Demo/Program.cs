@@ -31,13 +31,14 @@ namespace Blossom
 
             AppDomain.CurrentDomain.ProcessExit += (sender, e) => Log.Info("Application exiting");
 
+            bool enableStatsOverlay = false;
             foreach (var arg in _args)
             {
                 if (arg.Equals("--show-fps", StringComparison.OrdinalIgnoreCase) ||
                     arg.Equals("--fps", StringComparison.OrdinalIgnoreCase) ||
                     arg.Equals("--debug-overlay", StringComparison.OrdinalIgnoreCase))
                 {
-                    Browser.ShowDebugOverlay = true;
+                    enableStatsOverlay = true;
                 }
             }
 
@@ -46,7 +47,14 @@ namespace Blossom
             // Run SKSL Shader verification tests
             Blossom.Core.Visual.SKSLShaderManager.TestCompilation();
 
-            Browser.Initialize(new TestingApplication());
+            var app = new TestingApplication();
+            if (enableStatsOverlay)
+            {
+                app.EnableStatsOverlay = true;
+                Shell.ShowDebugOverlay = true;
+            }
+
+            Shell.Initialize(app);
             Environment.Exit(0);
         }
     }

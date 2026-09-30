@@ -199,10 +199,10 @@ public class SortedAxis
         lock (lockObj)
         {
             return new Rect(
-                Lefts[0].Transform.X,
-                Tops[0].Transform.Y,
-                Rights.Last().Transform.Right - Lefts[0].Transform.X,
-                Bottoms.Last().Transform.Bottom - Tops[0].Transform.Y
+                Lefts[0].Transform.AbsoluteX,
+                Tops[0].Transform.AbsoluteY,
+                Rights.Last().Transform.Right - Lefts[0].Transform.AbsoluteX,
+                Bottoms.Last().Transform.Bottom - Tops[0].Transform.AbsoluteY
             );
         }
     }

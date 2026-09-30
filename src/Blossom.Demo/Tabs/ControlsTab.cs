@@ -1,78 +1,28 @@
 using System;
 using Blossom.Core.Visual;
 using Blossom.Core.Visual.Enums;
+using Blossom.Primitives;
 using Blossom.Reactive;
+using Blossom.Testing;
 using Blossom.Testing.Components;
 using SkiaSharp;
 using static Blossom.Reactive.ReactiveEngine;
 
 namespace Blossom.Testing.Tabs;
 
-public class ControlsTab : Container
+public class ControlsTab : Split
 {
-    private readonly FormColumn _formCard;
-    private readonly Container _stageCard;
-
-    private readonly VisualElement _formTitle;
-    private readonly VisualElement _inputLabel;
-    private readonly InputField _inputField;
-    private readonly VisualElement _inputMeta;
-    private readonly VisualElement _inputError;
-
-    private readonly VisualElement _xformTitle;
-    private readonly VisualElement _rotYLabel;
-    private readonly Slider _rotYSlider;
-    private readonly VisualElement _rotXLabel;
-    private readonly Slider _rotXSlider;
-    private readonly VisualElement _perspLabel;
-    private readonly Slider _perspSlider;
-    private readonly VisualElement _scaleLabel;
-    private readonly Slider _scaleSlider;
-    private readonly VisualElement _rollLabel;
-    private readonly Slider _rollSlider;
-
-    private readonly VisualElement _lookTitle;
-    private readonly VisualElement _roundnessLabel;
-    private readonly Slider _roundnessSlider;
-    private readonly VisualElement _opacityLabel;
-    private readonly Slider _opacitySlider;
-    private readonly Switch _darkSwitch;
-    private readonly Switch _glowSwitch;
-    private readonly Switch _blurSwitch;
-    private readonly Switch _aaSwitch;
-    private readonly Button _animateGridBtn;
-    private readonly VisualElement _gridSpeedLabel;
-    private readonly Slider _gridSpeedSlider;
-
-    private readonly VisualElement _btnLabel;
-    private readonly Button _primaryBtn;
-    private readonly Button _depthBtn;
-    private readonly Button _dangerBtn;
-    private readonly Checkbox _checkbox;
-    private readonly Button _batchResetBtn;
-
-    private readonly VisualElement _stageTitle;
-    private readonly Container _stageWell;
-    private readonly Container _liveCard;
-    private readonly VisualElement _previewHeading;
-    private readonly VisualElement _previewSub;
-    private readonly Button _hitBtn;
-    private readonly VisualElement _hitLabel;
-    private readonly Container _frosted;
-    private readonly VisualElement _frostedText;
-    private readonly Container _inspectorBox;
-    private readonly VisualElement _inspectorTitle;
-    private readonly VisualElement _stateRow1;
-    private readonly VisualElement _stateRow2;
-    private readonly VisualElement _stateRow3;
-    private readonly VisualElement _stateRow4;
-
-    public ControlsTab() : base(new SKColor(23, 23, 23), roundness: 0f)
+    public ControlsTab()
     {
         Name = "Studio_ControlsTab";
+        Orientation = Orientation.Horizontal;
+        Ratio = 0.38f;
+        BarSize = 6f;
+        MinPaneSize = 220f;
+        Bar.UseStyle("split-bar");
+        Padding = new Thickness(16);
         Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
-        Style.Border.Width = 0;
-        Style.Shadow = null!;
+        this.UseStyle("app");
 
         var textContent = CreateSignal("Blossom Studio");
         var roundness = CreateSignal(14f);
@@ -102,84 +52,130 @@ public class ControlsTab : Container
         });
         var isValid = CreateMemo(() => validation.Value.Length == 0);
 
-        _formCard = new FormColumn { Name = "Controls_Form" };
-        _formCard.Style.BackColor = new SKColor(38, 38, 38);
-        _formCard.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 10f };
+        var formCard = new StackScroll { Name = "Controls_Form" };
+        formCard.UseStyle("surface");
 
-        _stageCard = Panel("Controls_Stage");
+        var formStack = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Gap = 6,
+            Padding = new Thickness(16, 14)
+        };
 
-        _formTitle = SectionLabel("CONTROLS & BINDINGS", new SKColor(163, 163, 163));
-        _inputLabel = BodyLabel("Card heading");
-        _inputField = new InputField("Type a title...", textContent.Value);
-        _inputField.Changed += val => textContent.Value = val ?? "";
-        _inputField.Bind(_ =>
+        var formTitle = SectionLabel("CONTROLS & BINDINGS");
+        var inputLabel = BodyLabel("Card heading");
+        var inputField = new InputField("Type a title...", textContent.Value);
+        inputField.UseStyle("field");
+        inputField.Changed += val => textContent.Value = val ?? "";
+        inputField.Bind(_ =>
         {
             var next = textContent.Value;
-            if (_inputField.Value != next)
-                _inputField.Value = next;
+            if (inputField.Value != next)
+                inputField.Value = next;
         });
 
-        _inputMeta = new VisualElement();
-        _inputMeta.Style.Text = BodyText();
-        _inputMeta.BindText(() => $"{charCount.Value} / 40 characters");
+        var inputMeta = new VisualElement();
+        inputMeta.UseStyle("body");
+        inputMeta.BindText(() => $"{charCount.Value} / 40 characters");
 
-        _inputError = new VisualElement();
-        _inputError.Style.Text = new TextStyle { Color = new SKColor(190, 120, 120), Size = 11f, Weight = 600, Alignment = TextAlign.Left };
-        _inputError.BindText(() => validation.Value);
-        _inputError.BindVisible(() => !isValid.Value);
-
-        _xformTitle = SectionLabel("3D TRANSFORM", new SKColor(163, 163, 163));
-        _rotYLabel = BindLabel(() => $"Yaw  {rotY.Value:F0} deg");
-        _rotYSlider = BindSlider(rotY, -40f, 40f);
-        _rotXLabel = BindLabel(() => $"Pitch  {rotX.Value:F0} deg");
-        _rotXSlider = BindSlider(rotX, -30f, 30f);
-        _perspLabel = BindLabel(() => $"Perspective  {perspective.Value:F0}");
-        _perspSlider = BindSlider(perspective, 500f, 1600f);
-        _scaleLabel = BindLabel(() => $"Scale  {scale.Value:F2}");
-        _scaleSlider = BindSlider(scale, 0.75f, 1.25f);
-        _rollLabel = BindLabel(() => $"Roll  {rotZ.Value:F0} deg");
-        _rollSlider = BindSlider(rotZ, -20f, 20f);
-
-        _lookTitle = SectionLabel("SURFACE", new SKColor(163, 163, 163));
-        _roundnessLabel = BindLabel(() => $"Corner radius  {roundness.Value:F0}px");
-        _roundnessSlider = BindSlider(roundness, 0f, 32f);
-        _opacityLabel = BindLabel(() => $"Opacity  {opacityVal.Value * 100f:F0}%");
-        _opacitySlider = BindSlider(opacityVal, 0.35f, 1.0f);
-
-        _darkSwitch = BindSwitch("Dark surface", isDarkMode);
-        _glowSwitch = BindSwitch("Accent glow", isGlowActive);
-        _blurSwitch = BindSwitch("Frosted glass", isBlurActive);
-        _aaSwitch = BindSwitch("Antialias shader", antialiasShader);
-
-        _animateGridBtn = new Button("Animate grid", new SKColor(58, 58, 58), enable3DEffect: false);
-        _animateGridBtn.Clicked += () => animateGrid.Update(v => !v);
-        _animateGridBtn.Bind(b =>
+        var inputError = new VisualElement();
+        inputError.UseStyle("body");
+        inputError.Bind(el =>
         {
-            b.Label = animateGrid.Value ? "Stop grid motion" : "Animate grid";
-            b.NormalColor = animateGrid.Value ? new SKColor(79, 70, 229) : new SKColor(58, 58, 58);
+            el.Style.Text.Color = DemoThemes.Current.Colour("danger");
+            el.Style.Text.Size = 11f;
+            el.Style.Text.Weight = 600;
         });
-        _gridSpeedLabel = BindLabel(() => $"Grid speed  {gridSpeed.Value:0.0}x");
-        _gridSpeedSlider = BindSlider(gridSpeed, 0.1f, 120f);
-        _gridSpeedSlider.ValueFormat = "{0:0.0}x";
+        inputError.BindText(() => validation.Value);
+        inputError.BindVisible(() => !isValid.Value);
 
-        _btnLabel = BindLabel(() => $"Actions  ({clickCount.Value} clicks, {hitCount.Value} 3D hits)");
-        _primaryBtn = new Button("Primary", new SKColor(79, 70, 229), enable3DEffect: true);
-        _depthBtn = new Button("3D press", new SKColor(70, 70, 78), enable3DEffect: true);
-        _dangerBtn = new Button("Danger", new SKColor(140, 70, 70), enable3DEffect: true);
-        _primaryBtn.Clicked += () => clickCount.Update(c => c + 1);
-        _depthBtn.Clicked += () => clickCount.Update(c => c + 1);
-        _dangerBtn.Clicked += () => clickCount.Update(c => c + 1);
+        formStack.AddChild(formTitle);
+        formStack.AddChild(inputLabel);
+        formStack.AddChild(inputField);
+        formStack.AddChild(inputMeta);
+        formStack.AddChild(inputError);
+        formStack.AddChild(SectionSpacer());
+        formStack.AddChild(SectionLabel("3D TRANSFORM"));
+        formStack.AddChild(BindLabel(() => $"Yaw  {rotY.Value:F0} deg"));
+        formStack.AddChild(BindSlider(rotY, -40f, 40f));
+        formStack.AddChild(BindLabel(() => $"Pitch  {rotX.Value:F0} deg"));
+        formStack.AddChild(BindSlider(rotX, -30f, 30f));
+        formStack.AddChild(BindLabel(() => $"Perspective  {perspective.Value:F0}"));
+        formStack.AddChild(BindSlider(perspective, 500f, 1600f));
+        formStack.AddChild(BindLabel(() => $"Scale  {scale.Value:F2}"));
+        formStack.AddChild(BindSlider(scale, 0.75f, 1.25f));
+        formStack.AddChild(BindLabel(() => $"Roll  {rotZ.Value:F0} deg"));
+        formStack.AddChild(BindSlider(rotZ, -20f, 20f));
+        formStack.AddChild(SectionSpacer());
+        formStack.AddChild(SectionLabel("SURFACE"));
+        formStack.AddChild(BindLabel(() => $"Corner radius  {roundness.Value:F0}px"));
+        formStack.AddChild(BindSlider(roundness, 0f, 32f));
+        formStack.AddChild(BindLabel(() => $"Opacity  {opacityVal.Value * 100f:F0}%"));
+        formStack.AddChild(BindSlider(opacityVal, 0.35f, 1.0f));
+        formStack.AddChild(BindSwitch("Dark surface", isDarkMode));
+        formStack.AddChild(BindSwitch("Accent glow", isGlowActive));
+        formStack.AddChild(BindSwitch("Frosted glass", isBlurActive));
+        formStack.AddChild(BindSwitch("Antialias shader", antialiasShader));
 
-        _checkbox = new Checkbox("Accept live updates", accepted.Value);
-        _checkbox.Changed += v => accepted.Value = v;
-        _checkbox.Bind(_ =>
+        var animateGridBtn = new Button("Animate grid", enable3DEffect: false);
+        animateGridBtn.Clicked += () => animateGrid.Update(v => !v);
+        animateGridBtn.Bind(b =>
         {
-            if (_checkbox.IsChecked != accepted.Value)
-                _checkbox.IsChecked = accepted.Value;
+            var th = DemoThemes.Current;
+            bool on = animateGrid.Value;
+            b.Label = on ? "Stop grid motion" : "Animate grid";
+            b.NormalColor = on ? th.Colour("accent") : th.Colour("ghost");
+            b.Style.Text.Color = on ? th.Colour("on-accent") : th.Colour("text");
+            b.Style.Border.Width = on ? 0 : th.Number("stroke", 1f);
+            b.Style.Border.Color = th.Colour("border");
+            b.Style.Border.Roundness = th.Number("radius");
         });
+        formStack.AddChild(animateGridBtn);
+        formStack.AddChild(BindLabel(() => $"Grid speed  {gridSpeed.Value:0.0}x"));
+        var gridSpeedSlider = BindSlider(gridSpeed, 0.1f, 120f);
+        gridSpeedSlider.ValueFormat = "{0:0.0}x";
+        formStack.AddChild(gridSpeedSlider);
+        formStack.AddChild(SectionSpacer());
+        formStack.AddChild(BindLabel(() => $"Actions  ({clickCount.Value} clicks, {hitCount.Value} 3D hits)"));
 
-        _batchResetBtn = new Button("Batch reset", new SKColor(58, 58, 58), enable3DEffect: false);
-        _batchResetBtn.Clicked += () =>
+        var primaryBtn = new Button("Primary", enable3DEffect: true);
+        var depthBtn = new Button("3D press", enable3DEffect: true);
+        var dangerBtn = new Button("Danger", enable3DEffect: true);
+        DemoThemes.TintButton(primaryBtn, "accent");
+        DemoThemes.TintButton(depthBtn, "ghost", "text");
+        DemoThemes.TintButton(dangerBtn, "danger");
+        primaryBtn.Clicked += () => clickCount.Update(c => c + 1);
+        depthBtn.Clicked += () => clickCount.Update(c => c + 1);
+        dangerBtn.Clicked += () => clickCount.Update(c => c + 1);
+
+        var btnRow = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Gap = 8,
+            Align = LayoutAlign.Stretch
+        };
+        btnRow.MinHeight = 32;
+        btnRow.Transform.Height = 32;
+        btnRow.AddChild(primaryBtn);
+        btnRow.AddChild(depthBtn);
+        btnRow.AddChild(dangerBtn);
+        Stack.SetGrow(primaryBtn, 1f);
+        Stack.SetGrow(depthBtn, 1f);
+        Stack.SetGrow(dangerBtn, 1f);
+        formStack.AddChild(btnRow);
+
+        var checkbox = new Checkbox("Accept live updates", accepted.Value);
+        checkbox.Changed += v => accepted.Value = v;
+        checkbox.Bind(_ =>
+        {
+            if (checkbox.IsChecked != accepted.Value)
+                checkbox.IsChecked = accepted.Value;
+        });
+        formStack.AddChild(checkbox);
+
+        var batchResetBtn = new Button("Batch reset", enable3DEffect: false);
+        DemoThemes.TintButton(batchResetBtn, "ghost", "text");
+        batchResetBtn.Clicked += () =>
         {
             Batch(() =>
             {
@@ -202,54 +198,31 @@ public class ControlsTab : Container
                 accepted.Value = true;
             });
         };
+        formStack.AddChild(batchResetBtn);
+        formCard.AddChild(formStack);
 
-        _formCard.AddChild(_formTitle);
-        _formCard.AddChild(_inputLabel);
-        _formCard.AddChild(_inputField);
-        _formCard.AddChild(_inputMeta);
-        _formCard.AddChild(_inputError);
-        _formCard.AddChild(_xformTitle);
-        _formCard.AddChild(_rotYLabel);
-        _formCard.AddChild(_rotYSlider);
-        _formCard.AddChild(_rotXLabel);
-        _formCard.AddChild(_rotXSlider);
-        _formCard.AddChild(_perspLabel);
-        _formCard.AddChild(_perspSlider);
-        _formCard.AddChild(_scaleLabel);
-        _formCard.AddChild(_scaleSlider);
-        _formCard.AddChild(_rollLabel);
-        _formCard.AddChild(_rollSlider);
-        _formCard.AddChild(_lookTitle);
-        _formCard.AddChild(_roundnessLabel);
-        _formCard.AddChild(_roundnessSlider);
-        _formCard.AddChild(_opacityLabel);
-        _formCard.AddChild(_opacitySlider);
-        _formCard.AddChild(_darkSwitch);
-        _formCard.AddChild(_glowSwitch);
-        _formCard.AddChild(_blurSwitch);
-        _formCard.AddChild(_aaSwitch);
-        _formCard.AddChild(_animateGridBtn);
-        _formCard.AddChild(_gridSpeedLabel);
-        _formCard.AddChild(_gridSpeedSlider);
-        _formCard.AddChild(_btnLabel);
-        _formCard.AddChild(_primaryBtn);
-        _formCard.AddChild(_depthBtn);
-        _formCard.AddChild(_dangerBtn);
-        _formCard.AddChild(_checkbox);
-        _formCard.AddChild(_batchResetBtn);
-
-        _stageTitle = SectionLabel("LIVE 3D STAGE", new SKColor(110, 170, 130));
-
-        _stageWell = new Container(new SKColor(18, 18, 22), 10f) { Name = "Controls_StageWell" };
-        _stageWell.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(48, 48, 56), Roundness = 10f };
-        _stageWell.Style.BackgroundShader = BackgroundShaderType.SynthwaveGrid;
-        _stageWell.Style.BackgroundShaderColor = new SKColor(79, 70, 229, 80);
-        _stageWell.Style.ShaderRenderMode = EffectRenderMode.OnDemand;
-        _stageWell.IsAntialias = true;
-        _stageWell.OverflowX = OverflowMode.Clip;
-        _stageWell.OverflowY = OverflowMode.Clip;
-        _stageWell.Bind(w =>
+        var stageCard = new Stack
         {
+            Name = "Controls_Stage",
+            Orientation = Orientation.Vertical,
+            Gap = 10,
+            Padding = new Thickness(16)
+        };
+        stageCard.UseStyle("surface");
+
+        var stageTitle = SectionLabel("LIVE 3D STAGE");
+
+        var stageWell = new StageWell { Name = "Controls_StageWell" };
+        stageWell.UseStyle("well");
+        stageWell.Style.BackgroundShader = BackgroundShaderType.SynthwaveGrid;
+        stageWell.Style.ShaderRenderMode = EffectRenderMode.OnDemand;
+        stageWell.IsAntialias = true;
+        stageWell.OverflowX = OverflowMode.Clip;
+        stageWell.OverflowY = OverflowMode.Clip;
+        stageWell.Bind(w =>
+        {
+            var th = DemoThemes.Current;
+            w.Style.BackgroundShaderColor = th.Colour("accent").WithAlpha(80);
             w.Style.ShaderRenderMode = animateGrid.Value
                 ? EffectRenderMode.Continuous
                 : EffectRenderMode.OnDemand;
@@ -258,17 +231,31 @@ public class ControlsTab : Container
             w.InvalidatePaint();
         });
 
-        _liveCard = new Container(new SKColor(45, 45, 52), 14f) { Name = "Controls_Live3DCard" };
-        _liveCard.Transform.TransformOriginX = 0.5f;
-        _liveCard.Transform.TransformOriginY = 0.5f;
-        _liveCard.Bind(c =>
+        var liveCard = new Stack
         {
+            Name = "Controls_Live3DCard",
+            Orientation = Orientation.Vertical,
+            Gap = 8,
+            Padding = new Thickness(18)
+        };
+        DemoLayout.Panel(liveCard, new SKColor(45, 45, 52), 14f);
+        liveCard.Style.Shadow = new ShadowStyle
+        {
+            Color = new SKColor(79, 70, 229, 100),
+            SpreadY = 8,
+            OffsetY = 10
+        };
+        liveCard.Transform.TransformOriginX = 0.5f;
+        liveCard.Transform.TransformOriginY = 0.5f;
+        liveCard.Bind(c =>
+        {
+            var th = DemoThemes.Current;
             c.Opacity = opacityVal.Value;
-            c.Style.BackColor = isDarkMode.Value ? new SKColor(42, 42, 50) : new SKColor(232, 234, 238);
+            c.Style.BackColor = isDarkMode.Value ? th.Colour("surface") : th.Colour("field");
             c.Style.Border.Width = isGlowActive.Value ? 2 : 1;
-            c.Style.Border.Color = isGlowActive.Value ? new SKColor(79, 70, 229) : new SKColor(82, 82, 82);
+            c.Style.Border.Color = isGlowActive.Value ? th.Colour("accent") : th.Colour("border");
             c.Style.Border.Roundness = roundness.Value;
-            c.Style.Shadow.Color = isGlowActive.Value ? new SKColor(79, 70, 229, 100) : new SKColor(0, 0, 0, 60);
+            c.Style.Shadow.Color = isGlowActive.Value ? th.Colour("accent").WithAlpha(100) : SKColors.Black.WithAlpha(60);
             c.Style.Shadow.SpreadY = isGlowActive.Value ? 8 : 3;
             c.Style.Shadow.OffsetY = isGlowActive.Value ? 10 : 4;
             c.Style.BackdropBlur = isBlurActive.Value ? 10f : 0f;
@@ -281,230 +268,182 @@ public class ControlsTab : Container
             c.InvalidatePaint();
         });
 
-        _previewHeading = new VisualElement();
-        _previewHeading.Style.Text = new TextStyle { Color = SKColors.White, Size = 20f, Weight = 700, Alignment = TextAlign.Left, Overflow = TextOverflow.Ellipsis, MaxLines = 2 };
-        _previewHeading.BindText(() => textContent.Value);
-        _previewHeading.Bind(h =>
-        {
-            h.Style.Text.Color = isDarkMode.Value ? SKColors.White : new SKColor(28, 28, 28);
-        });
+        var previewHeading = new VisualElement();
+        previewHeading.UseStyle("display");
+        previewHeading.BindText(() => textContent.Value);
 
-        _previewSub = new VisualElement();
-        _previewSub.Style.Text = new TextStyle { Color = new SKColor(163, 163, 163), Size = 12f, Weight = 500, Alignment = TextAlign.Left };
-        _previewSub.BindText(() => isValid.Value
+        var previewSub = new VisualElement();
+        previewSub.UseStyle("body");
+        previewSub.BindText(() => isValid.Value
             ? $"{charCount.Value} chars   ·   yaw {rotY.Value:F0}   ·   pitch {rotX.Value:F0}   ·   roll {rotZ.Value:F0}"
             : validation.Value);
 
-        _hitBtn = new Button("Hit in 3D", new SKColor(79, 70, 229), enable3DEffect: true);
-        _hitBtn.Clicked += () => hitCount.Update(c => c + 1);
+        var hitBtn = new Button("Hit in 3D", enable3DEffect: true);
+        hitBtn.Clicked += () => hitCount.Update(c => c + 1);
+        hitBtn.MaxWidth = 140;
+        hitBtn.MinWidth = 110;
+        DemoThemes.TintButton(hitBtn, "accent");
 
-        _hitLabel = new VisualElement();
-        _hitLabel.Style.Text = new TextStyle { Color = new SKColor(163, 163, 163), Size = 11f, Weight = 600, Alignment = TextAlign.Left };
-        _hitLabel.BindText(() => hitCount.Value == 0
+        var hitLabel = new VisualElement();
+        hitLabel.UseStyle("status");
+        hitLabel.BindText(() => hitCount.Value == 0
             ? "Inverse hit-test: click the button on the rotated card"
             : $"3D hits registered: {hitCount.Value}");
 
-        _liveCard.AddChild(_previewHeading);
-        _liveCard.AddChild(_previewSub);
-        _liveCard.AddChild(_hitBtn);
-        _liveCard.AddChild(_hitLabel);
+        liveCard.AddChild(previewHeading);
+        liveCard.AddChild(previewSub);
+        liveCard.AddChild(hitBtn);
+        liveCard.AddChild(hitLabel);
+        Stack.SetGrow(hitLabel, 1f);
 
-        _frosted = new Container(new SKColor(20, 20, 26, 140), 8f);
-        _frosted.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(255, 255, 255, 28), Roundness = 8f };
-        _frosted.Style.Shadow = null!;
-        _frosted.Bind(c =>
+        var frosted = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Align = LayoutAlign.Center,
+            Padding = new Thickness(8, 4)
+        };
+        DemoLayout.Panel(frosted, new SKColor(20, 20, 26, 140), 8f, new SKColor(255, 255, 255, 28));
+        frosted.Style.Shadow = null!;
+        frosted.Bind(c =>
         {
             c.Style.BackdropBlur = isBlurActive.Value ? 14f : 0f;
             c.Visible = true;
             c.InvalidatePaint();
         });
-        _frostedText = new VisualElement { Text = "Frosted overlay", IsClickthrough = true };
-        _frostedText.Style.Text = new TextStyle { Color = SKColors.White, Size = 11f, Weight = 700, Alignment = TextAlign.Center };
-        _frosted.AddChild(_frostedText);
+        var frostedText = new VisualElement { Text = "Frosted overlay", IsClickthrough = true };
+        frostedText.Style.Text = new TextStyle { Color = SKColors.White, Size = 11f, Weight = 700, Alignment = TextAlign.Center };
+        frosted.AddChild(frostedText);
 
-        _inspectorBox = new Container(new SKColor(23, 23, 23), 8f) { Name = "Controls_Inspector" };
-        _inspectorBox.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(45, 45, 45), Roundness = 8f };
-        _inspectorBox.Style.Shadow = null!;
+        var inspectorBox = new StackScroll { Name = "Controls_Inspector" };
+        inspectorBox.MinHeight = 148;
+        inspectorBox.Transform.Height = 148;
+        inspectorBox.ScrollbarVisibilityY = ScrollbarVisibility.Always;
+        inspectorBox.UseStyle("well");
+        inspectorBox.Bind(s =>
+        {
+            var th = DemoThemes.Current;
+            s.ScrollbarThumbColor = th.Colour("muted").WithAlpha(180);
+            s.ScrollbarThumbHoverColor = th.Colour("text").WithAlpha(220);
+            s.ScrollbarThumbDragColor = th.Colour("accent").WithAlpha(230);
+            s.ScrollbarRadius = th.Number("radius");
+            s.InvalidatePaint();
+        });
 
-        _inspectorTitle = new VisualElement { Text = "STATE", IsClickthrough = true };
-        _inspectorTitle.Style.Text = new TextStyle { Color = new SKColor(120, 120, 120), Size = 10f, Weight = 700, Alignment = TextAlign.Left };
+        var inspectorBody = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Gap = 8,
+            Padding = new Thickness(12, 10)
+        };
 
-        _stateRow1 = InspectRow(new SKColor(110, 170, 130), () => $"round {roundness.Value:F0}px    opacity {opacityVal.Value:F2}    scale {scale.Value:F2}");
-        _stateRow2 = InspectRow(new SKColor(150, 150, 210), () => $"yaw {rotY.Value:F0}    pitch {rotX.Value:F0}    roll {rotZ.Value:F0}    persp {perspective.Value:F0}");
-        _stateRow3 = InspectRow(new SKColor(200, 160, 90), () => $"dark {isDarkMode.Value}    glow {isGlowActive.Value}    glass {isBlurActive.Value}    aa {antialiasShader.Value}    grid {(animateGrid.Value ? "live" : "still")} {gridSpeed.Value:0.0}x");
-        _stateRow4 = InspectRow(new SKColor(163, 163, 163), () => $"chars {charCount.Value}    clicks {clickCount.Value}    3D hits {hitCount.Value}    valid {isValid.Value}");
+        var inspectorTitle = new VisualElement { Text = "STATE", IsClickthrough = true };
+        inspectorTitle.UseStyle("kicker");
 
-        _inspectorBox.AddChild(_inspectorTitle);
-        _inspectorBox.AddChild(_stateRow1);
-        _inspectorBox.AddChild(_stateRow2);
-        _inspectorBox.AddChild(_stateRow3);
-        _inspectorBox.AddChild(_stateRow4);
+        var stats = new Grid
+        {
+            Name = "Controls_InspectorGrid",
+            Columns = "*, *, *, *",
+            Rows = "Auto, Auto, Auto, Auto",
+            ColumnGap = 10,
+            RowGap = 8
+        };
+        stats.MinHeight = 176;
 
-        _stageWell.AddChild(_liveCard);
-        _stageWell.AddChild(_frosted);
-        _stageCard.AddChild(_stageTitle);
-        _stageCard.AddChild(_stageWell);
-        _stageCard.AddChild(_inspectorBox);
+        void AddStat(string key, Func<string> value)
+        {
+            var cell = new Stack
+            {
+                Orientation = Orientation.Vertical,
+                Gap = 2
+            };
+            var k = new VisualElement { Text = key, IsClickthrough = true };
+            k.UseStyle("kicker");
+            var v = new VisualElement { IsClickthrough = true };
+            v.UseStyle("heading");
+            v.BindText(value);
+            cell.AddChild(k);
+            cell.AddChild(v);
+            stats.AddChild(cell);
+        }
 
-        AddChild(_formCard);
-        AddChild(_stageCard);
+        static string OnOff(bool on) => on ? "on" : "off";
+
+        AddStat("ROUND", () => $"{roundness.Value:F0}px");
+        AddStat("OPACITY", () => $"{opacityVal.Value:F2}");
+        AddStat("SCALE", () => $"{scale.Value:F2}");
+        AddStat("PERSP", () => $"{perspective.Value:F0}");
+        AddStat("YAW", () => $"{rotY.Value:F0}");
+        AddStat("PITCH", () => $"{rotX.Value:F0}");
+        AddStat("ROLL", () => $"{rotZ.Value:F0}");
+        AddStat("CHARS", () => $"{charCount.Value}");
+        AddStat("DARK", () => OnOff(isDarkMode.Value));
+        AddStat("GLOW", () => OnOff(isGlowActive.Value));
+        AddStat("GLASS", () => OnOff(isBlurActive.Value));
+        AddStat("AA", () => OnOff(antialiasShader.Value));
+        AddStat("GRID", () => animateGrid.Value ? "live" : "still");
+        AddStat("SPEED", () => $"{gridSpeed.Value:0.0}x");
+        AddStat("CLICKS", () => $"{clickCount.Value}");
+        AddStat("HITS", () => $"{hitCount.Value}");
+
+        inspectorBody.AddChild(inspectorTitle);
+        inspectorBody.AddChild(stats);
+        inspectorBox.AddChild(inspectorBody);
+
+        stageWell.LiveCard = liveCard;
+        stageWell.Frosted = frosted;
+        stageWell.AddChild(liveCard);
+        stageWell.AddChild(frosted);
+
+        stageCard.AddChild(stageTitle);
+        stageCard.AddChild(stageWell);
+        stageCard.AddChild(inspectorBox);
+        Stack.SetGrow(stageWell, 1f);
+
+        AddChild(formCard);
+        AddChild(stageCard);
     }
 
     protected override void LayoutChildren()
     {
-        base.LayoutChildren();
-
-        float viewW = Transform.Computed.Width;
-        float viewH = Transform.Computed.Height;
-        float ox = Transform.Computed.X;
-        float oy = Transform.Computed.Y;
-        if (viewW < 100 || viewH < 100) return;
-
-        const float pad = 16f;
-        const float gap = 14f;
-        float availW = viewW - pad * 2;
-        float availH = viewH - pad * 2;
-        bool stacked = viewW < 980f;
-
-        float formW = stacked ? availW : Math.Max(300f, Math.Min(420f, availW * 0.42f));
-        float stageW = stacked ? availW : Math.Max(320f, availW - formW - gap);
-        float formH = stacked ? Math.Max(280f, availH * 0.52f) : availH;
-        float stageH = stacked ? Math.Max(240f, availH - formH - gap) : availH;
-
-        _formCard.Transform.SetAbsoluteFrame(ox + pad, oy + pad, formW, formH);
-        if (stacked)
-            _stageCard.Transform.SetAbsoluteFrame(ox + pad, oy + pad + formH + gap, stageW, stageH);
-        else
-            _stageCard.Transform.SetAbsoluteFrame(ox + pad + formW + gap, oy + pad, stageW, stageH);
-
-        LayoutForm(formW, formH);
-        LayoutStage(stageW, stageH);
-    }
-
-    private void LayoutForm(float cardW, float cardH)
-    {
-        float inner = 16f;
-        float contentW = Math.Max(80f, cardW - inner * 2 - 10f);
-        float y = 14f;
-
-        void Place(VisualElement el, float h)
+        bool stacked = Transform.Width > 0 && Transform.Width < 980f;
+        var next = stacked ? Orientation.Vertical : Orientation.Horizontal;
+        if (Orientation != next)
         {
-            el.Transform.SetLocalFrame(inner, y, contentW, h);
-            y += h + 6f;
+            Orientation = next;
+            Ratio = stacked ? 0.52f : 0.38f;
         }
 
-        Place(_formTitle, 16f);
-        Place(_inputLabel, 14f);
-        Place(_inputField, 34f);
-        Place(_inputMeta, 14f);
-        if (_inputError.Visible) Place(_inputError, 14f);
-
-        y += 6f;
-        Place(_xformTitle, 16f);
-        Place(_rotYLabel, 14f);
-        Place(_rotYSlider, 22f);
-        Place(_rotXLabel, 14f);
-        Place(_rotXSlider, 22f);
-        Place(_perspLabel, 14f);
-        Place(_perspSlider, 22f);
-        Place(_scaleLabel, 14f);
-        Place(_scaleSlider, 22f);
-        Place(_rollLabel, 14f);
-        Place(_rollSlider, 22f);
-
-        y += 6f;
-        Place(_lookTitle, 16f);
-        Place(_roundnessLabel, 14f);
-        Place(_roundnessSlider, 22f);
-        Place(_opacityLabel, 14f);
-        Place(_opacitySlider, 22f);
-        Place(_darkSwitch, 26f);
-        Place(_glowSwitch, 26f);
-        Place(_blurSwitch, 26f);
-        Place(_aaSwitch, 26f);
-        Place(_animateGridBtn, 32f);
-        Place(_gridSpeedLabel, 14f);
-        Place(_gridSpeedSlider, 22f);
-
-        y += 6f;
-        Place(_btnLabel, 16f);
-        float btnW = Math.Max(70f, (contentW - 16f) / 3f);
-        float btnY = y;
-        _primaryBtn.Transform.SetLocalFrame(inner, btnY, btnW, 32f);
-        _depthBtn.Transform.SetLocalFrame(inner + btnW + 8f, btnY, btnW, 32f);
-        _dangerBtn.Transform.SetLocalFrame(inner + (btnW + 8f) * 2, btnY, btnW, 32f);
-        y += 40f;
-        Place(_checkbox, 24f);
-        Place(_batchResetBtn, 34f);
-
-        _formCard.SetContentSize(cardW, y + 16f);
+        base.LayoutChildren();
     }
 
-    private void LayoutStage(float cardW, float cardH)
+    private static VisualElement SectionSpacer()
     {
-        float x = _stageCard.Transform.Computed.X;
-        float y = _stageCard.Transform.Computed.Y;
-        float inner = 16f;
-        float contentW = Math.Max(80f, cardW - inner * 2);
-        float cx = x + inner;
-
-        _stageTitle.Transform.SetAbsoluteFrame(cx, y + 14f, contentW, 16f);
-
-        float inspectorH = 128f;
-        float wellTop = y + 38f;
-        float wellH = Math.Max(160f, cardH - 38f - inspectorH - 24f);
-        _stageWell.Transform.SetAbsoluteFrame(cx, wellTop, contentW, wellH);
-
-        float cardMaxW = Math.Min(420f, contentW - 48f);
-        float cardMaxH = Math.Min(220f, wellH - 56f);
-        float liveW = Math.Max(220f, cardMaxW);
-        float liveH = Math.Max(140f, cardMaxH);
-        float liveX = cx + (contentW - liveW) / 2f;
-        float liveY = wellTop + (wellH - liveH) / 2f - 6f;
-        _liveCard.Transform.SetAbsoluteFrame(liveX, liveY, liveW, liveH);
-
-        _previewHeading.Transform.SetAbsoluteFrame(liveX + 18f, liveY + 16f, Math.Max(40f, liveW - 36f), 28f);
-        _previewSub.Transform.SetAbsoluteFrame(liveX + 18f, liveY + 48f, Math.Max(40f, liveW - 36f), 18f);
-        _hitBtn.Transform.SetAbsoluteFrame(liveX + 18f, liveY + 78f, 110f, 32f);
-        _hitLabel.Transform.SetAbsoluteFrame(liveX + 18f, liveY + liveH - 28f, Math.Max(40f, liveW - 36f), 16f);
-
-        _frosted.Transform.SetAbsoluteFrame(cx + 12f, wellTop + 12f, 132f, 28f);
-        _frostedText.Transform.SetAbsoluteFrame(cx + 12f, wellTop + 16f, 132f, 18f);
-
-        float insY = wellTop + wellH + 10f;
-        _inspectorBox.Transform.SetAbsoluteFrame(cx, insY, contentW, inspectorH);
-        _inspectorTitle.Transform.SetAbsoluteFrame(cx + 14f, insY + 10f, contentW - 28f, 14f);
-        _stateRow1.Transform.SetAbsoluteFrame(cx + 14f, insY + 32f, contentW - 28f, 16f);
-        _stateRow2.Transform.SetAbsoluteFrame(cx + 14f, insY + 52f, contentW - 28f, 16f);
-        _stateRow3.Transform.SetAbsoluteFrame(cx + 14f, insY + 72f, contentW - 28f, 16f);
-        _stateRow4.Transform.SetAbsoluteFrame(cx + 14f, insY + 92f, contentW - 28f, 16f);
+        var el = new VisualElement { IsClickthrough = true };
+        el.Transform.Height = 4;
+        el.MinHeight = 4;
+        el.Style.BackColor = SKColors.Transparent;
+        el.Style.Border.Width = 0;
+        return el;
     }
 
-    private static Container Panel(string name)
-    {
-        var panel = new Container(new SKColor(38, 38, 38), 10f) { Name = name };
-        panel.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 10f };
-        return panel;
-    }
-
-    private static VisualElement SectionLabel(string text, SKColor color)
+    private static VisualElement SectionLabel(string text)
     {
         var el = new VisualElement { Text = text, IsClickthrough = true };
-        el.Style.Text = new TextStyle { Color = color, Size = 11f, Weight = 700, Alignment = TextAlign.Left };
+        el.UseStyle("kicker");
         return el;
     }
 
     private static VisualElement BodyLabel(string text)
     {
         var el = new VisualElement { Text = text, IsClickthrough = true };
-        el.Style.Text = BodyText();
+        el.UseStyle("body");
         return el;
     }
 
     private static VisualElement BindLabel(Func<string> text)
     {
         var el = new VisualElement();
-        el.Style.Text = BodyText();
+        el.UseStyle("body");
         el.BindText(text);
         return el;
     }
@@ -533,25 +472,9 @@ public class ControlsTab : Container
         return sw;
     }
 
-    private static VisualElement InspectRow(SKColor color, Func<string> text)
+    private sealed class StackScroll : ScrollContainer
     {
-        var el = new VisualElement();
-        el.Style.Text = new TextStyle { Color = color, Size = 12f, Alignment = TextAlign.Left };
-        el.BindText(text);
-        return el;
-    }
-
-    private static TextStyle BodyText() => new()
-    {
-        Color = new SKColor(163, 163, 163),
-        Size = 12f,
-        Weight = 500,
-        Alignment = TextAlign.Left
-    };
-
-    private sealed class FormColumn : ScrollContainer
-    {
-        public FormColumn()
+        public StackScroll()
         {
             OverflowX = OverflowMode.Clip;
             OverflowY = OverflowMode.Scroll;
@@ -561,7 +484,39 @@ public class ControlsTab : Container
 
         protected override void LayoutChildren()
         {
+            if (Children.Count > 0)
+            {
+                var stack = Children[0];
+                float w = Math.Max(1f, Transform.Width);
+                float pref = stack.GetPreferredSize(w, 0).Height;
+                stack.Transform.SetLocalFrame(0, 0, w, Math.Max(1f, pref));
+                SetContentSize(w, Math.Max(1f, pref));
+            }
+
             base.LayoutChildren();
+        }
+    }
+
+    private sealed class StageWell : VisualElement
+    {
+        public VisualElement LiveCard { get; set; } = null!;
+        public VisualElement Frosted { get; set; } = null!;
+
+        protected override void LayoutChildren()
+        {
+            if (LiveCard == null || Frosted == null) return;
+
+            float x = Transform.AbsoluteX;
+            float y = Transform.AbsoluteY;
+            float w = Transform.Width;
+            float h = Transform.Height;
+
+            float liveW = Math.Max(220f, Math.Min(420f, w - 48f));
+            float liveH = Math.Max(140f, Math.Min(220f, h - 56f));
+            float liveX = x + (w - liveW) / 2f;
+            float liveY = y + Math.Max(0f, (h - liveH) / 2f - 6f);
+            LiveCard.Transform.SetAbsoluteFrame(liveX, liveY, liveW, liveH);
+            Frosted.Transform.SetAbsoluteFrame(x + 12f, y + 12f, 132f, 28f);
         }
     }
 }

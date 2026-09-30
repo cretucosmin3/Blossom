@@ -6,6 +6,13 @@ using System.Collections.Generic;
 public class ElementStyle : IDisposable
 {
     internal List<VisualElement> AssignedElements = new();
+
+    public ElementStyle()
+    {
+        Text = new TextStyle();
+        Border = new BorderStyle { Width = 0 };
+        Shadow = new ShadowStyle();
+    }
     private SkiaSharp.SKColor _BackColor = new(0, 0, 0, 0);
     private SkiaSharp.SKPathEffect _BackgroundPathEffect;
 

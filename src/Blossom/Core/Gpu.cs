@@ -7,7 +7,7 @@ namespace Blossom.Core;
 /// Shared Skia GPU context owned by the window.
 /// Apps create offscreen surfaces here (including F16/F32 ping-pong), then blit an
 /// <see cref="SKImage"/> into the element tree with <see cref="DrawSkImageCommand"/>.
-/// All members must be used on the UI/render thread; marshal with <see cref="Browser.Post"/>.
+/// All members must be used on the UI/render thread; marshal with <see cref="Shell.Post"/>.
 /// </summary>
 public static class Gpu
 {

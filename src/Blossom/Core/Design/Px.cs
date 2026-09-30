@@ -7,7 +7,7 @@ namespace Blossom.Core.Design;
 /// <para>
 /// Blossom layout is strictly authored in design units relative to a <see cref="DesignCanvas"/>.
 /// Use this class ONLY for rare pixel-snapped rendering requirements (e.g. 1px device hairlines, crisp pixel separators, or debug overlays).
-/// Layout calculations must never depend directly on raw window pixels or <c>Browser.RenderRect</c>.
+/// Layout calculations must never depend directly on raw window pixels or <c>Shell.RenderRect</c>.
 /// </para>
 /// </summary>
 public static class Px
@@ -19,7 +19,7 @@ public static class Px
     /// <returns>The design unit length equal to 1 device pixel (minimum 0.0001f).</returns>
     public static float Hairline(View? view = null)
     {
-        float winW = Browser.RenderRect.Width;
+        float winW = Shell.RenderRect.Width;
         if (winW <= 0) return 1f;
 
         float dpiScale = (Renderer.FramebufferWidth > 0 && winW > 0)

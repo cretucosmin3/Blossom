@@ -190,6 +190,7 @@ public class Slider : VisualElement
         AddChild(_fill);
         AddChild(_handle);
         UpdateValueLabel();
+        ThemeChrome.Bind(this, ApplyTheme);
 
         Events.OnMouseDown += (s, e) =>
         {
@@ -218,16 +219,32 @@ public class Slider : VisualElement
         Events.OnMouseEnter += _ =>
         {
             if (!EffectiveInteractive) return;
-            _handle.Style.BackColor = SKColors.White;
+            _handle.Style.BackColor = ThemeChrome.Colour("accent", SKColors.White);
             InvalidatePaint();
         };
 
         Events.OnMouseLeave += _ =>
         {
             if (_isDragging) return;
-            _handle.Style.BackColor = new SKColor(220, 220, 220);
+            _handle.Style.BackColor = ThemeChrome.Colour("text", new SKColor(220, 220, 220));
             InvalidatePaint();
         };
+    }
+
+    private void ApplyTheme()
+    {
+        _labelElement.Style.Text.Color = ThemeChrome.Colour("text", new SKColor(200, 200, 200));
+        _valueElement.Style.Text.Color = ThemeChrome.Colour("muted", new SKColor(163, 163, 163));
+        _track.Style.BackColor = ThemeChrome.Colour("ghost", new SKColor(58, 58, 58));
+        _fill.Style.BackColor = ThemeChrome.Colour("accent", new SKColor(140, 140, 140));
+        _handle.Style.BackColor = ThemeChrome.Colour("text", new SKColor(220, 220, 220));
+        _handle.Style.Border.Color = ThemeChrome.Colour("border", new SKColor(100, 100, 100));
+        _handle.Style.Border.Width = ThemeChrome.Number("stroke", 1f);
+        _handle.Style.Shadow = null!;
+        ThemeChrome.Square(_track);
+        ThemeChrome.Square(_fill);
+        ThemeChrome.Square(_handle);
+        InvalidatePaint();
     }
 
     private void UpdateValueLabel()
@@ -290,5 +307,15 @@ public class Slider : VisualElement
         handleX = Math.Clamp(handleX, trackX, trackX + trackW - handleSize);
         float handleY = trackY + (trackH - handleSize) / 2f;
         _handle.Transform.SetAbsoluteFrame(handleX, handleY, handleSize, handleSize);
+    }
+
+    public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
+    {
+        float w = Transform.Width > 0 ? Transform.Width : 160f;
+        float h = _labelElement.Visible ? 40f : 22f;
+        if (Transform.Height > h) h = Transform.Height;
+        if (maxWidth > 0) w = Math.Min(w, maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+        return new SKSize(w, h);
     }
 }

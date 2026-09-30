@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Blossom.Core.Visual;
 using Blossom.Core.Visual.Enums;
+using Blossom.Primitives;
 using Blossom.Reactive;
+using Blossom.Testing;
 using Blossom.Testing.Components;
 using Blossom.Testing.Models;
 using SkiaSharp;
@@ -11,19 +13,9 @@ using static Blossom.Reactive.ReactiveEngine;
 
 namespace Blossom.Testing.Tabs;
 
-public class TasksTab : Container
+public class TasksTab : Stack
 {
-    private readonly Container _toolbar;
-    private readonly InputField _searchInput;
-    private readonly InputField _newTaskInput;
-    private readonly Button _addTaskBtn;
-    private readonly VisualElement _statsBadge;
-    private readonly Container _progressBarBg;
-    private readonly Container _progressBarFill;
-    private readonly Button[] _filterChips;
     private readonly Memo<(int Total, int Done, int Percent, string Text)> _statsMemo;
-
-    private readonly ColumnView[] _columns;
 
     private static readonly string[] ColumnNames = { "Backlog", "In Progress", "Done" };
     private static readonly string[] FilterNames = { "All", "Core", "Reactive", "UI", "Engine" };
@@ -34,12 +26,14 @@ public class TasksTab : Container
         new SKColor(110, 170, 130)
     };
 
-    public TasksTab() : base(new SKColor(23, 23, 23), roundness: 0f)
+    public TasksTab()
     {
         Name = "Studio_TasksTab";
+        Orientation = Orientation.Vertical;
+        Gap = 12;
+        Padding = new Thickness(16, 12);
         Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
-        Style.Border.Width = 0;
-        Style.Shadow = null!;
+        this.UseStyle("app");
 
         var tasks = CreateSignal(new List<TaskItem>
         {
@@ -64,17 +58,61 @@ public class TasksTab : Container
             return (Total: total, Done: done, Percent: percent, Text: $"{done} / {total} done");
         });
 
-        _toolbar = new Container(new SKColor(38, 38, 38), 10f) { Name = "Tasks_Toolbar" };
-        _toolbar.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 10f };
+        var toolbar = new Stack
+        {
+            Name = "Tasks_Toolbar",
+            Orientation = Orientation.Vertical,
+            Gap = 8,
+            Padding = new Thickness(12, 10)
+        };
+        toolbar.MinHeight = 88;
+        toolbar.Transform.Height = 88;
+        toolbar.UseStyle("surface");
+        toolbar.OverflowX = OverflowMode.Clip;
 
-        _searchInput = new InputField("Search tasks...");
-        _searchInput.Changed += text => searchQuery.Value = text ?? "";
+        var searchInput = new InputField("Search tasks...");
+        searchInput.MinWidth = 140;
+        searchInput.MaxWidth = 220;
+        searchInput.Transform.Width = 180;
+        searchInput.UseStyle("field");
+        searchInput.Changed += text => searchQuery.Value = text ?? "";
 
-        _newTaskInput = new InputField("New task title...");
+        var row1 = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Gap = 6,
+            Align = LayoutAlign.Center
+        };
+        row1.Transform.Height = 30;
+        row1.AddChild(searchInput);
+
+        for (int i = 0; i < FilterNames.Length; i++)
+        {
+            string name = FilterNames[i];
+            var chip = new Button(name, enable3DEffect: false);
+            chip.Style.Text.Size = 11f;
+            chip.Style.Border.Width = 0;
+            chip.MinHeight = 26;
+            chip.Bind(b =>
+            {
+                var th = DemoThemes.Current;
+                bool on = categoryFilter.Value == name;
+                b.NormalColor = on ? th.Colour("accent") : th.Colour("ghost");
+                b.Style.Text.Color = on ? th.Colour("on-accent") : th.Colour("text");
+                b.Style.Border.Width = on ? 0 : th.Number("stroke", 1f);
+                b.Style.Border.Color = th.Colour("border");
+                b.Style.Border.Roundness = th.Number("radius");
+            });
+            chip.Clicked += () => categoryFilter.Value = name;
+            row1.AddChild(chip);
+        }
+
+        var newTaskInput = new InputField("New task title...");
+        newTaskInput.UseStyle("field");
 
         void SubmitNewTask()
         {
-            var text = _newTaskInput.Value?.Trim();
+            var text = newTaskInput.Value?.Trim();
             if (string.IsNullOrEmpty(text)) return;
 
             Batch(() =>
@@ -82,99 +120,93 @@ public class TasksTab : Container
                 var updated = new List<TaskItem>(tasks.Value);
                 updated.Insert(0, new TaskItem(text, "Backlog", "UI"));
                 tasks.Value = updated;
-                _newTaskInput.Value = "";
+                newTaskInput.Value = "";
             });
         }
 
-        _newTaskInput.Submitted += _ => SubmitNewTask();
+        newTaskInput.Submitted += _ => SubmitNewTask();
 
-        _addTaskBtn = new Button("+ Add", new SKColor(79, 70, 229), enable3DEffect: false);
-        _addTaskBtn.Clicked += SubmitNewTask;
+        var addTaskBtn = new Button("+ Add", enable3DEffect: false);
+        addTaskBtn.MinWidth = 88;
+        addTaskBtn.Transform.Width = 88;
+        DemoThemes.TintButton(addTaskBtn, "accent");
 
-        _filterChips = new Button[FilterNames.Length];
-        for (int i = 0; i < FilterNames.Length; i++)
+        var statsCol = new Stack
         {
-            string name = FilterNames[i];
-            var chip = new Button(name, new SKColor(58, 58, 58), enable3DEffect: false);
-            chip.Style.Text.Size = 11f;
-            chip.Style.Border.Width = 0;
-            chip.Bind(b =>
-            {
-                b.NormalColor = categoryFilter.Value == name
-                    ? new SKColor(79, 70, 229)
-                    : new SKColor(58, 58, 58);
-            });
-            chip.Clicked += () => categoryFilter.Value = name;
-            _filterChips[i] = chip;
-            _toolbar.AddChild(chip);
-        }
-
-        _progressBarBg = new Container(new SKColor(58, 58, 58), 3f) { Name = "Tasks_ProgressBg" };
-        _progressBarBg.Style.Border.Width = 0;
-        _progressBarBg.Style.Shadow = null!;
-
-        _progressBarFill = new Container(new SKColor(79, 70, 229), 3f) { Name = "Tasks_ProgressFill" };
-        _progressBarFill.Style.Border.Width = 0;
-        _progressBarFill.Style.Shadow = null!;
-        _progressBarBg.AddChild(_progressBarFill);
-
-        _statsBadge = new VisualElement { Name = "Tasks_Stats", IsClickthrough = true }
-            .BindText(() => _statsMemo.Value.Text);
-        _statsBadge.Style.Text = new TextStyle
-        {
-            Color = new SKColor(163, 163, 163),
-            Size = 12f,
-            Weight = 600,
-            Alignment = TextAlign.Right
+            Orientation = Orientation.Vertical,
+            Gap = 4,
+            Align = LayoutAlign.Stretch
         };
+        statsCol.MinWidth = 150;
+        statsCol.Transform.Width = 150;
+
+        var statsBadge = new VisualElement { Name = "Tasks_Stats", IsClickthrough = true }
+            .BindText(() => _statsMemo.Value.Text);
+        statsBadge.UseStyle("status-end");
+
+        var progress = new ProgressTrack { Name = "Tasks_ProgressBg" };
+        progress.Fraction = () => _statsMemo.Value.Percent / 100f;
+
+        statsCol.AddChild(statsBadge);
+        statsCol.AddChild(progress);
 
         this.Bind(tab =>
         {
             _ = _statsMemo.Value;
-            tab.InvalidateLayout();
+            progress.InvalidateLayout();
         });
 
-        _toolbar.AddChild(_searchInput);
-        _toolbar.AddChild(_newTaskInput);
-        _toolbar.AddChild(_addTaskBtn);
-        _toolbar.AddChild(_progressBarBg);
-        _toolbar.AddChild(_statsBadge);
-        AddChild(_toolbar);
+        var row2 = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Gap = 8,
+            Align = LayoutAlign.Center
+        };
+        row2.Transform.Height = 30;
+        row2.AddChild(newTaskInput);
+        row2.AddChild(addTaskBtn);
+        row2.AddChild(statsCol);
+        Stack.SetGrow(newTaskInput, 1f);
 
-        _columns = new ColumnView[3];
+        toolbar.AddChild(row1);
+        toolbar.AddChild(row2);
+        AddChild(toolbar);
+
+        var board = new Grid
+        {
+            Name = "Tasks_Board",
+            Columns = "*, *, *",
+            ColumnGap = 12
+        };
+        Stack.SetGrow(board, 1f);
+
         for (int i = 0; i < 3; i++)
         {
             string colName = ColumnNames[i];
             var pipColor = ColumnPips[i];
 
-            var col = new Container(new SKColor(38, 38, 38), 10f)
-            {
-                Name = $"Col_{colName}"
-            };
-            col.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 10f };
-            col.OverflowX = OverflowMode.Clip;
-            col.OverflowY = OverflowMode.Clip;
+            var col = new KanbanColumn { Name = $"Col_{colName}" };
+            col.UseStyle("surface");
 
-            var header = new Container(new SKColor(45, 45, 45), 0f)
+            var header = new Stack
             {
-                Name = $"ColHeader_{colName}"
+                Name = $"ColHeader_{colName}",
+                Orientation = Orientation.Horizontal,
+                Gap = 8,
+                Align = LayoutAlign.Center,
+                Padding = new Thickness(14, 9, 14, 9)
             };
-            header.Style.Border = new BorderStyle
-            {
-                Width = 0,
-                Color = SKColors.Transparent,
-                RoundnessTopLeft = 10f,
-                RoundnessTopRight = 10f,
-                RoundnessBottomLeft = 0f,
-                RoundnessBottomRight = 0f
-            };
-            header.Style.Shadow = null!;
+            header.MinHeight = 40;
+            header.Transform.Height = 40;
+            header.UseStyle("header");
 
-            var pip = new Container(pipColor, 4f)
-            {
-                Name = $"Pip_{colName}"
-            };
-            pip.Style.Border.Width = 0;
+            var pip = new VisualElement { Name = $"Pip_{colName}", IsClickthrough = true };
+            pip.MinWidth = 8;
+            pip.MinHeight = 8;
+            pip.Transform.Width = 8;
+            pip.Transform.Height = 8;
+            pip.Style.BackColor = pipColor;
+            pip.Style.Border = new BorderStyle { Width = 0, Roundness = 4f };
             pip.Style.Shadow = null!;
 
             var title = new VisualElement
@@ -183,24 +215,27 @@ public class TasksTab : Container
                 Text = colName,
                 IsClickthrough = true
             };
-            title.Style.Text = new TextStyle { Color = SKColors.White, Size = 13f, Weight = 700, Alignment = TextAlign.Left };
+            title.UseStyle("heading");
 
             var badge = new VisualElement
             {
                 Name = $"ColBadge_{colName}",
                 IsClickthrough = true
             };
-            badge.Style = new ElementStyle
-            {
-                BackColor = new SKColor(58, 58, 58),
-                Border = new BorderStyle { Width = 0, Color = SKColors.Transparent, Roundness = 10f },
-                Text = new TextStyle { Color = pipColor, Size = 11f, Weight = 700, Alignment = TextAlign.Center }
-            };
+            badge.MinWidth = 30;
+            badge.Transform.Width = 30;
+            badge.Transform.Height = 22;
+            badge.UseStyle("badge");
+            badge.Style.Text.Color = pipColor;
+            badge.Style.Text.Size = 11f;
+            badge.Style.Text.Weight = 700;
+            badge.Style.Text.Alignment = TextAlign.Center;
 
             header.AddChild(pip);
             header.AddChild(title);
+            header.AddChild(DemoLayout.GrowSpacer());
             header.AddChild(badge);
-            col.AddChild(header);
+            Stack.SetGrow(title, 1f);
 
             var scroller = new ColumnScrollContainer { Name = $"ColScroll_{colName}" };
 
@@ -210,16 +245,15 @@ public class TasksTab : Container
                 Text = "No tasks",
                 IsClickthrough = true
             };
-            empty.Style.Text = new TextStyle
-            {
-                Color = new SKColor(120, 120, 120),
-                Size = 12f,
-                Weight = 500,
-                Alignment = TextAlign.Center
-            };
+            empty.UseStyle("empty");
 
+            col.Scroller = scroller;
+            col.Empty = empty;
+            col.AddChild(header);
             col.AddChild(scroller);
             col.AddChild(empty);
+            Layout.SetManual(empty, true);
+            Stack.SetGrow(scroller, 1f);
 
             string targetCol = colName;
             var columnTasks = CreateMemo(() =>
@@ -239,151 +273,82 @@ public class TasksTab : Container
             empty.BindVisible(() => columnTasks.Value.Count == 0);
 
             For.Each<TaskItem, Guid>(
-                parent: scroller,
+                parent: scroller.List,
                 items: () => columnTasks.Value,
                 keySelector: item => item.Id,
                 template: item => new TaskCard(item, tasks));
 
-            _columns[i] = new ColumnView(col, header, pip, title, badge, scroller, empty);
-            AddChild(col);
+            board.AddChild(col);
+        }
+
+        AddChild(board);
+    }
+
+    private sealed class ProgressTrack : VisualElement
+    {
+        private readonly VisualElement _fill;
+        public Func<float>? Fraction;
+
+        public ProgressTrack()
+        {
+            IsClickthrough = true;
+            MinHeight = 6;
+            Transform.Height = 6;
+            this.UseStyle("progress-track");
+
+            _fill = new VisualElement { IsClickthrough = true };
+            _fill.UseStyle("progress-fill");
+            AddChild(_fill);
+            Layout.SetManual(_fill, true);
+        }
+
+        protected override void LayoutChildren()
+        {
+            float f = Math.Clamp(Fraction?.Invoke() ?? 0f, 0f, 1f);
+            _fill.Transform.SetAbsoluteFrame(
+                Transform.AbsoluteX,
+                Transform.AbsoluteY,
+                Transform.Width * f,
+                Transform.Height);
         }
     }
 
-    protected override void LayoutChildren()
+    private sealed class KanbanColumn : Stack
     {
-        base.LayoutChildren();
+        public ColumnScrollContainer Scroller { get; set; } = null!;
+        public VisualElement Empty { get; set; } = null!;
 
-        float viewW = Transform.Computed.Width;
-        float viewH = Transform.Computed.Height;
-        float ox = Transform.Computed.X;
-        float oy = Transform.Computed.Y;
-        if (viewW < 100 || viewH < 100) return;
-
-        const float padX = 16f;
-        const float padY = 12f;
-        const float gap = 12f;
-        const float toolbarH = 88f;
-
-        float tbW = viewW - padX * 2;
-        float tbX = ox + padX;
-        float tbY = oy + padY;
-        _toolbar.Transform.SetAbsoluteFrame(tbX, tbY, tbW, toolbarH);
-
-        float innerX = tbX + 12f;
-        float innerW = tbW - 24f;
-        float row1Y = tbY + 10f;
-        float rowH = 30f;
-
-        float searchW = Math.Clamp(innerW * 0.28f, 140f, 220f);
-        _searchInput.Transform.SetAbsoluteFrame(innerX, row1Y, searchW, rowH);
-
-        float chipX = innerX + searchW + 10f;
-        float chipH = 26f;
-        float chipY = row1Y + 2f;
-        float[] chipWidths = { 44f, 52f, 78f, 40f, 64f };
-        for (int i = 0; i < _filterChips.Length; i++)
+        public KanbanColumn()
         {
-            float cw = chipWidths[i];
-            if (chipX + cw > innerX + innerW) cw = Math.Max(0, innerX + innerW - chipX);
-            _filterChips[i].Visible = cw >= 28f;
-            if (_filterChips[i].Visible)
-            {
-                _filterChips[i].Transform.SetAbsoluteFrame(chipX, chipY, cw, chipH);
-            }
-            chipX += cw + 6f;
+            Orientation = Orientation.Vertical;
+            OverflowX = OverflowMode.Clip;
+            OverflowY = OverflowMode.Clip;
         }
 
-        float addW = 88f;
-        float statsW = 150f;
-        float row2Y = tbY + 48f;
-        float statsX = innerX + innerW - statsW;
-        float addX = statsX - 10f - addW;
-        float inputW = Math.Max(100f, addX - innerX - 8f);
-        addX = innerX + inputW + 8f;
-        _newTaskInput.Transform.SetAbsoluteFrame(innerX, row2Y, inputW, rowH);
-        _addTaskBtn.Transform.SetAbsoluteFrame(addX, row2Y, addW, rowH);
-
-        _statsBadge.Transform.SetAbsoluteFrame(statsX, row2Y - 2f, statsW, 14f);
-        _progressBarBg.Transform.SetAbsoluteFrame(statsX, row2Y + 16f, statsW, 6f);
-
-        float fillW = statsW * (_statsMemo.Value.Percent / 100f);
-        _progressBarFill.Transform.SetAbsoluteFrame(statsX, row2Y + 16f, Math.Max(0f, fillW), 6f);
-
-        float colTop = oy + padY + toolbarH + gap;
-        float colH = Math.Max(140f, oy + viewH - padY - colTop);
-        float colW = Math.Max(180f, (tbW - gap * 2) / 3f);
-
-        for (int i = 0; i < 3; i++)
+        protected override void LayoutChildren()
         {
-            float colX = ox + padX + i * (colW + gap);
-            var c = _columns[i];
-            c.Container.Transform.SetAbsoluteFrame(colX, colTop, colW, colH);
-            c.Header.Transform.SetAbsoluteFrame(colX, colTop, colW, 40f);
-            c.Pip.Transform.SetAbsoluteFrame(colX + 14f, colTop + 16f, 8f, 8f);
-            c.Title.Transform.SetAbsoluteFrame(colX + 28f, colTop + 11f, Math.Max(40f, colW - 80f), 18f);
-            c.Badge.Transform.SetAbsoluteFrame(colX + colW - 44f, colTop + 9f, 30f, 22f);
-
-            float scrollY = colTop + 40f;
-            float scrollH = Math.Max(40f, colH - 40f);
-            c.Scroller.Transform.SetAbsoluteFrame(colX, scrollY, colW, scrollH);
-            c.Empty.Transform.SetAbsoluteFrame(colX, scrollY + 24f, colW, 20f);
+            base.LayoutChildren();
+            if (Empty == null || Scroller == null) return;
+            Empty.Transform.SetAbsoluteFrame(
+                Transform.AbsoluteX,
+                Scroller.Transform.AbsoluteY + 24f,
+                Transform.Width,
+                20f);
         }
     }
 
-    private sealed class ColumnView
+    private sealed class TaskCard : Stack
     {
-        public Container Container { get; }
-        public Container Header { get; }
-        public Container Pip { get; }
-        public VisualElement Title { get; }
-        public VisualElement Badge { get; }
-        public ColumnScrollContainer Scroller { get; }
-        public VisualElement Empty { get; }
-
-        public ColumnView(
-            Container container,
-            Container header,
-            Container pip,
-            VisualElement title,
-            VisualElement badge,
-            ColumnScrollContainer scroller,
-            VisualElement empty)
-        {
-            Container = container;
-            Header = header;
-            Pip = pip;
-            Title = title;
-            Badge = badge;
-            Scroller = scroller;
-            Empty = empty;
-        }
-    }
-
-    private sealed class TaskCard : Container
-    {
-        private readonly VisualElement _catBadge;
-        private readonly VisualElement _title;
-        private readonly Button _deleteBtn;
-        private readonly List<Button> _actions = new();
-
         public TaskCard(TaskItem item, Signal<List<TaskItem>> tasks)
-            : base(item.Column == "Done" ? new SKColor(38, 38, 38) : new SKColor(58, 58, 58), 6f)
         {
             Name = $"Card_{item.Id}";
-            Style.Border = new BorderStyle
-            {
-                Width = 1,
-                Color = item.Column == "Done" ? new SKColor(58, 58, 58) : new SKColor(82, 82, 82),
-                Roundness = 6f
-            };
-            Style.Shadow = new ShadowStyle
-            {
-                Color = SKColors.Black.WithAlpha(40),
-                SpreadX = 0,
-                SpreadY = 1,
-                OffsetX = 0,
-                OffsetY = 1
-            };
+            Orientation = Orientation.Vertical;
+            Gap = 6;
+            Padding = new Thickness(10, 8);
+            Align = LayoutAlign.Stretch;
+            MinHeight = 92;
+            Transform.Height = 92;
+            this.UseStyle(item.Column == "Done" ? "card-done" : "card");
 
             SKColor tagColor = item.Category switch
             {
@@ -393,41 +358,54 @@ public class TasksTab : Container
                 _ => new SKColor(120, 150, 200)
             };
 
-            _catBadge = new VisualElement
+            var catBadge = new VisualElement
             {
                 Text = item.Category,
                 IsClickthrough = true
             };
-            _catBadge.Style = new ElementStyle
+            catBadge.MinWidth = 48;
+            catBadge.MaxWidth = 86;
+            catBadge.Transform.Height = 18;
+            catBadge.Style = new ElementStyle
             {
                 BackColor = new SKColor(tagColor.Red, tagColor.Green, tagColor.Blue, 40),
                 Border = new BorderStyle { Width = 1, Color = tagColor.WithAlpha(90), Roundness = 4f },
                 Text = new TextStyle { Color = tagColor, Size = 10f, Weight = 700, Alignment = TextAlign.Center }
             };
 
-            _deleteBtn = new Button("x", new SKColor(82, 82, 82), enable3DEffect: false);
-            _deleteBtn.Style.Text.Size = 13f;
-            _deleteBtn.Clicked += () =>
+            var deleteBtn = new Button("x", enable3DEffect: false);
+            deleteBtn.Style.Text.Size = 13f;
+            deleteBtn.MinWidth = 22;
+            deleteBtn.MinHeight = 22;
+            deleteBtn.Transform.Width = 22;
+            deleteBtn.Transform.Height = 22;
+            DemoThemes.TintButton(deleteBtn, "ghost", "text");
+            deleteBtn.Clicked += () =>
             {
                 var updated = new List<TaskItem>(tasks.Value);
                 updated.RemoveAll(t => t.Id == item.Id);
                 tasks.Value = updated;
             };
 
-            _title = new VisualElement
+            var top = new Stack
+            {
+                Orientation = Orientation.Horizontal,
+                Gap = 8,
+                Align = LayoutAlign.Center
+            };
+            top.Transform.Height = 22;
+            top.AddChild(catBadge);
+            top.AddChild(DemoLayout.GrowSpacer());
+            top.AddChild(deleteBtn);
+
+            var title = new VisualElement
             {
                 Text = item.Title,
                 IsClickthrough = true
             };
-            _title.Style.Text = new TextStyle
-            {
-                Color = item.Column == "Done" ? new SKColor(163, 163, 163) : SKColors.White,
-                Size = 13f,
-                Weight = 500,
-                Alignment = TextAlign.Left,
-                Overflow = TextOverflow.Ellipsis,
-                MaxLines = 2
-            };
+            title.MinHeight = 32;
+            title.Transform.Height = 32;
+            title.UseStyle(item.Column == "Done" ? "card-title-done" : "card-title");
 
             void MoveTo(string column)
             {
@@ -435,105 +413,84 @@ public class TasksTab : Container
                 tasks.Value = new List<TaskItem>(tasks.Value);
             }
 
+            var actions = new Stack
+            {
+                Orientation = Orientation.Horizontal,
+                Gap = 6,
+                Align = LayoutAlign.Center
+            };
+            actions.Transform.Height = 22;
+
+            void AddAction(string label, string colourToken, Action onClick)
+            {
+                var btn = new Button(label, enable3DEffect: false);
+                btn.Style.Text.Size = 11f;
+                btn.MinWidth = 58;
+                btn.MinHeight = 22;
+                btn.Transform.Height = 22;
+                DemoThemes.TintButton(btn, colourToken, colourToken == "success" ? "on-accent" : "text");
+                btn.Clicked += onClick;
+                actions.AddChild(btn);
+            }
+
             if (item.Column == "Backlog")
             {
-                AddAction("Start", new SKColor(70, 70, 70), () => MoveTo("In Progress"));
+                AddAction("Start", "ghost", () => MoveTo("In Progress"));
             }
             else if (item.Column == "In Progress")
             {
-                AddAction("Back", new SKColor(70, 70, 70), () => MoveTo("Backlog"));
-                AddAction("Done", new SKColor(70, 110, 85), () => MoveTo("Done"));
+                AddAction("Back", "ghost", () => MoveTo("Backlog"));
+                AddAction("Done", "success", () => MoveTo("Done"));
             }
             else
             {
-                AddAction("Reopen", new SKColor(70, 70, 70), () => MoveTo("In Progress"));
+                AddAction("Reopen", "ghost", () => MoveTo("In Progress"));
             }
 
-            AddChild(_catBadge);
-            AddChild(_deleteBtn);
-            AddChild(_title);
+            AddChild(top);
+            AddChild(title);
+            AddChild(actions);
 
             Events.OnMouseEnter += _ =>
             {
                 if (!EffectiveInteractive) return;
-                Style.Border.Color = new SKColor(170, 170, 170);
+                Style.Border.Color = Themes.Current.Colour("accent");
                 InvalidatePaint();
             };
             Events.OnMouseLeave += _ =>
             {
-                Style.Border.Color = item.Column == "Done"
-                    ? new SKColor(58, 58, 58)
-                    : new SKColor(82, 82, 82);
+                Style.Border.Color = Themes.Current.Colour(
+                    item.Column == "Done" ? "border" : "border-strong");
                 InvalidatePaint();
             };
-        }
-
-        private void AddAction(string label, SKColor color, Action onClick)
-        {
-            var btn = new Button(label, color, enable3DEffect: false);
-            btn.Style.Text.Size = 11f;
-            btn.Clicked += onClick;
-            _actions.Add(btn);
-            AddChild(btn);
-        }
-
-        protected override void LayoutChildren()
-        {
-            float x = Transform.Computed.X;
-            float y = Transform.Computed.Y;
-            float w = Math.Max(1f, Transform.Width);
-            float h = Math.Max(1f, Transform.Height);
-
-            float catW = Math.Clamp(_catBadge.Text.Length * 7.2f + 12f, 48f, 86f);
-            _catBadge.Transform.SetAbsoluteFrame(x + 10f, y + 8f, catW, 18f);
-
-            const float del = 22f;
-            _deleteBtn.Transform.SetAbsoluteFrame(x + w - 8f - del, y + 6f, del, del);
-
-            _title.Transform.SetAbsoluteFrame(x + 10f, y + 30f, Math.Max(20f, w - 20f), 32f);
-
-            float btnY = y + h - 30f;
-            float btnX = x + 10f;
-            for (int i = 0; i < _actions.Count; i++)
-            {
-                float bw = i == 0 && _actions.Count == 1 ? 72f : 58f;
-                if (i == 1) bw = 58f;
-                _actions[i].Transform.SetAbsoluteFrame(btnX, btnY, bw, 22f);
-                btnX += bw + 6f;
-            }
         }
     }
 
     public sealed class ColumnScrollContainer : ScrollContainer
     {
+        public Stack List { get; }
+
         public ColumnScrollContainer()
         {
             OverflowX = OverflowMode.Clip;
             OverflowY = OverflowMode.Scroll;
             ScrollbarVisibilityX = ScrollbarVisibility.Hidden;
+            List = new Stack
+            {
+                Orientation = Orientation.Vertical,
+                Gap = 8,
+                Padding = new Thickness(8)
+            };
+            AddChild(List);
         }
 
         protected override void LayoutChildren()
         {
             base.LayoutChildren();
-
-            float w = Transform.Computed.Width;
-            float cardW = Math.Max(120f, w - 16f);
-            float cardH = 92f;
-            float cardGap = 8f;
-            float currentY = 8f;
-
-            var children = Children;
-            for (int i = 0; i < children.Count; i++)
-            {
-                var child = children[i];
-                if (child == null || !child.Visible)
-                    continue;
-                child.Transform.SetLocalFrame(8f, currentY, cardW, cardH);
-                currentY += cardH + cardGap;
-            }
-
-            SetContentSize(w, currentY + 4f);
+            float w = Math.Max(1f, Transform.Computed.Width);
+            float pref = List.GetPreferredSize(w, 0).Height;
+            List.Transform.SetLocalFrame(0, 0, w, Math.Max(1f, pref));
+            SetContentSize(w, Math.Max(1f, pref));
         }
     }
 }

@@ -120,6 +120,7 @@ public class Switch : VisualElement
         AddChild(_thumb);
         AddChild(_labelElement);
 
+        ThemeChrome.Bind(this, ApplyTheme);
         UpdateVisualState();
 
         Events.OnMouseEnter += (s) =>
@@ -127,7 +128,7 @@ public class Switch : VisualElement
             if (!EffectiveInteractive) return;
             if (!_isOn)
             {
-                _track.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
+                _track.Style.Border.Color = ThemeChrome.Colour("accent", new SKColor(170, 170, 170));
                 InvalidatePaint();
             }
         };
@@ -171,21 +172,45 @@ public class Switch : VisualElement
         }
     }
 
+    public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
+    {
+        float w = 40f + Padding.Horizontal;
+        if (_labelElement.Visible)
+        {
+            var text = _labelElement.GetPreferredSize(maxWidth, maxHeight);
+            w += 8f + Math.Max(40f, text.Width);
+        }
+        float h = Math.Max(26f, Transform.Height);
+        if (maxWidth > 0) w = Math.Min(w, maxWidth);
+        if (maxHeight > 0) h = Math.Min(h, maxHeight);
+        return new SKSize(w, h);
+    }
+
+    private void ApplyTheme()
+    {
+        _labelElement.Style.Text.Color = ThemeChrome.Colour("text", new SKColor(220, 220, 220));
+        ThemeChrome.Square(_track);
+        ThemeChrome.Square(_thumb);
+        _track.Style.Border.Width = ThemeChrome.Number("stroke", 1f);
+        _thumb.Style.Border.Width = 0;
+        _thumb.Style.Shadow = null!;
+        UpdateVisualState();
+    }
+
     private void UpdateVisualState()
     {
         if (_isOn)
         {
-            _track.Style.BackColor = new SKColor(100, 100, 100); // Gray accent
-            _track.Style.Border.Color = new SKColor(170, 170, 170); // Gray accent
-            _thumb.Style.BackColor = SKColors.White;
+            _track.Style.BackColor = ThemeChrome.Colour("accent", new SKColor(100, 100, 100));
+            _track.Style.Border.Color = ThemeChrome.Colour("accent", new SKColor(170, 170, 170));
+            _thumb.Style.BackColor = ThemeChrome.Colour("on-accent", SKColors.White);
         }
         else
         {
-            _track.Style.BackColor = new SKColor(58, 58, 58); // Gray 700
-            _track.Style.Border.Color = new SKColor(82, 82, 82); // Gray 600
-            _thumb.Style.BackColor = new SKColor(200, 200, 200); // Gray 300
+            _track.Style.BackColor = ThemeChrome.Colour("ghost", new SKColor(58, 58, 58));
+            _track.Style.Border.Color = ThemeChrome.Colour("border", new SKColor(82, 82, 82));
+            _thumb.Style.BackColor = ThemeChrome.Colour("text", new SKColor(200, 200, 200));
         }
-        // Reposition thumb without a full ancestor layout storm
         InvalidateLayout();
         InvalidatePaint();
     }

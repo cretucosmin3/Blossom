@@ -210,7 +210,7 @@ internal static class Renderer
         grContext = GRContext.CreateGl(grGlInterface);
 
         RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
-        Browser.RenderRect = new(0, 0, window.Size.X, window.Size.Y);
+        Shell.HandleClientSize(window.Size.X, window.Size.Y);
 
         void OnWindowResized()
         {
@@ -225,14 +225,12 @@ internal static class Renderer
                 RenewCanvas(fbW, fbH);
             }
 
-            Browser.RenderRect = new(0, 0, winW, winH);
-            Browser.WasResized = true;
+            Shell.HandleClientSize(winW, winH);
 
-            if (Browser.BrowserApp?.ActiveView != null)
+            if (Shell.ShellApp?.ActiveView != null)
             {
-                Browser.BrowserApp.ActiveView.FullRenderRequired = true;
-                Browser.BrowserApp.ActiveView.RenderRequired = true;
-                Browser.BrowserApp.ActiveView.ForceLayoutEvaluation();
+                Shell.ShellApp.ActiveView.FullRenderRequired = true;
+                Shell.ShellApp.ActiveView.RenderRequired = true;
             }
 
             // Event-driven loop may be waiting; wake it so the frame paints immediately

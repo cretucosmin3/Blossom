@@ -9,6 +9,7 @@ namespace Blossom.Core.Visual;
 public class TextStyle : StyleProperty, IDisposable
 {
     public readonly SKPaint Paint;
+    public SKFont SkFont { get; private set; }
 
     private int _Spacing = 2;
     private float _Size = 18f;
@@ -29,18 +30,20 @@ public class TextStyle : StyleProperty, IDisposable
         Paint = new SKPaint()
         {
             IsAntialias = true,
-            SubpixelText = true,
-            LcdRenderText = true,
-            HintingLevel = SKPaintHinting.Normal,
-            TextAlign = SKTextAlign.Left,
-            TextSize = _Size,
-            Typeface = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright),
         };
+        SkFont = MakeFont();
+    }
+
+    private SKFont MakeFont()
+    {
+        var typeFace = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright);
+        return Blossom.Utils.Fonts.CreateFont(typeFace, _Size);
     }
 
     private void RedoFont()
     {
-        var typeFace = Blossom.Utils.Fonts.GetTypeface(_FontName, _Weight, _Width, SKFontStyleSlant.Upright);
+        SkFont?.Dispose();
+        SkFont = MakeFont();
 
         if (_Shadow?.Filter != null)
         {
@@ -48,13 +51,6 @@ public class TextStyle : StyleProperty, IDisposable
         }
 
         Paint.IsAntialias = true;
-        Paint.SubpixelText = true;
-        Paint.LcdRenderText = true;
-        Paint.HintingLevel = SKPaintHinting.Normal;
-        Paint.Typeface = typeFace;
-        Paint.TextSize = _Size;
-
-        // if (_PathEffect != null)
         Paint.PathEffect = _PathEffect;
 
         TriggerRender();
@@ -195,8 +191,8 @@ public class TextStyle : StyleProperty, IDisposable
     {
         GC.SuppressFinalize(this);
 
+        SkFont?.Dispose();
         _PathEffect?.Dispose();
         _Shadow?.Dispose();
-
     }
 }

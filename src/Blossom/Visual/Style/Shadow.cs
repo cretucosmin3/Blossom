@@ -145,8 +145,7 @@ public class ShadowStyle : StyleProperty, IDisposable
             if (HasValidValues())
             {
                 _filter = SKImageFilter.CreateDropShadow(
-                    _OffsetX, _OffsetY, _SpreadX, _SpreadY, Color,
-                    null, null);
+                    _OffsetX, _OffsetY, _SpreadX, _SpreadY, Color);
                 _paint.ImageFilter = _filter;
             }
             else

@@ -2,6 +2,7 @@ using System;
 using Blossom.Core;
 using Blossom.Core.Visual;
 using Blossom.Core.Visual.Enums;
+using Blossom.Primitives;
 using Blossom.Reactive;
 using Blossom.Testing.Components;
 using Blossom.Testing.Models;
@@ -17,26 +18,41 @@ public class StudioView : View
 
     public StudioView() : base("Blossom Studio")
     {
-        BackColor = new SKColor(23, 23, 23);
+        DemoThemes.Ensure();
+        BackColor = Themes.Current.Colour("app");
+        Themes.CurrentChanged += th =>
+        {
+            if (th.TryColour("app", out var app))
+                BackColor = app;
+        };
     }
 
     public override void Init()
     {
-        var root = new StudioRoot
+        DemoThemes.Ensure();
+
+        var root = new Stack
         {
             Name = "Studio_Root",
+            Orientation = Orientation.Vertical,
             Transform = new Transform(0, 0, Width, Height)
             {
                 Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom
             }
         };
+        root.UseStyle("app");
 
-        var header = new Container(new SKColor(38, 38, 38), 0f)
+        var header = new Stack
         {
-            Name = "Studio_Header"
+            Name = "Studio_Header",
+            Orientation = Orientation.Horizontal,
+            Gap = 12,
+            Align = LayoutAlign.Center,
+            Padding = new Thickness(18, 12, 16, 12)
         };
-        header.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 0f };
-        header.Style.Shadow = null!;
+        header.MinHeight = 56;
+        header.Transform.Height = 56;
+        header.UseStyle("chrome");
 
         var title = new VisualElement
         {
@@ -44,38 +60,90 @@ public class StudioView : View
             Text = "Blossom",
             IsClickthrough = true
         };
-        title.Style.Text = new TextStyle { Color = SKColors.White, Size = 18f, Weight = 700, Alignment = TextAlign.Left };
+        title.MinWidth = 110;
+        title.UseStyle("logo");
 
         var subtitle = new VisualElement
         {
             Name = "Studio_Subtitle",
             Text = "Retained UI  ·  SkiaSharp  ·  Blossom.Reactive",
-            IsClickthrough = true
+            IsClickthrough = true,
+            Visible = Width >= 980f
         };
-        subtitle.Style.Text = new TextStyle { Color = new SKColor(163, 163, 163), Size = 12f, Weight = 500, Alignment = TextAlign.Left };
+        subtitle.UseStyle("muted");
 
-        var nav = new Container(new SKColor(23, 23, 23), 8f)
+        var themeSwitch = new Stack
         {
-            Name = "Studio_Nav"
+            Name = "Studio_ThemeSwitch",
+            Orientation = Orientation.Horizontal,
+            Gap = 4,
+            Align = LayoutAlign.Stretch
         };
-        nav.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(58, 58, 58), Roundness = 8f };
+        themeSwitch.MinHeight = 28;
+        themeSwitch.Transform.Height = 28;
+
+        foreach (var themeName in DemoThemes.Names)
+        {
+            string name = themeName;
+            var btn = new Button(name, enable3DEffect: false);
+            btn.Style.Text.Size = 11f;
+            btn.MinWidth = 56;
+            btn.MinHeight = 26;
+            btn.Clicked += () => DemoThemes.Select(name);
+            btn.Bind(b =>
+            {
+                var th = DemoThemes.Current;
+                bool on = DemoThemes.Active.Value == name;
+                b.NormalColor = on ? th.Colour("accent") : th.Colour("ghost");
+                b.Style.Text.Color = on ? th.Colour("on-accent") : th.Colour("text");
+                b.Style.Border.Width = on ? 0 : th.Number("stroke", 1f);
+                b.Style.Border.Color = th.Colour("border");
+                b.Style.Border.Roundness = th.Number("radius");
+                b.Style.Shadow = null!;
+            });
+            themeSwitch.AddChild(btn);
+        }
+
+        var nav = new Stack
+        {
+            Name = "Studio_Nav",
+            Orientation = Orientation.Horizontal,
+            Gap = 4,
+            Padding = new Thickness(3),
+            Align = LayoutAlign.Stretch
+        };
+        nav.MinWidth = 212;
+        nav.MinHeight = 32;
+        nav.Transform.Width = 212;
+        nav.Transform.Height = 32;
+        nav.UseStyle("nav");
 
         var tabBoardBtn = MakeTabButton("Board");
         var tabControlsBtn = MakeTabButton("Controls");
+        Stack.SetGrow(tabBoardBtn, 1f);
+        Stack.SetGrow(tabControlsBtn, 1f);
 
         tabBoardBtn.Bind(b =>
         {
-            b.NormalColor = _activeTab.Value == StudioTab.Board
-                ? new SKColor(79, 70, 229)
-                : new SKColor(38, 38, 38);
+            var th = DemoThemes.Current;
+            bool on = _activeTab.Value == StudioTab.Board;
+            b.NormalColor = on ? th.Colour("accent") : th.Colour("ghost");
+            b.Style.Text.Color = on ? th.Colour("on-accent") : th.Colour("text");
+            b.Style.Border.Width = on ? 0 : th.Number("stroke", 1f);
+            b.Style.Border.Color = th.Colour("border");
+            b.Style.Border.Roundness = th.Number("radius");
         });
         tabBoardBtn.Clicked += () => _activeTab.Value = StudioTab.Board;
 
         tabControlsBtn.Bind(b =>
         {
-            b.NormalColor = _activeTab.Value == StudioTab.Components
-                ? new SKColor(79, 70, 229)
-                : new SKColor(38, 38, 38);
+            var th = DemoThemes.Current;
+            bool on = _activeTab.Value == StudioTab.Components;
+            b.NormalColor = on ? th.Colour("accent") : th.Colour("ghost");
+            b.Style.Text.Color = on ? th.Colour("on-accent") : th.Colour("text");
+            b.Style.Border.Width = on ? 0 : th.Number("stroke", 1f);
+            b.Style.Border.Color = th.Colour("border");
+            b.Style.Border.Roundness = th.Number("radius");
         });
         tabControlsBtn.Clicked += () => _activeTab.Value = StudioTab.Components;
 
@@ -84,14 +152,18 @@ public class StudioView : View
 
         header.AddChild(title);
         header.AddChild(subtitle);
+        header.AddChild(DemoLayout.GrowSpacer("Studio_HeaderSpacer"));
+        header.AddChild(themeSwitch);
         header.AddChild(nav);
 
-        var contentSlot = new Container(SKColors.Transparent, 0f)
+        var contentSlot = new Grid
         {
-            Name = "Studio_ContentSlot"
+            Name = "Studio_ContentSlot",
+            Columns = "*",
+            Rows = "*"
         };
+        contentSlot.Style.BackColor = SKColors.Transparent;
         contentSlot.Style.Border.Width = 0;
-        contentSlot.Style.Shadow = null!;
         contentSlot.OverflowX = OverflowMode.Clip;
         contentSlot.OverflowY = OverflowMode.Clip;
 
@@ -102,117 +174,60 @@ public class StudioView : View
 
         contentSlot.AddChild(tasksTab);
         contentSlot.AddChild(controlsTab);
+        Grid.SetCell(tasksTab, 0, 0);
+        Grid.SetCell(controlsTab, 0, 0);
+        Stack.SetGrow(contentSlot, 1f);
 
-        var statusBar = new Container(new SKColor(28, 28, 28), 0f)
+        var statusBar = new Stack
         {
-            Name = "Studio_StatusBar"
+            Name = "Studio_StatusBar",
+            Orientation = Orientation.Horizontal,
+            Align = LayoutAlign.Center,
+            Padding = new Thickness(16, 5)
         };
-        statusBar.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(45, 45, 45), Roundness = 0f };
-        statusBar.Style.Shadow = null!;
+        statusBar.MinHeight = 26;
+        statusBar.Transform.Height = 26;
+        statusBar.UseStyle("chrome");
 
         var engineStatus = new VisualElement
         {
             Text = "Dirty-rect retained pipeline  ·  Fine-grained signals  ·  Keyed For.Each",
             IsClickthrough = true
         };
-        engineStatus.Style.Text = new TextStyle { Color = new SKColor(163, 163, 163), Size = 11f, Weight = 500, Alignment = TextAlign.Left };
+        engineStatus.UseStyle("status");
 
         var tabStatus = new VisualElement { IsClickthrough = true }
-            .BindText(() => _activeTab.Value == StudioTab.Board ? "View: Board" : "View: Controls");
-        tabStatus.Style.Text = new TextStyle { Color = new SKColor(163, 163, 163), Size = 11f, Weight = 500, Alignment = TextAlign.Right };
+            .BindText(() =>
+            {
+                string view = _activeTab.Value == StudioTab.Board ? "Board" : "Controls";
+                return $"Theme: {DemoThemes.Active.Value}  ·  View: {view}";
+            });
+        tabStatus.MinWidth = 220;
+        tabStatus.UseStyle("status-end");
 
         statusBar.AddChild(engineStatus);
         statusBar.AddChild(tabStatus);
-
-        root.Header = header;
-        root.Title = title;
-        root.Subtitle = subtitle;
-        root.Nav = nav;
-        root.TabBoard = tabBoardBtn;
-        root.TabControls = tabControlsBtn;
-        root.ContentSlot = contentSlot;
-        root.TasksTab = tasksTab;
-        root.ControlsTab = controlsTab;
-        root.StatusBar = statusBar;
-        root.EngineStatus = engineStatus;
-        root.StatusText = tabStatus;
+        Stack.SetGrow(engineStatus, 1f);
 
         root.AddChild(header);
         root.AddChild(contentSlot);
         root.AddChild(statusBar);
+        root.SizeChanged += (_, w, _) =>
+        {
+            bool show = w >= 1100f;
+            if (subtitle.Visible != show)
+                subtitle.Visible = show;
+        };
 
         AddElement(root);
     }
 
     private static Button MakeTabButton(string label)
     {
-        var btn = new Button(label, new SKColor(38, 38, 38), enable3DEffect: false);
+        var btn = new Button(label, enable3DEffect: false);
         btn.Style.Border.Width = 0;
         btn.Style.Shadow = null!;
         btn.Style.Text.Size = 12f;
         return btn;
-    }
-
-    private sealed class StudioRoot : Container
-    {
-        public Container Header { get; set; } = null!;
-        public VisualElement Title { get; set; } = null!;
-        public VisualElement Subtitle { get; set; } = null!;
-        public Container Nav { get; set; } = null!;
-        public Button TabBoard { get; set; } = null!;
-        public Button TabControls { get; set; } = null!;
-        public Container ContentSlot { get; set; } = null!;
-        public TasksTab TasksTab { get; set; } = null!;
-        public ControlsTab ControlsTab { get; set; } = null!;
-        public Container StatusBar { get; set; } = null!;
-        public VisualElement EngineStatus { get; set; } = null!;
-        public VisualElement StatusText { get; set; } = null!;
-
-        public StudioRoot() : base(new SKColor(23, 23, 23), 0f)
-        {
-            Style.Border.Width = 0;
-            Style.Shadow = null!;
-        }
-
-        protected override void LayoutChildren()
-        {
-            base.LayoutChildren();
-
-            float w = Transform.Computed.Width;
-            float h = Transform.Computed.Height;
-            float x = Transform.Computed.X;
-            float y = Transform.Computed.Y;
-            if (w < 100 || h < 100) return;
-
-            const float headerH = 56f;
-            const float statusH = 26f;
-            float contentH = Math.Max(80f, h - headerH - statusH);
-
-            Header.Transform.SetAbsoluteFrame(x, y, w, headerH);
-
-            Title.Transform.SetAbsoluteFrame(x + 18f, y + 16f, 110f, 24f);
-
-            bool showSubtitle = w >= 980f;
-            Subtitle.Visible = showSubtitle;
-            if (showSubtitle)
-            {
-                Subtitle.Transform.SetAbsoluteFrame(x + 132f, y + 19f, 360f, 18f);
-            }
-
-            const float navW = 212f;
-            const float navH = 32f;
-            float navX = x + w - navW - 16f;
-            Nav.Transform.SetAbsoluteFrame(navX, y + 12f, navW, navH);
-            TabBoard.Transform.SetAbsoluteFrame(navX + 3f, y + 15f, 102f, 26f);
-            TabControls.Transform.SetAbsoluteFrame(navX + 107f, y + 15f, 102f, 26f);
-
-            ContentSlot.Transform.SetAbsoluteFrame(x, y + headerH, w, contentH);
-            TasksTab.Transform.SetAbsoluteFrame(x, y + headerH, w, contentH);
-            ControlsTab.Transform.SetAbsoluteFrame(x, y + headerH, w, contentH);
-
-            StatusBar.Transform.SetAbsoluteFrame(x, y + h - statusH, w, statusH);
-            EngineStatus.Transform.SetAbsoluteFrame(x + 16f, y + h - statusH + 5f, Math.Max(80f, w - 200f), 16f);
-            StatusText.Transform.SetAbsoluteFrame(x + w - 140f, y + h - statusH + 5f, 124f, 16f);
-        }
     }
 }

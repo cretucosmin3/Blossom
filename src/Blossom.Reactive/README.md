@@ -8,7 +8,7 @@ Blossom already owns a live element graph. This package mutates those nodes in p
 Signal / Memo  →  Effect  →  VisualElement property or child list
 ```
 
-The demo host (`src/Blossom.Demo`) uses this layer in **Blossom Studio**: the Board tab (`For.Each` kanban) and the Controls tab (two-way bindings, `Batch`, derived validation).
+The demo host (`src/Blossom.Demo`) uses this layer in **Blossom Studio**: the Board tab (`For.Each` kanban) and the Controls tab (two-way bindings, `Batch`, derived validation). Framework host contracts (window, keyboard, overlays, 3D) are in [`guide/`](../../guide/README.md).
 
 ---
 

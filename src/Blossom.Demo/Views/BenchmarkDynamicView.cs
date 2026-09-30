@@ -83,8 +83,8 @@ namespace Blossom.Testing.Views
                 float newX = _baseX[i] + (float)Math.Sin(time + i * 0.2f) * 40f;
                 float newY = _baseY[i] + (float)Math.Cos(time + i * 0.15f) * 40f;
 
-                el.Transform.X = newX;
-                el.Transform.Y = newY;
+                el.Transform.AbsoluteX = newX;
+                el.Transform.AbsoluteY = newY;
 
                 // Mutate background color smoothly
                 byte r = (byte)(128 + 127 * Math.Sin(time + i));

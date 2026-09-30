@@ -525,7 +525,7 @@ namespace Blossom.Core.Visual
                     _ => throw new ArgumentException("Unsupported shader type", nameof(type))
                 };
 
-                effect = SKRuntimeEffect.Create(source, out string errors);
+                effect = SKRuntimeEffect.CreateShader(source, out string errors);
                 if (effect == null)
                 {
                     throw new InvalidOperationException($"Failed to compile SKSL shader {type}: {errors}");
@@ -551,7 +551,7 @@ namespace Blossom.Core.Visual
                     _ => throw new ArgumentException("Unsupported border effect type", nameof(type))
                 };
 
-                effect = SKRuntimeEffect.Create(source, out string errors);
+                effect = SKRuntimeEffect.CreateShader(source, out string errors);
                 if (effect == null)
                 {
                     throw new InvalidOperationException($"Failed to compile SKSL border shader {type}: {errors}");
@@ -599,7 +599,7 @@ namespace Blossom.Core.Visual
             TrySetUniform(uniforms, "u_aa", antialias);
             TrySetUniform(uniforms, "u_speed", speed);
 
-            return effect.ToShader(true, uniforms);
+            return effect.ToShader(uniforms);
         }
 
         public static SKShader CreateGlassShader(BackgroundShaderType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float scaleX = 1f, float scaleY = 1f, float mixingRate = 0.25f, float antialias = 1f)
@@ -620,7 +620,7 @@ namespace Blossom.Core.Visual
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("u_backdrop", backdrop);
 
-            return effect.ToShader(true, uniforms, children);
+            return effect.ToShader(uniforms, children);
         }
 
         public static SKShader CreateGlassBorderShader(BorderEffectType type, float time, float width, float height, SKColor color, float hoverProgress, SKShader backdrop, SKRect elementBounds, float borderWidth, float scaleX = 1f, float scaleY = 1f)
@@ -640,7 +640,7 @@ namespace Blossom.Core.Visual
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("u_backdrop", backdrop);
 
-            return effect.ToShader(true, uniforms, children);
+            return effect.ToShader(uniforms, children);
         }
 
         public const string HalftoneTransitionShaderSource = @"
@@ -692,7 +692,7 @@ namespace Blossom.Core.Visual
                 {
                     if (_halftoneEffect == null)
                     {
-                        _halftoneEffect = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string errors);
+                        _halftoneEffect = SKRuntimeEffect.CreateShader(HalftoneTransitionShaderSource, out string errors);
                         if (_halftoneEffect == null)
                         {
                             Log.Error("[SHADER ERROR] Halftone Transition Shader compilation failed: " + errors);
@@ -707,7 +707,7 @@ namespace Blossom.Core.Visual
             TrySetUniform(uniforms, "u_resolution", new float[] { width, height });
             TrySetUniform(uniforms, "u_elementPos", new float[] { screenX, screenY });
 
-            return _halftoneEffect.ToShader(false, uniforms);
+            return _halftoneEffect.ToShader(uniforms);
         }
 
         public const string PhotoEditorShaderSource = @"
@@ -845,7 +845,7 @@ namespace Blossom.Core.Visual
                 {
                     if (_photoEditorEffect == null)
                     {
-                        _photoEditorEffect = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string errors);
+                        _photoEditorEffect = SKRuntimeEffect.CreateShader(PhotoEditorShaderSource, out string errors);
                         if (_photoEditorEffect == null)
                         {
                             Log.Error("[SHADER ERROR] Photo Editor Shader compilation failed: " + errors);
@@ -879,41 +879,41 @@ namespace Blossom.Core.Visual
             var children = new SKRuntimeEffectChildren(_photoEditorEffect);
             children.Add("u_image", imageShader);
 
-            return _photoEditorEffect.ToShader(true, uniforms, children);
+            return _photoEditorEffect.ToShader(uniforms, children);
         }
 
         public static void TestCompilation()
         {
             try
             {
-                var crt = SKRuntimeEffect.Create(CrtShaderSource, out string crtErrors);
+                var crt = SKRuntimeEffect.CreateShader(CrtShaderSource, out string crtErrors);
                 Log.Info("[SHADER TEST] CRT Scanlines compilation: " + (crt != null ? "SUCCESS" : "FAILED - " + crtErrors));
 
-                var grid = SKRuntimeEffect.Create(GridShaderSource, out string gridErrors);
+                var grid = SKRuntimeEffect.CreateShader(GridShaderSource, out string gridErrors);
                 Log.Info("[SHADER TEST] Synthwave Grid compilation: " + (grid != null ? "SUCCESS" : "FAILED - " + gridErrors));
 
-                var plasma = SKRuntimeEffect.Create(PlasmaShaderSource, out string plasmaErrors);
+                var plasma = SKRuntimeEffect.CreateShader(PlasmaShaderSource, out string plasmaErrors);
                 Log.Info("[SHADER TEST] Liquid Plasma compilation: " + (plasma != null ? "SUCCESS" : "FAILED - " + plasmaErrors));
 
-                var glassRef = SKRuntimeEffect.Create(GlassRefractionShaderSource, out string glassRefErrors);
+                var glassRef = SKRuntimeEffect.CreateShader(GlassRefractionShaderSource, out string glassRefErrors);
                 Log.Info("[SHADER TEST] Glass Refraction compilation: " + (glassRef != null ? "SUCCESS" : "FAILED - " + glassRefErrors));
 
-                var glassBorder = SKRuntimeEffect.Create(GlassBorderShaderSource, out string glassBorderErrors);
+                var glassBorder = SKRuntimeEffect.CreateShader(GlassBorderShaderSource, out string glassBorderErrors);
                 Log.Info("[SHADER TEST] Glass Border compilation: " + (glassBorder != null ? "SUCCESS" : "FAILED - " + glassBorderErrors));
 
-                var halftone = SKRuntimeEffect.Create(HalftoneTransitionShaderSource, out string halftoneErrors);
+                var halftone = SKRuntimeEffect.CreateShader(HalftoneTransitionShaderSource, out string halftoneErrors);
                 Log.Info("[SHADER TEST] Halftone Transition compilation: " + (halftone != null ? "SUCCESS" : "FAILED - " + halftoneErrors));
 
-                var holoLattice = SKRuntimeEffect.Create(HolographicLatticeShaderSource, out string holoLatticeErrors);
+                var holoLattice = SKRuntimeEffect.CreateShader(HolographicLatticeShaderSource, out string holoLatticeErrors);
                 Log.Info("[SHADER TEST] Holographic Lattice compilation: " + (holoLattice != null ? "SUCCESS" : "FAILED - " + holoLatticeErrors));
 
-                var quantumDots = SKRuntimeEffect.Create(QuantumDotsShaderSource, out string quantumDotsErrors);
+                var quantumDots = SKRuntimeEffect.CreateShader(QuantumDotsShaderSource, out string quantumDotsErrors);
                 Log.Info("[SHADER TEST] Quantum Dots compilation: " + (quantumDots != null ? "SUCCESS" : "FAILED - " + quantumDotsErrors));
 
-                var liquidPaint = SKRuntimeEffect.Create(LiquidPaintShaderSource, out string liquidPaintErrors);
+                var liquidPaint = SKRuntimeEffect.CreateShader(LiquidPaintShaderSource, out string liquidPaintErrors);
                 Log.Info("[SHADER TEST] Liquid Paint compilation: " + (liquidPaint != null ? "SUCCESS" : "FAILED - " + liquidPaintErrors));
 
-                var photoEditor = SKRuntimeEffect.Create(PhotoEditorShaderSource, out string photoEditorErrors);
+                var photoEditor = SKRuntimeEffect.CreateShader(PhotoEditorShaderSource, out string photoEditorErrors);
                 Log.Info("[SHADER TEST] Photo Editor Shader compilation: " + (photoEditor != null ? "SUCCESS" : "FAILED - " + photoEditorErrors));
             }
             catch (Exception ex)

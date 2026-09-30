@@ -57,17 +57,6 @@ public class ElementTree : IDisposable
     public VisualElement FirstFromPoint(PointF point) =>
         FirstFromPoint(point.X, point.Y);
 
-    private static SKPoint3 MapPoint3D(SKMatrix44 matrix, float x, float y, float z)
-    {
-        float[] result = matrix.MapScalars(x, y, z, 1f);
-        float w = result[3];
-        if (Math.Abs(w) > 1e-6f)
-        {
-            return new SKPoint3(result[0] / w, result[1] / w, result[2] / w);
-        }
-        return new SKPoint3(result[0], result[1], result[2]);
-    }
-
     private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
     {
         if (root == null || root.IsDisposed || !root.Visible) return;
@@ -173,35 +162,7 @@ public class ElementTree : IDisposable
 
         SKMatrix44 globalMatrix = elementFromPoint.Transform.GetGlobalM44();
 
-        float m00 = globalMatrix[0, 0];
-        float m01 = globalMatrix[0, 1];
-        float m03 = globalMatrix[0, 3];
-
-        float m10 = globalMatrix[1, 0];
-        float m11 = globalMatrix[1, 1];
-        float m13 = globalMatrix[1, 3];
-
-        float m30 = globalMatrix[3, 0];
-        float m31 = globalMatrix[3, 1];
-        float m33 = globalMatrix[3, 3];
-
-        float A1 = x * m30 - m00;
-        float B1 = x * m31 - m01;
-        float C1 = m03 - x * m33;
-
-        float A2 = y * m30 - m10;
-        float B2 = y * m31 - m11;
-        float C2 = m13 - y * m33;
-
-        float D = A1 * B2 - B1 * A2;
-        if (Math.Abs(D) < 1e-6f)
-            return false;
-
-        float localX = (C1 * B2 - B1 * C2) / D;
-        float localY = (A1 * C2 - C1 * A2) / D;
-
-        float w = m30 * localX + m31 * localY + m33;
-        if (w <= 1e-6f)
+        if (!Transform.TryUnproject(globalMatrix, x, y, out float localX, out float localY))
             return false;
 
         if (!elementFromPoint.HitTestLocal(localX, localY))
@@ -216,15 +177,10 @@ public class ElementTree : IDisposable
                     return false;
                 if (ancestor.IsClipping)
                 {
-                    var globalPt3D = MapPoint3D(globalMatrix, localX, localY, 0f);
                     var ancestorGlobal = ancestor.Transform.GetGlobalM44();
-                    using var invAncestorGlobal = new SKMatrix44();
-                    if (ancestorGlobal.Invert(invAncestorGlobal))
-                    {
-                        var ancestorLocalPt = MapPoint3D(invAncestorGlobal, globalPt3D.X, globalPt3D.Y, globalPt3D.Z);
-                        if (!ancestor.HitTestLocal(ancestorLocalPt.X, ancestorLocalPt.Y))
-                            return false;
-                    }
+                    if (!Transform.TryUnproject(ancestorGlobal, x, y, out float ancestorLocalX, out float ancestorLocalY) ||
+                        !ancestor.HitTestLocal(ancestorLocalX, ancestorLocalY))
+                        return false;
                 }
                 ancestor = ancestor.Parent;
             }

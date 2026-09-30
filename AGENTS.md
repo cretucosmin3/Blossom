@@ -1,6 +1,6 @@
 # AGENTS.md — Blossom
 
-General guidance for anyone (human or AI) working in this repository. This file is the project guide. There is no separate docs, plans, findings, or progress tree.
+Working rules for anyone (human or AI) editing this repository. **Public capability docs** live in [`guide/`](guide/README.md) (getting started, host contracts, 3D/hit-test). Do not recreate `docs/`, `plans/`, `findings/`, or `progress/` trees.
 
 Unattended `agy` runs must `cd` to the repo root and pass `--add-dir` with that absolute path. Print mode otherwise writes into a scratch workspace, and the files never land in this repo.
 
@@ -33,15 +33,17 @@ Blossom is a **retained-mode UI framework for C#** — a native desktop “brows
 ```text
 Blossom/
 ├── Blossom.sln             # Library + demo
+├── guide/                  # Public guide (capabilities, APIs, pitfalls)
 ├── src/
 │   ├── Blossom/            # Framework library (class lib)
 │   │   ├── Blossom.csproj
-│   │   ├── Browser.cs      # Window loop, input wiring, frame timing
+│   │   ├── Shell.cs        # Window loop, input wiring, frame timing
 │   │   ├── Core/           # Application, View, ElementsMap, EventMap, Renderer, ledger, Gpu, Design
 │   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
 │   │   ├── Utils/          # Fonts, imaging helpers
 │   │   └── External/       # Vendored quadtree helpers
 │   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
+│   ├── Blossom.Primitives/ # Layout hosts, Colours, Theme, future widgets
 │   └── Blossom.Demo/       # Sample host app (not the public API)
 │       ├── Blossom.Demo.csproj
 │       ├── Program.cs
@@ -64,9 +66,9 @@ Ignore `bin/`, `obj/`, and large build outputs under `dist/` or `production/` if
 |---|---|
 | Language | C# |
 | TFM | **.NET 10** (`net10.0`) |
-| Window / input | Silk.NET 2.15 (GLFW) |
-| Graphics | SkiaSharp 2.88 (+ SVG, ImageSharp) |
-| Solution | `Blossom.sln` — library `src/Blossom/Blossom.csproj` + reactive `src/Blossom.Reactive/Blossom.Reactive.csproj` + demo `src/Blossom.Demo/Blossom.Demo.csproj` |
+| Window / input | Silk.NET 2.23 (GLFW) |
+| Graphics | SkiaSharp 4.153 (+ SVG, ImageSharp) |
+| Solution | `Blossom.sln` — `Blossom` + `Blossom.Reactive` + `Blossom.Primitives` + demo |
 
 ---
 
@@ -75,7 +77,7 @@ Ignore `bin/`, `obj/`, and large build outputs under `dist/` or `production/` if
 ### Runtime hierarchy
 
 ```text
-Browser (static host)
+Shell (static host)
   └── Application
         └── View (one active)
               └── VisualElement tree
@@ -86,7 +88,7 @@ Browser (static host)
 
 | Concern | Primary files |
 |---|---|
-| Window + input entry | `src/Blossom/Browser.cs` |
+| Window + input entry | `src/Blossom/Shell.cs` |
 | App / multi-view | `src/Blossom/Core/Application.cs` |
 | View render + mouse routing | `src/Blossom/Core/View.cs` |
 | Hit-test tree | `src/Blossom/Core/ElementsMap.cs` |
@@ -165,7 +167,7 @@ dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
 # optional: --builder | --benchmark
 ```
 
-Other apps consume the framework with a project (or later package) reference to `src/Blossom/Blossom.csproj`, then `Browser.Initialize(new MyApplication())`.
+Other apps consume the framework with a project (or later package) reference to `src/Blossom/Blossom.csproj`, then `Shell.Initialize(new MyApplication())`.
 
 ---
 
@@ -177,9 +179,9 @@ Other apps consume the framework with a project (or later package) reference to 
 | Anchors / size / 3D matrix | `src/Blossom/Visual/Transform.cs`, `src/Blossom/Visual/Enums/Anchor.cs` |
 | Mouse / hover / view render | `src/Blossom/Core/View.cs` |
 | Hit-testing | `src/Blossom/Core/ElementsMap.cs` |
-| Keyboard / mouse event maps | `src/Blossom/Core/EventMap.cs`, `src/Blossom/Browser.cs`, `src/Blossom/Visual/ElementEvents.cs` |
+| Keyboard / mouse event maps | `src/Blossom/Core/EventMap.cs`, `src/Blossom/Shell.cs`, `src/Blossom/Visual/ElementEvents.cs` |
 | Scrolling & scrollbars | `src/Blossom/Visual/ScrollContainer.cs` |
-| Layout hooks | `src/Blossom/Visual/VisualElement.cs` (`LayoutChildren`), `src/Blossom.Demo/Components/StackPanel.cs` |
+| Layout hooks | `src/Blossom/Visual/VisualElement.cs` (`LayoutChildren`), `src/Blossom.Primitives/` (`Stack`, `Grid`, `Split`) |
 | Design canvas & units | `src/Blossom/Core/Design/` |
 | Plugin embed & isolation | `src/Blossom/Core/Design/PluginEmbed.cs`, `src/Blossom/Core/Design/PluginRoot.cs`, `src/Blossom.Demo/Views/ComponentDesignView.cs` |
 | Custom control samples | `src/Blossom.Demo/Components/` |
@@ -187,6 +189,7 @@ Other apps consume the framework with a project (or later package) reference to 
 | Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
 | Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
 | Reactive signals / flow | `src/Blossom.Reactive/` (see that project's README) |
+| Layout hosts, Colours, Theme | `src/Blossom.Primitives/` |
 
 ---
 
@@ -196,3 +199,4 @@ Other apps consume the framework with a project (or later package) reference to 
 2. Treat demos in `Blossom.Demo` as consumers of the API, not as the definition of core.
 3. Ask the user before large product-direction changes (focus model, layout engine shape, new packages).
 4. For an unattended `agy -p` run, pass `--add-dir` set to the absolute repo root, and confirm results with `git status` in this repo.
+5. For public APIs and Skia 4 3D/hit-test, read `guide/` rather than expanding this file.
