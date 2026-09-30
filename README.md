@@ -26,7 +26,9 @@ Pack from this repo:
 dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
 ```
 
-The nupkg lands in `artifacts/`.
+The nupkg lands in `artifacts/`. Version comes from git (`version.json`): patch increments on every commit; **edit `"version"` there only for a minor or major bump** (for example `"1.0"`). GitHub Actions (`.github/workflows/nuget.yml`) packs on `main`, pull requests, and `v*.*.*` tags. A version tag also opens a GitHub Release with the nupkg.
+
+nuget.org uses **Trusted Publishing**: on nuget.org, **Trusted Publishing** → policy with this GitHub repo, workflow file `nuget.yml`, environment empty. Push happens on `v*.*.*` tags or a manual workflow run with **Push to nuget.org**.
 
 ## Building and running
 

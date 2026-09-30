@@ -24,6 +24,8 @@ dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
 
 Packaging script (Linux): `./build.sh` (see the script for `--self-contained` / `--framework-dependent`).
 
+NuGet pack: `dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release`. Version is computed from git (`version.json`: `"0.1"` means `0.1.{commit height}`). Change that string for a minor or major line (e.g. `"1.0"`); do not edit a patch by hand. CI workflow `.github/workflows/nuget.yml` packs on `main` and PRs; tags `v*.*.*` attach the nupkg to a GitHub Release and push nuget.org via Trusted Publishing (`nuget.yml` policy).
+
 `--fps` / `--show-fps` / `--debug-overlay` set both `Application.EnableStatsOverlay` and `Shell.ShowDebugOverlay` so F12 is reserved and the overlay starts visible.
 
 ## Consume the library

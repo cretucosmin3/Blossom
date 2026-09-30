@@ -1,0 +1,82 @@
+name: NuGet
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      push_nuget:
+        description: "Push to nuget.org (needs NUGET_API_KEY)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: nuget-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Blossom.sln
+
+      - name: Test
+        run: |
+          dotnet test tests/Blossom.Reactive.Tests/Blossom.Reactive.Tests.csproj -c Release --no-restore
+          dotnet test tests/Blossom.Primitives.Tests/Blossom.Primitives.Tests.csproj -c Release --no-restore
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          ver=$(dotnet msbuild src/Blossom.Pack/Blossom.Pack.csproj -nologo -getProperty:NuGetPackageVersion)
+          echo "Package version: $ver"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release --no-restore
+          ls -l artifacts/*.nupkg
+        id: pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.nupkg
+          generate_release_notes: true
+
+      - name: NuGet login (OIDC)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.push_nuget == 'true'
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: cretucosmin
+
+      - name: Publish nuget.org
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.push_nuget == 'true'
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          dotnet nuget push artifacts/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

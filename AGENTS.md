@@ -33,6 +33,7 @@ Blossom is a **retained-mode UI framework for C#** — a native desktop “brows
 ```text
 Blossom/
 ├── Blossom.sln             # Library + demo
+├── .github/workflows/      # NuGet pack / release
 ├── guide/                  # Public guide (capabilities, APIs, pitfalls)
 ├── src/
 │   ├── Blossom/            # Framework library (class lib)
@@ -159,6 +160,10 @@ dotnet build Blossom.sln
 
 # One NuGet package (artifacts/Blossom.*.nupkg) with all three libraries
 dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
+# CI: .github/workflows/nuget.yml (pack + artifact; tag v*.*.* → GitHub Release;
+#     nuget.org Trusted Publishing: policy workflow nuget.yml)
+# Version: Nerdbank.GitVersioning + version.json (`0.1` → 0.1.N per commit;
+#     bump the first numbers only for minor/major)
 
 # Or packaging script (Linux; see build.sh for flags)
 ./build.sh

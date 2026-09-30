@@ -1,6 +1,5 @@
 <Project>
     <PropertyGroup>
-        <Version>0.1.0</Version>
         <Authors>Cosmin Crețu</Authors>
         <Company>Blossom</Company>
         <Copyright>Copyright (c) 2023-2026 Cosmin Crețu</Copyright>
@@ -10,4 +9,9 @@
         <PackageProjectUrl>https://github.com/cretucosmin3/Blossom</PackageProjectUrl>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nerdbank.GitVersioning" Version="3.10.94" PrivateAssets="all" />
+    </ItemGroup>
 </Project>
+
