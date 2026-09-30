@@ -11,6 +11,7 @@
         <Description>Retained-mode UI framework for C# (Silk.NET + SkiaSharp), including reactive signals and layout primitives.</Description>
         <PackageTags>ui;desktop;skia;retained;signals</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
         <PackageOutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\</PackageOutputPath>
         <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_PackBlossomAssemblies</TargetsForTfmSpecificContentInPackage>
         <NoWarn>$(NoWarn);NU5128</NoWarn>
@@ -39,6 +40,7 @@
     <ItemGroup>
         <None Include="..\..\README.md" Pack="true" PackagePath="\" />
         <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+        <None Include="..\..\assets\icon.png" Pack="true" PackagePath="icon.png" />
     </ItemGroup>
 
     <!-- Restore uses the project name (Blossom.Pack). The nupkg id must be Blossom. -->

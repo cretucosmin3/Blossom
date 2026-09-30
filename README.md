@@ -1,54 +1,82 @@
-# Blossom
+<div align="center">
+  <img alt="Blossom" src="assets/icon.png" height="110">
 
-Retained-mode UI framework for **C#**. Native desktop host for rich 2D/3D UI — not an HTML/CSS engine.
+<table width="600" align="center">
+  <tr>
+    <td align="center">
+      <strong>Blossom is a retained-mode UI framework for C#. Native desktop host for 2D/3D UI; apps are VisualElement trees inside Views, hosted by Shell.</strong>
+    </td>
+  </tr>
+</table>
 
-- Window + input: **Silk.NET** (GLFW)
-- Drawing: **SkiaSharp** (GPU, dirty-rect retained pipeline)
-- Apps are C# object graphs of **`VisualElement`** nodes inside **`View`s**, owned by an **`Application`**, hosted by **`Shell`**
+[![NuGet](https://github.com/cretucosmin3/Blossom/actions/workflows/nuget.yml/badge.svg)](https://github.com/cretucosmin3/Blossom/actions/workflows/nuget.yml)
+[![GitHub last commit](https://img.shields.io/github/last-commit/cretucosmin3/Blossom.svg)](https://github.com/cretucosmin3/Blossom/commits/main)
+[![GitHub stars](https://img.shields.io/github/stars/cretucosmin3/Blossom.svg)](https://github.com/cretucosmin3/Blossom/stargazers)
+[![NuGet](https://img.shields.io/nuget/v/Blossom.svg)](https://www.nuget.org/packages/Blossom)
 
-`VisualElement` is the platform. Buttons, fields, terminals, and charts are subclasses of that node. Core ships host contracts (window, keyboard, fonts, overlays, layout, threading) so other apps can build those primitives without reflection.
+</div>
 
-**Guide (capabilities, APIs, pitfalls):** [`guide/README.md`](guide/README.md)
-
-**Blossom.Reactive** is the [SolidJS](https://www.solidjs.com/)-inspired layer on the retained tree: signals, memos, effects, keyed lists. See [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md).
-
-**Blossom.Primitives** is the element library (Stack, Grid, Split, `Colours`, `Theme`; later widgets). See [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md).
-
-The published NuGet id is **`Blossom`**. One package contains `Blossom.dll`, `Blossom.Reactive.dll`, and `Blossom.Primitives.dll`.
+## Install
 
 ```bash
 dotnet add package Blossom
 ```
 
-Pack from this repo:
+| | |
+|---|---|
+| Package id | `Blossom` |
+| Assemblies | `Blossom.dll`, `Blossom.Reactive.dll`, `Blossom.Primitives.dll` |
+| TFM | `net10.0` |
 
-```bash
-dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
-```
+From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(yourApplication)`.
 
-The nupkg lands in `artifacts/`. Version comes from git (`version.json`): patch increments on every commit; **edit `"version"` there only for a minor or major bump** (for example `"1.0"`). GitHub Actions (`.github/workflows/nuget.yml`) packs on `main`, pull requests, and `v*.*.*` tags. A version tag also opens a GitHub Release with the nupkg.
+## Projects
 
-nuget.org uses **Trusted Publishing**: on nuget.org, **Trusted Publishing** → policy with this GitHub repo, workflow file `nuget.yml`, environment empty. Push happens on `v*.*.*` tags or a manual workflow run with **Push to nuget.org**.
+| Path | Role |
+|---|---|
+| [`src/Blossom`](src/Blossom) | Window, tree, draw, input |
+| [`src/Blossom.Reactive`](src/Blossom.Reactive/README.md) | Signals, memos, effects, `Bind*`, `For.Each`, `Show.When` |
+| [`src/Blossom.Primitives`](src/Blossom.Primitives/README.md) | Stack, Grid, Split, `Colours`, `Theme` |
+| [`src/Blossom.Demo`](src/Blossom.Demo) | Sample host (Blossom Studio) |
+| [`src/Blossom.Pack`](src/Blossom.Pack) | Packs the three libraries into one nupkg |
 
-## Building and running
+## Build
 
-Blossom is a **class library** (`src/Blossom`) plus reactive and primitives libraries and a sample host (`src/Blossom.Demo`). Other C# apps reference the `Blossom` package (or the three project references in this repo) and call `Shell.Initialize(yourApplication)`.
+| | |
+|---|---|
+| Solution | `dotnet build Blossom.sln` |
+| Demo | `dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj` |
+| Pack | `dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release` → `artifacts/` |
+| Linux | `./build.sh` (`--self-contained` / `--framework-dependent`) |
 
-```bash
-dotnet build Blossom.sln
-dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
-```
+Demo flags: `--benchmark`, `--fps`.
 
-Linux packaging script:
+## Docs
 
-```bash
-./build.sh
-# --framework-dependent / -fd   needs a machine-wide .NET 10 runtime
-# --self-contained / -s         copies the runtime into ./dist/
-```
+| | |
+|---|---|
+| Guide | [`guide/README.md`](guide/README.md) |
+| Reactive | [`src/Blossom.Reactive/README.md`](src/Blossom.Reactive/README.md) |
+| Primitives | [`src/Blossom.Primitives/README.md`](src/Blossom.Primitives/README.md) |
 
-After a script build, `./Blossom` runs the demo. `./Blossom --benchmark` runs isolated benchmark views. `--fps` opts into the F12 stats overlay.
+## Versioning
+
+| | |
+|---|---|
+| Source | `version.json` (`"0.1"` → `0.1.{git height}`) |
+| Patch | Automatic per commit |
+| Minor / major | Edit `"version"` (e.g. `"1.0"`) |
+| Publish | Tag `v*.*.*` → GitHub Release + nuget.org (workflow `nuget.yml`) |
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Built with
+
+| | |
+|---|---|
+| [Silk.NET](https://github.com/dotnet/Silk.NET) 2.23.0 | Window + input (GLFW) |
+| [SkiaSharp](https://github.com/mono/SkiaSharp) 4.153.0 | GPU drawing (`SkiaSharp.NativeAssets.Linux`) |
+| [ImageSharp](https://github.com/SixLabors/ImageSharp) 3.1.12 | Raster images |
+| [Svg.Skia](https://github.com/wieslawsoltes/Svg.Skia) 5.2.3 | SVG |
