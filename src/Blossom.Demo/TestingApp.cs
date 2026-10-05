@@ -13,6 +13,7 @@ namespace Blossom.Testing
         public TestingApplication()
         {
             Title = "Blossom Studio";
+            EnableStatsOverlay = true;
 
             if (BenchmarkManager.IsBenchmarkMode)
             {

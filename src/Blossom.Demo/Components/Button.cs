@@ -175,9 +175,15 @@ public class Button : VisualElement
         ApplyCurrentVisualState();
     }
 
+    protected override void OnInteractiveChanged()
+    {
+        base.OnInteractiveChanged();
+        ApplyCurrentVisualState();
+    }
+
     private void ApplyCurrentVisualState()
     {
-        if (!EffectiveInteractive)
+        if (!IsEnabled)
         {
             Style.BackColor = _normalColor.WithAlpha(120);
             Cursor = StandardCursor.Default;
@@ -198,7 +204,7 @@ public class Button : VisualElement
             Cursor = StandardCursor.Hand;
         }
 
-        float targetScale = (_enable3DEffect && _isPressed && EffectiveInteractive) ? _pressScale : 1f;
+        float targetScale = (_enable3DEffect && _isPressed && IsEnabled) ? _pressScale : 1f;
         if (Math.Abs(Transform.ScaleX - targetScale) > 0.001f || Math.Abs(Transform.ScaleY - targetScale) > 0.001f)
         {
             Transform.ScaleX = targetScale;

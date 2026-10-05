@@ -48,9 +48,9 @@ namespace Blossom
             Blossom.Core.Visual.SKSLShaderManager.TestCompilation();
 
             var app = new TestingApplication();
+            app.EnableStatsOverlay = true;
             if (enableStatsOverlay)
             {
-                app.EnableStatsOverlay = true;
                 Shell.ShowDebugOverlay = true;
             }
 

@@ -398,14 +398,33 @@ public class VisualElement : IDisposable
                     if (HasPointerCapture) ReleasePointer();
                     if (ParentView?.ActiveKeyboardElement == this) ParentView.SetActiveKeyboardElement(null);
                 }
+                InvalidatePaint();
+                NotifyInteractiveChanged();
             }
         }
     }
+
+    private void NotifyInteractiveChanged()
+    {
+        OnInteractiveChanged();
+        for (int i = 0; i < _children.Count; i++)
+        {
+            _children[i].NotifyInteractiveChanged();
+        }
+    }
+
+    protected virtual void OnInteractiveChanged() { }
 
     /// <summary>
     /// Cumulative visible state: true only if this element and all ancestors have <see cref="Visible"/> set to true.
     /// </summary>
     public bool EffectiveVisible => Visible && (Parent == null || Parent.EffectiveVisible);
+
+    /// <summary>
+    /// Cumulative enabled state: true only if this element and all ancestors have <see cref="Interactive"/> set to true.
+    /// Unlike <see cref="EffectiveInteractive"/>, this does not require <see cref="EffectiveVisible"/> to be true.
+    /// </summary>
+    public bool IsEnabled => Interactive && (Parent == null || Parent.IsEnabled);
 
     /// <summary>
     /// Cumulative interactive state: true only if this element and all ancestors are visible and have <see cref="Interactive"/> set to true.

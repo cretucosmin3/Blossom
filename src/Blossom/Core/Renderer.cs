@@ -239,6 +239,18 @@ internal static class Renderer
                 Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent();
             }
             catch { /* GLFW may not be ready during teardown */ }
+
+            // On Windows, the Win32 modal sizing loop (WM_ENTERSIZEMOVE / WM_SIZING) blocks the
+            // main thread inside DefWindowProc until mouse release. Render synchronously so the
+            // window contents reflow in real time while dragging the border.
+            if (OperatingSystem.IsWindows() && Shell.IsLoaded && Shell.ShellApp?.ActiveView?.IsLoaded == true)
+            {
+                try
+                {
+                    window.DoRender();
+                }
+                catch { }
+            }
         }
 
         window.FramebufferResize += _ => OnWindowResized();
