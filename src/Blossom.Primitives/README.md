@@ -111,6 +111,56 @@ Blossom does not ship a look. Skip `Theme` and set `ElementStyle` on each node, 
 
 The Studio demo defines Dark / Light / Retro in `src/Blossom.Demo/Themes/DemoThemes.cs` and switches them from the header.
 
+## Headless Shell Primitives
+
+Headless base classes manage input behaviors, keyboard/mouse state machines, and selection math without dictating any visual appearance. You provide the visuals either by **custom Skia drawing (`Paint`)** or by **composing child elements (`Stack`, icons, labels)**.
+
+### `Control`
+Base interactive element: tracks `IsHovered`, `IsPressed`, and `Enabled`. Provides `W`, `H`, `SetAndPaint`, and the optional element-local canvas hook `Paint(SKCanvas c)`.
+
+### `ButtonBase`
+Headless button shell (`ButtonBase : Control`):
+- Handles pointer capture during mouse press/drag.
+- Activates via keyboard `Space` and `Enter`.
+- Provides `Clicked` event and `PerformClick()`.
+- Provides `OnStateChanged()` hook for styling without touching input listeners.
+
+### `ToggleBase`
+Headless toggle shell (`ToggleBase : ButtonBase`):
+- Tracks `IsChecked` with `CheckedChanged` event and `Toggle()` method.
+- Base for checkboxes, switches, radio buttons, and toggleable toolbar buttons.
+
+### `TextInputBase`
+Headless text input engine (`TextInputBase : Control`):
+- Manages text buffer, `Placeholder`, `MaxLength`, `DigitsOnly`, `IsPassword`, `IsReadOnly`.
+- Full caret & selection model (`SelectionStart`, `SelectionLength`, `SelectedText`, `SelectAll`, `SelectWordAt`).
+- Word navigation and jumps (`Ctrl+Arrows`, `Home`, `End`).
+- Clipboard operations (`Copy`, `Cut`, `Paste`).
+- Caret blinking cycle (`IsCaretShown`) and focus tracking.
+- `Changed`, `Submitted` (Enter), `Escaped` (Escape) events.
+
+---
+
+## Typography Helpers (`Blossom.Utils.Text`)
+
+General-purpose text formatting and measurement utilities:
+
+```csharp
+using Blossom.Utils;
+
+// 1. Binary-search string truncation with ellipsis ("…")
+string preview = Text.Ellipsize("Very long title string...", font, maxWidth: 120);
+
+// 2. Greedy word wrap with hard-break support for unbroken tokens
+List<string> lines = Text.Wrap(longDescription, font, maxWidth: 300, maxLines: 3);
+
+// 3. Typographic cap-height vertical centering
+float baseline = Text.Baseline(font, centerY: 20);
+
+// 4. Measure text advance width with emoji / fallback font support
+float width = Text.MeasureWidth("Hello 🚀", font);
+```
+
 ## Later
 
-Buttons, fields, and charts belong in this project as further `VisualElement` subclasses, on the same host contracts as app-authored primitives. Demo widgets under `Blossom.Demo/Components` stay samples until they move here.
+Pre-styled ready-made widgets will sit on top of these headless shells in this library. Demo widgets under `Blossom.Demo/Components` stay samples until they move here.
