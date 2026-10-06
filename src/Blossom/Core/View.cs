@@ -951,6 +951,38 @@ namespace Blossom.Core
             }
         }
 
+        /// <summary>
+        /// Clears all draw command caches, bitmap caches, and marks all elements for layout and paint.
+        /// Used when global scale factor changes or view undergoes a complete reset.
+        /// </summary>
+        public void InvalidateAll()
+        {
+            Ledger.Clear();
+            foreach (var element in Elements.Items)
+            {
+                if (element == null) continue;
+                element.InvalidatePaint();
+                element.InvalidateLayout();
+                element.Transform._transformDirty = true;
+                element.MarkVisibilityClippingDirty();
+                element.ClearRenderCache();
+            }
+            for (int i = 0; i < _overlays.Count; i++)
+            {
+                var layer = _overlays[i].Layer;
+                if (layer == null || layer.IsDisposed) continue;
+                layer.InvalidatePaint();
+                layer.InvalidateLayout();
+                layer.Transform._transformDirty = true;
+                layer.MarkVisibilityClippingDirty();
+                layer.ClearRenderCache();
+            }
+            _hierarchyDirty = true;
+            FullRenderRequired = true;
+            RenderRequired = true;
+            LayoutRequired = true;
+        }
+
         public void Dispose()
         {
             if (_canvas != null)
