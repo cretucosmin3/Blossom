@@ -10,7 +10,9 @@ using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using Blossom.Core.Delegates.Common;
+using Blossom.Platform;
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Runtime.ExceptionServices;
 using SixLabors.ImageSharp.Advanced;
@@ -21,6 +23,10 @@ using SkiaSharp;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Silk.NET.Core.Contexts;
+using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 
 namespace Blossom;
@@ -43,6 +49,9 @@ public static class Shell
 
     /// <summary>Raised after a real client-area size change (width, height in screen coordinates).</summary>
     public static event Action<int, int>? ClientResized;
+
+    internal static void RaiseClientResized(int width, int height) =>
+        ClientResized?.Invoke(width, height);
 
     /// <summary>
     /// Native OS window handle. Never throws; 0 if the window is not created.
@@ -78,15 +87,33 @@ public static class Shell
         }
     }
 
-    public static int ClientWidth => window is not null ? Math.Max(0, window.Size.X) : (int)RenderRect.Width;
-    public static int ClientHeight => window is not null ? Math.Max(0, window.Size.Y) : (int)RenderRect.Height;
+    /// <summary>
+    /// Current display scale factor (logical-to-physical ratio) applied to UI layout (1.0 = standard 100%).
+    /// </summary>
+    public static float ScaleFactor => DisplayScale.Factor;
+
+    /// <summary>
+    /// Raised when the active display scale factor changes (e.g. window moved to another monitor with a different scale).
+    /// </summary>
+    public static event Action<float>? ScaleChanged
+    {
+        add => DisplayScale.ScaleChanged += value;
+        remove => DisplayScale.ScaleChanged -= value;
+    }
+
+    public static int ClientWidth => (int)Math.Max(0, RenderRect.Width);
+    public static int ClientHeight => (int)Math.Max(0, RenderRect.Height);
 
     public static void SetClientSize(int width, int height)
     {
         width = Math.Max(1, width);
         height = Math.Max(1, height);
         if (window is not null)
-            window.Size = new Vector2D<int>(width, height);
+        {
+            int physicalW = (int)MathF.Ceiling(width * ScaleFactor);
+            int physicalH = (int)MathF.Ceiling(height * ScaleFactor);
+            window.Size = new Vector2D<int>(physicalW, physicalH);
+        }
         else
             HandleClientSize(width, height);
     }
@@ -530,6 +557,8 @@ public static class Shell
     private static bool _glfwCharHooked;
     private static char _pendingHighSurrogate;
 
+
+
     internal static void AddVisualMarker(SKRect marker, SKColor color)
     {
         if (!ShowDebugOverlay) return;
@@ -588,12 +617,23 @@ public static class Shell
         if (appWindow.MinHeight > 0)
             height = Math.Max(height, appWindow.MinHeight);
 
-        RenderRect = new System.Drawing.Rectangle(0, 0, width, height);
+        RenderRect = new System.Drawing.RectangleF(0, 0, width, height);
         _minClientWidth = Math.Max(0, appWindow.MinWidth);
         _minClientHeight = Math.Max(0, appWindow.MinHeight);
 
+        GlfwWindowing.Use();
+        // SdlWindowing.Use();
+
+        _glfw = Glfw.GetApi();
+        _glfw = GlfwProvider.GLFW.Value;
+
+        float initialScale = DisplayScale.GetInitialScale(out int maxWorkW, out int maxWorkH);
+
+        int initialPhysicalW = (int)Math.Min(MathF.Ceiling(width * initialScale), maxWorkW);
+        int initialPhysicalH = (int)Math.Min(MathF.Ceiling(height * initialScale), maxWorkH);
+
         var options = Silk.NET.Windowing.WindowOptions.Default;
-        options.Size = new Vector2D<int>(width, height);
+        options.Size = new Vector2D<int>(initialPhysicalW, initialPhysicalH);
         options.Title = string.IsNullOrWhiteSpace(ShellApp.Title) ? "Blossom" : ShellApp.Title;
         options.VSync = false;
         options.TransparentFramebuffer = false;
@@ -607,13 +647,7 @@ public static class Shell
     ContextFlags.ForwardCompatible,
     new APIVersion(3, 2));
 
-        GlfwWindowing.Use();
-        // SdlWindowing.Use();
-
-        _glfw = Glfw.GetApi();
-        _glfw = GlfwProvider.GLFW.Value;
-
-        // SetGlfwWindowHints();
+        DisplayScale.SetupGlfwHints();
 
         window = Window.Create(options);
 
@@ -621,7 +655,8 @@ public static class Shell
         window.Render += Render;
         window.Closing += Closing;
         window.FileDrop += OnFileDrop;
-        window.Resize += size => HandleClientSize(size.X, size.Y);
+
+        DisplayScale.HookWindow(window);
 
         window.StateChanged += (state) =>
         {
@@ -643,11 +678,18 @@ public static class Shell
     {
         width = Math.Max(1, width);
         height = Math.Max(1, height);
-        bool changed = (int)RenderRect.Width != width || (int)RenderRect.Height != height;
+
+        if (DisplayScale.CheckScaleChange(clientWidth: width, clientHeight: height))
+            return;
+
+        float logicalW = width / DisplayScale.Factor;
+        float logicalH = height / DisplayScale.Factor;
+
+        bool changed = Math.Abs(RenderRect.Width - logicalW) > 0.01f || Math.Abs(RenderRect.Height - logicalH) > 0.01f;
         if (!changed)
             return;
 
-        RenderRect = new System.Drawing.RectangleF(0, 0, width, height);
+        RenderRect = new System.Drawing.RectangleF(0, 0, logicalW, logicalH);
         WasResized = true;
 
         if (ShellApp?.ActiveView != null)
@@ -659,10 +701,10 @@ public static class Shell
 
         try { GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
 
-        ClientResized?.Invoke(width, height);
+        ClientResized?.Invoke((int)logicalW, (int)logicalH);
     }
 
-    private static void ApplySizeLimits()
+    internal static void ApplySizeLimits()
     {
         // Silk's IWindow exists after Window.Create; GLFW's native window does not
         // until Load. glfwSetWindowSizeLimits asserts window != NULL.
@@ -677,10 +719,12 @@ public static class Shell
                 var handle = (Silk.NET.GLFW.WindowHandle*)window.Handle;
                 if (handle == null)
                     return;
-                int minW = _minClientWidth > 0 ? _minClientWidth : Glfw.DontCare;
-                int minH = _minClientHeight > 0 ? _minClientHeight : Glfw.DontCare;
-                int maxW = _maxClientWidth > 0 ? _maxClientWidth : Glfw.DontCare;
-                int maxH = _maxClientHeight > 0 ? _maxClientHeight : Glfw.DontCare;
+
+                float factor = ScaleFactor > 0f ? ScaleFactor : 1f;
+                int minW = _minClientWidth > 0 ? (int)MathF.Ceiling(_minClientWidth * factor) : Glfw.DontCare;
+                int minH = _minClientHeight > 0 ? (int)MathF.Ceiling(_minClientHeight * factor) : Glfw.DontCare;
+                int maxW = _maxClientWidth > 0 ? (int)MathF.Ceiling(_maxClientWidth * factor) : Glfw.DontCare;
+                int maxH = _maxClientHeight > 0 ? (int)MathF.Ceiling(_maxClientHeight * factor) : Glfw.DontCare;
                 glfw.SetWindowSizeLimits(handle, minW, minH, maxW, maxH);
             }
         }
@@ -906,8 +950,9 @@ public static class Shell
                 {
                     ShellApp.ActiveView.ReleasePointerCapture();
                 }
-                ShellApp.Events.HandleMouseMove(pos);
-                ShellApp.ActiveView?.Events.HandleMouseMove(pos);
+                Vector2 logicalPos = ScaleFactor > 0f ? pos / ScaleFactor : pos;
+                ShellApp.Events.HandleMouseMove(logicalPos);
+                ShellApp.ActiveView?.Events.HandleMouseMove(logicalPos);
             };
 
             mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
@@ -920,15 +965,17 @@ public static class Shell
             mouse.MouseDown += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
-                ShellApp.Events.HandleMouseDown(mouseButton, m.Position);
-                ShellApp.ActiveView?.Events.HandleMouseDown(mouseButton, m.Position);
+                Vector2 logicalPos = ScaleFactor > 0f ? m.Position / ScaleFactor : m.Position;
+                ShellApp.Events.HandleMouseDown(mouseButton, logicalPos);
+                ShellApp.ActiveView?.Events.HandleMouseDown(mouseButton, logicalPos);
             };
 
             mouse.MouseUp += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
-                ShellApp.Events.HandleMouseUp(mouseButton, m.Position);
-                ShellApp.ActiveView?.Events.HandleMouseUp(mouseButton, m.Position);
+                Vector2 logicalPos = ScaleFactor > 0f ? m.Position / ScaleFactor : m.Position;
+                ShellApp.Events.HandleMouseUp(mouseButton, logicalPos);
+                ShellApp.ActiveView?.Events.HandleMouseUp(mouseButton, logicalPos);
             };
         }
     }
@@ -1140,6 +1187,8 @@ public static class Shell
 
     private static void Closing()
     {
+        DisplayScale.Shutdown();
+
         ShellApp.Dispose();
         if (SynchronizationContext.Current is ShellSynchronizationContext)
             SynchronizationContext.SetSynchronizationContext(_previousSyncContext);
@@ -1209,6 +1258,7 @@ public static class Shell
         InstallSynchronizationContext();
         IsLoaded = true;
 
+        DisplayScale.Initialize(window);
         ApplySizeLimits();
 
         if (ShellApp.Window.CenterOnLoad)
@@ -1330,6 +1380,11 @@ public static class Shell
 
     private static void DrawDebugOverlay(double avgDrawMs, double theoreticalFps)
     {
+        float overlayScale = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+        using var _ = new SKAutoCanvasRestore(Renderer.Canvas);
+        if (overlayScale > 0f && overlayScale != 1f)
+            Renderer.Canvas.Scale(overlayScale, overlayScale);
+
         // Draw informational markers
         foreach (var (rect, color) in PostMarkers)
         {

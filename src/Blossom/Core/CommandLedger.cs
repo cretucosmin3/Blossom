@@ -574,7 +574,7 @@ public class DrawBackdropBlurCommand : DrawCommand
     {
         if (_blurSigma <= 0) return;
 
-        // If cached and in OnDemand mode, draw the cached snapshot directly in screen-space
+        // If cached and in OnDemand mode, draw the cached snapshot directly in physical screen-space
         if (_renderMode == EffectRenderMode.OnDemand && _element.CachedBackdropBlur != null)
         {
             using (new SKAutoCanvasRestore(canvas))
@@ -585,13 +585,15 @@ public class DrawBackdropBlurCommand : DrawCommand
             return;
         }
 
-        // 1. Take a snapshot of the current offscreen surface pixels
+        // 1. Take a snapshot of the current offscreen surface pixels (in physical framebuffer pixels)
         using var snapshot = Renderer.OffscreenSurface.Snapshot();
         if (snapshot == null) return;
 
         // 2. Create the local rounded rectangle path
         float w = _element.Transform.Computed.Width;
         float h = _element.Transform.Computed.Height;
+        if (w <= 0 || h <= 0) return;
+
         var rect = new SKRect(0, 0, w, h);
         using var localRoundRect = new SKRoundRect(rect);
         localRoundRect.SetRectRadii(rect, new SKPoint[] {
@@ -605,14 +607,33 @@ public class DrawBackdropBlurCommand : DrawCommand
         localPath.AddRoundRect(localRoundRect);
 
         var global44 = _element.Transform.GetGlobalM44();
-        using var path = Transform.MapPath(localPath, global44);
+        using var logicalPath = Transform.MapPath(localPath, global44);
 
-        var globalBounds = path.Bounds;
+        float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+        float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+
+        using var devicePath = new SKPath();
+        if (scaleX != 1f || scaleY != 1f)
+        {
+            var scaleMatrix = SKMatrix.CreateScale(scaleX, scaleY);
+            logicalPath.Transform(scaleMatrix, devicePath);
+        }
+        else
+        {
+            devicePath.AddPath(logicalPath);
+        }
+
+        var deviceBounds = devicePath.Bounds;
+        if (deviceBounds.Width <= 0 || deviceBounds.Height <= 0) return;
+
+        float physicalBlurSigma = _blurSigma * scaleX;
 
         if (_renderMode == EffectRenderMode.OnDemand)
         {
-            // Create a GPU-backed offscreen surface (matching current GL rendering context)
-            var info = new SKImageInfo((int)Math.Max(1, globalBounds.Width), (int)Math.Max(1, globalBounds.Height), SKColorType.Rgba8888, SKAlphaType.Premul);
+            // Create a GPU-backed offscreen surface matching physical device bounds
+            int surfW = (int)Math.Max(1, Math.Ceiling(deviceBounds.Width));
+            int surfH = (int)Math.Max(1, Math.Ceiling(deviceBounds.Height));
+            var info = new SKImageInfo(surfW, surfH, SKColorType.Rgba8888, SKAlphaType.Premul);
             using var tempSurface = Renderer.grContext != null ? SKSurface.Create(Renderer.grContext, false, info) : SKSurface.Create(info);
             if (tempSurface != null)
             {
@@ -620,47 +641,45 @@ public class DrawBackdropBlurCommand : DrawCommand
                 tempCanvas.Clear(SKColors.Transparent);
 
                 // Offset the path to start at 0, 0 relative to the cached image surface
-                using var tempPath = new SKPath(path);
-                tempPath.Offset(-globalBounds.Left, -globalBounds.Top);
+                using var tempPath = new SKPath(devicePath);
+                tempPath.Offset(-deviceBounds.Left, -deviceBounds.Top);
                 tempCanvas.ClipPath(tempPath, SKClipOperation.Intersect, true);
 
                 using var paint = new SKPaint
                 {
                     IsAntialias = _element.IsAntialias,
-                    ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
+                    ImageFilter = SKImageFilter.CreateBlur(physicalBlurSigma, physicalBlurSigma)
                 };
-                // Draw snapshot offset so the element's screen location aligns with 0, 0 in cached image
-                tempCanvas.DrawImage(snapshot, -globalBounds.Left, -globalBounds.Top, paint);
+                // Draw snapshot offset so the element's physical screen location aligns with 0, 0 in cached image
+                tempCanvas.DrawImage(snapshot, -deviceBounds.Left, -deviceBounds.Top, paint);
 
                 _element.CachedBackdropBlur = tempSurface.Snapshot();
-                _element.CachedBackdropBlurBounds = globalBounds;
+                _element.CachedBackdropBlurBounds = deviceBounds;
             }
         }
 
-        // 3. Draw the blurred backdrop image clipped to the transformed path
+        // 3. Draw the blurred backdrop image clipped to the transformed path in physical screen-space
         using (new SKAutoCanvasRestore(canvas))
         {
-            // Reset transform to draw in screen-space
+            // Reset transform to draw in physical screen-space
             canvas.SetMatrix(SKMatrix.Identity);
 
-            // Clip drawing to the element's actual shape
-            canvas.ClipPath(path, SKClipOperation.Intersect, _element.IsAntialias);
-
-            // Blur paint
-            using var paint = new SKPaint
-            {
-                IsAntialias = _element.IsAntialias,
-                ImageFilter = SKImageFilter.CreateBlur(_blurSigma, _blurSigma)
-            };
+            // Clip drawing to the element's actual shape in physical space
+            canvas.ClipPath(devicePath, SKClipOperation.Intersect, _element.IsAntialias);
 
             // Draw the snapshot portion onto the canvas
             if (_renderMode == EffectRenderMode.OnDemand && _element.CachedBackdropBlur != null)
             {
-                canvas.DrawImage(_element.CachedBackdropBlur, globalBounds.Left, globalBounds.Top);
+                canvas.DrawImage(_element.CachedBackdropBlur, deviceBounds.Left, deviceBounds.Top);
             }
             else
             {
-                canvas.DrawImage(snapshot, globalBounds, globalBounds, paint);
+                using var paint = new SKPaint
+                {
+                    IsAntialias = _element.IsAntialias,
+                    ImageFilter = SKImageFilter.CreateBlur(physicalBlurSigma, physicalBlurSigma)
+                };
+                canvas.DrawImage(snapshot, 0, 0, paint);
             }
         }
     }
@@ -755,8 +774,11 @@ public class DrawShaderBackgroundCommand : DrawCommand
                     var global44 = _element.Transform.GetGlobalM44();
                     var globalMatrix = global44.Matrix;
                     var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
+                    float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+                    float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                    var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                     shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
-                        _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, screenRect, globalMatrix.ScaleX, globalMatrix.ScaleY, mixingRate: 0.25f, antialias: aaAmount);
+                        _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, physScreenRect, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY, mixingRate: 0.25f, antialias: aaAmount);
                 }
             }
             else if (_type == Blossom.Core.Visual.BackgroundShaderType.LiquidPaint)
@@ -961,9 +983,12 @@ public class DrawBorderCommand : DrawCommand
                             float localW = _element.Transform.Computed.Width;
                             float localH = _element.Transform.Computed.Height;
                             var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
+                            float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+                            float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                            var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                             
                             using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
-                                _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                                _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, physScreenRect, _width, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY);
                             
                             paint.Shader = borderShader;
                             tempCanvas.DrawRoundRect(_roundRect, paint);
@@ -999,9 +1024,12 @@ public class DrawBorderCommand : DrawCommand
                 float localW = _element.Transform.Computed.Width;
                 float localH = _element.Transform.Computed.Height;
                 var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
+                float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+                float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                 
                 using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
-                    _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, screenRect, _width, globalMatrix.ScaleX, globalMatrix.ScaleY);
+                    _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, physScreenRect, _width, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY);
                 
                 paint.Shader = borderShader;
                 canvas.DrawRoundRect(_roundRect, paint);
