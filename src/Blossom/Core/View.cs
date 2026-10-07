@@ -715,8 +715,9 @@ namespace Blossom.Core
 
         private void CollectElements(VisualElement root, List<VisualElement> list)
         {
+            if (!root.Visible) return;
             list.Add(root);
-            var sortedChildren = root.GetVisualChildren().Where(c => c != null).OrderBy(c => c.ZIndex).ToList();
+            var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderBy(c => c.ZIndex).ToList();
             foreach (var child in sortedChildren)
             {
                 CollectElements(child, list);
@@ -728,15 +729,14 @@ namespace Blossom.Core
             if (Shell.WasResized)
             {
                 FullRenderRequired = true;
-                // Anchors re-evaluate on resize, but LayoutChildren only runs when layout-dirty.
-                // Without this, manual layouts (Kanban columns, modals) stay at old coordinates.
-                foreach (var element in Elements.Items)
+                // Re-evaluate layout on visible elements without wiping cached bitmap borders/shaders.
+                for (int i = 0; i < CachedRenderQueue.Count; i++)
                 {
-                    if (element == null) continue;
+                    var element = CachedRenderQueue[i];
+                    if (element == null || !element.EffectiveVisible) continue;
                     element.InvalidateLayout();
                     element.Transform._transformDirty = true;
                     element.MarkVisibilityClippingDirty();
-                    element.ClearRenderCache();
                 }
                 _hierarchyDirty = true;
             }
@@ -754,11 +754,6 @@ namespace Blossom.Core
                     float rh = Math.Max(1, Shell.RenderRect.Height);
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                     FullRenderRequired = false;
-
-                    foreach (var element in Elements.Items)
-                    {
-                        element.ClearRenderCache();
-                    }
                 }
                 else if (RenderRequired && DirtyRects.Count == 0)
                 {
@@ -826,6 +821,8 @@ namespace Blossom.Core
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
+                if (!element.EffectiveVisible) continue;
+
                 element.UpdateHover(Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime);
 
                 if (element.Transform.Evaluate())
@@ -943,7 +940,7 @@ namespace Blossom.Core
 
             foreach (var element in Elements.Items)
             {
-                if (element != null)
+                if (element != null && element.EffectiveVisible)
                 {
                     element.InvalidateLayout();
                     element.MarkVisibilityClippingDirty();

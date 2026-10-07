@@ -15,8 +15,9 @@ public class VisualElement : IDisposable
     public Guid Id { get; } = Guid.NewGuid();
     public string? Name { get; set; }
 
+    private string? _drawCommandKey;
     /// <summary>Stable key for the command ledger (never null). Prefer Id so unnamed elements still render.</summary>
-    internal string DrawCommandKey => Id.ToString("N");
+    internal string DrawCommandKey => _drawCommandKey ??= Id.ToString("N");
 
     public virtual void AddedToView() { }
     public virtual void RemovedFromView() { }
@@ -1963,7 +1964,13 @@ public class VisualElement : IDisposable
     private SKRect TextBounds;
     private TextLayout? _textLayout;
     private float _textLayoutW = float.NaN, _textLayoutH = float.NaN;
-    private string? _textLayoutKey;
+    private string? _lastLayoutText;
+    private TextOverflow _lastLayoutOverflow;
+    private int _lastLayoutMaxLines;
+    private float _lastLayoutFontSize;
+    private SKColor _lastLayoutColor;
+    private SKTypeface? _lastLayoutTypeface;
+    private bool _lastLayoutScrolling;
 
     /// <summary>Override to feed mixed-style runs. Default is a single span from <see cref="Text"/>.</summary>
     protected virtual IReadOnlyList<TextSpan> EnumerateTextSpans()
@@ -1978,7 +1985,7 @@ public class VisualElement : IDisposable
     protected void InvalidateTextLayout()
     {
         _textLayout = null;
-        _textLayoutKey = null;
+        _lastLayoutText = null;
         _localBoundsDirty = true;
         InvalidateLayout();
         InvalidatePaint();
@@ -2020,14 +2027,30 @@ public class VisualElement : IDisposable
         float maxW = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : innerW;
         float maxH = (overflow == TextOverflow.Visible && maxLines <= 1 && !scrolling) ? float.MaxValue : (scrolling ? float.MaxValue : innerH);
 
-        string key = $"{Text}|{overflow}|{maxLines}|{innerW:0.#}|{(scrolling ? 0 : innerH):0.#}|{text.SkFont.Size:0.#}|{text.Paint.Color}|{text.SkFont.Typeface?.FamilyName}|s{(scrolling ? 1 : 0)}";
-        if (_textLayout != null && _textLayoutKey == key && _textLayoutW == innerW && _textLayoutH == innerH)
+        if (_textLayout != null &&
+            Math.Abs(_textLayoutW - innerW) < 0.05f &&
+            Math.Abs(_textLayoutH - innerH) < 0.05f &&
+            Text == _lastLayoutText &&
+            overflow == _lastLayoutOverflow &&
+            maxLines == _lastLayoutMaxLines &&
+            Math.Abs(text.SkFont.Size - _lastLayoutFontSize) < 0.01f &&
+            text.Paint.Color == _lastLayoutColor &&
+            text.SkFont.Typeface == _lastLayoutTypeface &&
+            scrolling == _lastLayoutScrolling)
+        {
             return _textLayout;
+        }
 
         _textLayout = TextLayout.Build(EnumerateTextSpans(), text.SkFont, text.Paint.Color, maxW, maxH, overflow, maxLines);
-        _textLayoutKey = key;
         _textLayoutW = innerW;
         _textLayoutH = innerH;
+        _lastLayoutText = Text;
+        _lastLayoutOverflow = overflow;
+        _lastLayoutMaxLines = maxLines;
+        _lastLayoutFontSize = text.SkFont.Size;
+        _lastLayoutColor = text.Paint.Color;
+        _lastLayoutTypeface = text.SkFont.Typeface;
+        _lastLayoutScrolling = scrolling;
         TextBounds = new SKRect(0, 0, _textLayout.Width, _textLayout.Height);
         return _textLayout;
     }

@@ -655,7 +655,6 @@ public static class Shell
         window.Render += Render;
         window.Closing += Closing;
         window.FileDrop += OnFileDrop;
-        window.Resize += size => HandleClientSize(size.X, size.Y);
 
         DisplayScale.HookWindow(window);
 

@@ -860,7 +860,10 @@ public class Transform : IDisposable
                     MarkChildrenAwaitingAnchorReseed();
             }
 
-            ParentElement?.ClearRenderCache();
+            if (sizeChanged)
+            {
+                ParentElement?.ClearRenderCache();
+            }
 
             if (VisualElement.LayoutMutationDepth == 0)
             {

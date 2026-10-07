@@ -76,17 +76,25 @@ internal static class Renderer
         FramebufferWidth = width;
         FramebufferHeight = height;
 
-        CleanupOffscreen();
+        OffscreenSurface?.Dispose();
+        OffscreenSurface = null!;
+        _offscreenRenderTarget?.Dispose();
+        _offscreenRenderTarget = null!;
 
         if (_gl == null) return;
 
-        // 1. Create Offscreen OpenGL Framebuffer with Color Texture + Depth/Stencil attachments
+        // 1. Create or resize Offscreen OpenGL Framebuffer with Color Texture + Depth/Stencil attachments
         unsafe
         {
-            _offscreenFbo = _gl.GenFramebuffer();
+            if (_offscreenFbo == 0)
+            {
+                _offscreenFbo = _gl.GenFramebuffer();
+                _offscreenColorTex = _gl.GenTexture();
+                _offscreenDepthStencilRbo = _gl.GenRenderbuffer();
+            }
+
             _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _offscreenFbo);
 
-            _offscreenColorTex = _gl.GenTexture();
             _gl.BindTexture(TextureTarget.Texture2D, _offscreenColorTex);
             _gl.TexImage2D(
                 TextureTarget.Texture2D,
@@ -109,7 +117,6 @@ internal static class Renderer
                 _offscreenColorTex,
                 0);
 
-            _offscreenDepthStencilRbo = _gl.GenRenderbuffer();
             _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _offscreenDepthStencilRbo);
             _gl.RenderbufferStorage(
                 RenderbufferTarget.Renderbuffer,
@@ -219,8 +226,17 @@ internal static class Renderer
             int winW = Math.Max(1, window.Size.X);
             int winH = Math.Max(1, window.Size.Y);
 
+            bool fbChanged = fbW != FramebufferWidth || fbH != FramebufferHeight;
+            float logicalW = winW / Platform.DisplayScale.Factor;
+            float logicalH = winH / Platform.DisplayScale.Factor;
+            bool winChanged = Math.Abs(Shell.RenderRect.Width - logicalW) > 0.01f ||
+                              Math.Abs(Shell.RenderRect.Height - logicalH) > 0.01f;
+
+            if (!fbChanged && !winChanged)
+                return;
+
             // Rebuild GPU surfaces for new size (clears offscreen buffer)
-            if (fbW != FramebufferWidth || fbH != FramebufferHeight)
+            if (fbChanged)
             {
                 RenewCanvas(fbW, fbH);
             }
