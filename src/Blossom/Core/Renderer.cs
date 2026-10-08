@@ -141,7 +141,11 @@ internal static class Renderer
         // 2. Wrap the hardware offscreen FBO in a Skia RenderTarget
         var fbInfo = new GRGlFramebufferInfo(_offscreenFbo, 0x8058); // GL_RGBA8
         _offscreenRenderTarget = new GRBackendRenderTarget(width, height, 0, 8, fbInfo);
-        OffscreenSurface = SKSurface.Create(grContext, _offscreenRenderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+        // Pixel geometry must be known or Skia silently downgrades SubpixelAntialias text to grayscale.
+        // macOS has no LCD text since Mojave, so keep it Unknown there.
+        var pixelGeometry = OperatingSystem.IsMacOS() ? SKPixelGeometry.Unknown : SKPixelGeometry.RgbHorizontal;
+        using var surfaceProps = new SKSurfaceProperties(pixelGeometry);
+        OffscreenSurface = SKSurface.Create(grContext, _offscreenRenderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888, surfaceProps);
 
         // 3. Set the default canvas to the Offscreen one
         _Canvas = OffscreenSurface.Canvas;
