@@ -262,7 +262,8 @@ namespace Blossom.Utils
             {
                 Subpixel = true,
                 Edging = SKFontEdging.SubpixelAntialias,
-                Hinting = SKFontHinting.Normal,
+                // Slight matches browsers / fontconfig "hintslight": keeps glyph shapes, snaps vertical metrics only.
+                Hinting = SKFontHinting.Slight,
             };
         }
 

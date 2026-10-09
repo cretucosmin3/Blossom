@@ -50,9 +50,12 @@ Blossom/
 │       ├── Blossom.Demo.csproj
 │       ├── Program.cs
 │       ├── TestingApp.cs
-│       ├── Views/
-│       ├── Components/
-│       └── Models/
+│       ├── Frame/          # GalleryView, sidebar, top bar, nav item
+│       ├── Pages/          # Overview, Components, Tasks, Playground
+│       ├── Components/     # Sample controls built on Blossom.Primitives
+│       ├── Theme/          # Look (mode/accent signals) + Recipes (all styling)
+│       ├── State/          # AppState store (signals + memos)
+│       └── Views/          # Benchmark views
 ├── assets/                 # Fonts, images, icons (copied to demo output on build)
 ├── glfw/                   # Native GLFW libs for packaging
 └── README.md
@@ -128,9 +131,10 @@ Shell (static host)
 
 `src/Blossom.Demo` hosts the primary manual test harness and sample test components (not the framework API boundary):
 
-- Single active application view: **Blossom Studio** (`StudioView`), exercising fine-grained reactive signals (`Blossom.Reactive`), keyed list reconciliation (`For.Each`), two-way and derived form bindings.
-- Tabs under `Blossom.Demo/Tabs`: **TasksTab** (reactive 3-column Kanban board with keyed list reconciliation, search, and progress metrics), and **ControlsTab** (two-way signal inputs, sliders, switches, live preview, and batch updates).
-- Components under `Blossom.Demo/Components`: **Button**, **Switch**, **Checkbox**, **Container**, **Modal**, **InputField**, **Slider**, **StackPanel**.
+- Single active view: **Blossom Gallery** (`Frame/GalleryView`): sidebar navigation, top bar, pages routed with `Show.When` from `State/AppState` (signals + memos), toasts via `For.Each`.
+- Pages under `Blossom.Demo/Pages`: **Overview** (stat cards, bar chart, activity feed, derived progress), **Components** (every control, validation memos, two-way profile form), **Tasks** (keyed 3-column board, filters, add/move/delete), **Playground** (SKSL shaders, backdrop blur, 3D card with inverse hit-test, auto-orbit timer).
+- Components under `Blossom.Demo/Components` are built on `Blossom.Primitives` shells: `Button` (`ButtonBase`; variants, sizes, icons), `Switch` / `Checkbox` (`ToggleBase`), `TextField` (`TextInputBase`), `Segmented` / `Slider` / `ProgressBar` / `BarChart` / `Sparkline` (`Control`), plus `Icon`, `Badge`, `Avatar`, `Card`, `ScrollView`, `Dialog` (overlay stack), `Toast`, and the layout hooks `WrapPanel` / `ColumnLayout`.
+- Theme: `Theme/Look.cs` rebuilds one `Theme` from mode + accent signals; `Theme/Recipes.cs` holds every visual decision. Components stay headless and call `UseStyle` on state changes.
 - Benchmarks: `./Blossom --benchmark` (isolated benchmark views).
 
 When hardening core, update demos only as needed for compile/regression — do not expand the control library as the main deliverable unless asked.

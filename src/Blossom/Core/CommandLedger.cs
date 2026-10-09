@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SkiaSharp;
 using Svg.Skia;
 using Blossom.Core.Visual;
+using Blossom.Utils;
 
 namespace Blossom.Core;
 
@@ -13,6 +14,24 @@ public abstract class DrawCommand : IDisposable
 {
     public abstract void Execute(SKCanvas canvas);
     public virtual void Dispose() {}
+
+    /// <summary>
+    /// Snaps <paramref name="rect"/> to whole device pixels (origin and size rounded independently)
+    /// when the canvas matrix is scale + translate only. Rotated / 3D canvases return the rect unchanged.
+    /// </summary>
+    internal static SKRect SnapToDevicePixels(SKCanvas canvas, SKRect rect, out SKRect deviceRect)
+    {
+        var m = canvas.TotalMatrix;
+        deviceRect = m.MapRect(rect);
+        if (m.SkewX != 0 || m.SkewY != 0 || m.Persp0 != 0 || m.Persp1 != 0 || m.Persp2 != 1 ||
+            m.ScaleX <= 0 || m.ScaleY <= 0 || !m.TryInvert(out var inverse))
+            return rect;
+
+        float left = MathF.Round(deviceRect.Left);
+        float top = MathF.Round(deviceRect.Top);
+        deviceRect = SKRect.Create(left, top, MathF.Max(1, MathF.Round(deviceRect.Width)), MathF.Max(1, MathF.Round(deviceRect.Height)));
+        return inverse.MapRect(deviceRect);
+    }
 }
 
 /// <summary>
@@ -140,12 +159,7 @@ public sealed class DrawRichTextCommand : DrawCommand
                 continue;
 
             _paint.Color = run.Color;
-            using var font = new SKFont(run.Typeface, run.Size, 1f, 0f)
-            {
-                Subpixel = true,
-                Edging = SKFontEdging.SubpixelAntialias,
-                Hinting = SKFontHinting.Normal,
-            };
+            using var font = Fonts.CreateFont(run.Typeface, run.Size);
             canvas.DrawText(run.Text, x, baseline, SKTextAlign.Left, font, _paint);
         }
 
@@ -284,7 +298,17 @@ public class DrawImageCommand : DrawCommand
                 canvas.ClipRoundRect(_clipRoundRect, SKClipOperation.Intersect, true);
             }
 
-            canvas.DrawBitmap(_bitmap, _drawRect, new SKSamplingOptions(SKFilterMode.Linear), _paint);
+            // Pixel-aligned like a browser <img>: 1:1 draws are exact, downscales use mipmaps instead of aliasing.
+            var drawRect = SnapToDevicePixels(canvas, _drawRect, out var deviceRect);
+            SKSamplingOptions sampling;
+            if ((int)deviceRect.Width == _bitmap.Width && (int)deviceRect.Height == _bitmap.Height)
+                sampling = new SKSamplingOptions(SKFilterMode.Nearest);
+            else if (deviceRect.Width < _bitmap.Width || deviceRect.Height < _bitmap.Height)
+                sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
+            else
+                sampling = new SKSamplingOptions(SKFilterMode.Linear);
+
+            canvas.DrawBitmap(_bitmap, drawRect, sampling, _paint);
         }
     }
 
@@ -401,7 +425,7 @@ public class DrawSvgCommand : DrawCommand
     private readonly SKSvg _svg;
     private readonly SKRoundRect? _clipRoundRect;
     private readonly SKPaint _paint;
-    private readonly SKMatrix _transformMatrix;
+    private readonly SKRect _drawRect;
 
     public DrawSvgCommand(
         SKSvg svg,
@@ -446,11 +470,7 @@ public class DrawSvgCommand : DrawCommand
             drawRect = dest;
         }
 
-        _transformMatrix = SKMatrix.CreateTranslation(drawRect.Left, drawRect.Top);
-        if (sw > 0 && sh > 0)
-        {
-            _transformMatrix = _transformMatrix.PreConcat(SKMatrix.CreateScale(drawRect.Width / sw, drawRect.Height / sh));
-        }
+        _drawRect = drawRect;
 
         if (rTopLeft > 0 || rTopRight > 0 || rBottomRight > 0 || rBottomLeft > 0)
         {
@@ -518,14 +538,21 @@ public class DrawSvgCommand : DrawCommand
                 canvas.ClipRoundRect(_clipRoundRect, SKClipOperation.Intersect, true);
             }
 
-            canvas.SaveLayer(_paint);
+            // A layer is only needed to apply blur / grayscale / tint to the whole picture.
+            bool needsLayer = _paint.ImageFilter != null || _paint.ColorFilter != null;
+            if (needsLayer)
+                canvas.SaveLayer(_paint);
 
-            var mat = _transformMatrix;
+            // Pixel-aligned like a browser <img>, so icon edges don't straddle device pixels.
+            var drawRect = SnapToDevicePixels(canvas, _drawRect, out _);
+            var mat = SKMatrix.CreateTranslation(drawRect.Left, drawRect.Top)
+                .PreConcat(SKMatrix.CreateScale(drawRect.Width / cull.Width, drawRect.Height / cull.Height));
             canvas.Concat(ref mat);
 
             canvas.DrawPicture(_svg.Picture);
 
-            canvas.Restore();
+            if (needsLayer)
+                canvas.Restore();
         }
     }
 

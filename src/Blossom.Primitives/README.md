@@ -109,7 +109,7 @@ Themes.Current = light; // every UseStyle element re-runs its recipes against th
 
 Blossom does not ship a look. Skip `Theme` and set `ElementStyle` on each node, or build your own sheet and assign `Themes.Current`. Use the `th` argument inside recipes so a theme switch re-reads tokens. Later names in `UseStyle("card", "accent")` overwrite earlier fields.
 
-The Studio demo defines Dark / Light / Retro in `src/Blossom.Demo/Themes/DemoThemes.cs` and switches them from the header.
+The Gallery demo builds Dark / Light × accent themes in `src/Blossom.Demo/Theme/Look.cs` (an effect assigns `Themes.Current` when the mode or accent signal changes) and keeps every recipe in `Theme/Recipes.cs`. Recipes may read component state (hover, variant, checked); components call `UseStyle` again when that state changes.
 
 ## Headless Shell Primitives
 

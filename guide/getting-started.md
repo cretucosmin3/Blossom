@@ -88,7 +88,7 @@ Blossom/
 ├── src/Blossom.Reactive/   # SolidJS-inspired signals
 ├── src/Blossom.Primitives/ # layout hosts (Stack, Grid, Split)
 ├── src/Blossom.Pack/       # packs the three libraries into one NuGet id `Blossom`
-├── src/Blossom.Demo/       # Blossom Studio (not the public API)
+├── src/Blossom.Demo/       # Blossom Gallery (not the public API)
 ├── tests/Blossom.Reactive.Tests/
 ├── assets/                 # fonts, images (copied to demo output)
 └── README.md

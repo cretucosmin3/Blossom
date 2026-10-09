@@ -31,7 +31,7 @@ From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, and `sr
 - [`src/Blossom`](src/Blossom) — window, tree, draw, input
 - [`src/Blossom.Reactive`](src/Blossom.Reactive/README.md) — signals, memos, effects, `Bind*`, `For.Each`, `Show.When`
 - [`src/Blossom.Primitives`](src/Blossom.Primitives/README.md) — Stack, Grid, Split, `Colours`, `Theme`
-- [`src/Blossom.Demo`](src/Blossom.Demo) — sample host (Blossom Studio)
+- [`src/Blossom.Demo`](src/Blossom.Demo) — sample host (Blossom Gallery)
 - [`src/Blossom.Pack`](src/Blossom.Pack) — packs the three libraries into one nupkg
 
 ## Build

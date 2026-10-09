@@ -1,241 +1,184 @@
 using System;
-using System.Reflection;
-using Blossom.Core;
-using Blossom.Core.Input;
 using Blossom.Core.Visual;
-using Silk.NET.Input;
+using Blossom.Primitives;
 using SkiaSharp;
 
 namespace Blossom.Testing.Components;
 
-public class Button : VisualElement
+public enum ButtonVariant
 {
-    private SKColor _normalColor;
-    private SKColor _hoverColor;
-    private SKColor _pressColor;
-    private string _label = "";
-    private bool _isHovered = false;
-    private bool _isPressed = false;
-    private bool _enable3DEffect = true;
-    private float _pressScale = 0.95f;
+    Primary,
+    Secondary,
+    Outline,
+    Ghost,
+    Destructive
+}
 
-    public Action? Clicked;
-    public Action? OnClick;
+public enum ButtonSize
+{
+    Sm,
+    Md,
+    Lg
+}
 
-    [BuilderProperty("3D Effect", "Appearance")]
-    public bool Enable3DEffect
+/// <summary>
+/// <see cref="ButtonBase"/> with an optional leading icon and a label. Input, capture and
+/// keyboard activation come from the primitive; colours come from the theme's "button" recipe,
+/// which reads <see cref="Variant"/> and the hover/press state.
+/// </summary>
+public class Button : ButtonBase
+{
+    private readonly VisualElement _label;
+    private Icon? _icon;
+    private ButtonVariant _variant;
+    private ButtonSize _size;
+    private SKColor _content;
+
+    public Button(string? text = null, string? icon = null, ButtonVariant variant = ButtonVariant.Primary, ButtonSize size = ButtonSize.Md)
     {
-        get => _enable3DEffect;
-        set
-        {
-            if (_enable3DEffect != value)
-            {
-                _enable3DEffect = value;
-                ApplyCurrentVisualState();
-            }
-        }
+        Name = $"Button_{text ?? icon}";
+        _variant = variant;
+        _size = size;
+        Transform.TransformOriginX = 0.5f;
+        Transform.TransformOriginY = 0.5f;
+
+        _label = new VisualElement { IsClickthrough = true, Text = text ?? "" };
+        _label.Style.Text.Weight = 500;
+        _label.Style.Text.Alignment = TextAlign.Center;
+        _label.Visible = !string.IsNullOrEmpty(text);
+        AddChild(_label);
+
+        if (icon != null)
+            IconName = icon;
+
+        ApplySize();
+        this.UseStyle("button");
     }
 
-    [BuilderProperty("Press Scale", "Appearance", min: 0.1f, max: 1f, step: 0.05f)]
-    public float PressScale
-    {
-        get => _pressScale;
-        set
-        {
-            if (Math.Abs(_pressScale - value) > 0.001f)
-            {
-                _pressScale = value;
-                if (_isPressed && _enable3DEffect)
-                {
-                    ApplyCurrentVisualState();
-                }
-            }
-        }
-    }
+    /// <summary>Square, icon-only button.</summary>
+    public static Button IconOnly(string icon, ButtonVariant variant = ButtonVariant.Ghost, ButtonSize size = ButtonSize.Md)
+        => new(null, icon, variant, size);
 
     public string Label
     {
-        get => _label;
+        get => _label.Text;
         set
         {
-            _label = value;
-            Text = value;
-            InvalidatePaint();
+            _label.Text = value ?? "";
+            _label.Visible = _label.Text.Length > 0;
+            InvalidateLayout();
         }
     }
 
-    public SKColor NormalColor
+    public string? IconName
     {
-        get => _normalColor;
+        get => _icon?.IconName;
         set
         {
-            _normalColor = value;
-            UpdateColors();
-            ApplyCurrentVisualState();
-        }
-    }
-
-    public Button(string text = "Button", SKColor? color = null, bool enable3DEffect = true)
-    {
-        Name = $"Button_{text}";
-        _label = text;
-        Text = text;
-        _normalColor = color ?? new SKColor(58, 58, 58); // Gray 700
-        UpdateColors();
-
-        var attr = GetType().GetCustomAttribute<Enable3DEffectAttribute>();
-        _enable3DEffect = attr != null ? attr.Enabled : enable3DEffect;
-        if (attr != null)
-        {
-            _pressScale = attr.Scale;
-        }
-
-        Cursor = StandardCursor.Hand;
-        Padding = new Thickness(0, 4, 0, 0);
-
-        Style = new ElementStyle
-        {
-            BackColor = _normalColor,
-            Border = new BorderStyle
+            if (value == null)
             {
-                Width = 1,
-                Color = new SKColor(82, 82, 82), // Gray 600
-                Roundness = 6
-            },
-            Shadow = new ShadowStyle
-            {
-                Color = SKColors.Black.WithAlpha(40),
-                SpreadX = 0,
-                SpreadY = 1,
-                OffsetX = 0,
-                OffsetY = 1
-            },
-            Text = new TextStyle
-            {
-                Color = SKColors.White,
-                Size = 13,
-                Weight = 600,
-                Alignment = TextAlign.Center,
-                Padding = 0
+                if (_icon != null) { RemoveChild(_icon); _icon.Dispose(); _icon = null; }
             }
-        };
-
-        Events.OnMouseEnter += (s) =>
-        {
-            _isHovered = true;
-            ApplyCurrentVisualState();
-        };
-
-        Events.OnMouseLeave += (s) =>
-        {
-            _isHovered = false;
-            if (!HasPointerCapture)
+            else if (_icon == null)
             {
-                _isPressed = false;
+                _icon = new Icon(value, IconSize) { Color = _content };
+                InsertChild(0, _icon);
             }
-            ApplyCurrentVisualState();
-        };
-
-        Events.OnMouseDown += (s, e) =>
-        {
-            if (e.Button == 0 && EffectiveInteractive)
+            else
             {
-                _isPressed = true;
-                e.Handled = true;
-                CapturePointer();
-                ApplyCurrentVisualState();
+                _icon.IconName = value;
             }
-        };
-
-        Events.OnMouseUp += (s, e) =>
-        {
-            if (e.Button == 0)
-            {
-                _isPressed = false;
-                ReleasePointer();
-                ApplyCurrentVisualState();
-            }
-        };
-
-        Events.OnClick += (target, args) =>
-        {
-            if (!EffectiveInteractive) return;
-            Clicked?.Invoke();
-            OnClick?.Invoke();
-        };
-
-        Disposed += _ => ResetVisualState();
+            InvalidateLayout();
+        }
     }
 
-    public void ResetVisualState()
+    public ButtonVariant Variant
     {
-        _isPressed = false;
-        _isHovered = false;
-        ReleasePointer();
-        ApplyCurrentVisualState();
+        get => _variant;
+        set
+        {
+            if (_variant == value) return;
+            _variant = value;
+            this.UseStyle("button");
+        }
     }
 
-    protected override void OnInteractiveChanged()
+    public ButtonSize Size
     {
-        base.OnInteractiveChanged();
-        ApplyCurrentVisualState();
+        get => _size;
+        set
+        {
+            if (_size == value) return;
+            _size = value;
+            ApplySize();
+        }
     }
 
-    private void ApplyCurrentVisualState()
+    /// <summary>Label + icon colour. Set by the theme recipe.</summary>
+    public SKColor ContentColor
     {
-        if (!IsEnabled)
+        get => _content;
+        set
         {
-            Style.BackColor = _normalColor.WithAlpha(120);
-            Cursor = StandardCursor.Default;
+            _content = value;
+            _label.Style.Text.Color = value;
+            if (_icon != null) _icon.Color = value;
         }
-        else if (_isPressed)
-        {
-            Style.BackColor = _pressColor;
-            Cursor = StandardCursor.Hand;
-        }
-        else if (_isHovered)
-        {
-            Style.BackColor = _hoverColor;
-            Cursor = StandardCursor.Hand;
-        }
-        else
-        {
-            Style.BackColor = _normalColor;
-            Cursor = StandardCursor.Hand;
-        }
-
-        float targetScale = (_enable3DEffect && _isPressed && IsEnabled) ? _pressScale : 1f;
-        if (Math.Abs(Transform.ScaleX - targetScale) > 0.001f || Math.Abs(Transform.ScaleY - targetScale) > 0.001f)
-        {
-            Transform.ScaleX = targetScale;
-            Transform.ScaleY = targetScale;
-        }
-
-        InvalidatePaint();
     }
 
-    private void UpdateColors()
-    {
-        _hoverColor = new SKColor(
-            (byte)Math.Min(255, _normalColor.Red + 25),
-            (byte)Math.Min(255, _normalColor.Green + 25),
-            (byte)Math.Min(255, _normalColor.Blue + 25),
-            _normalColor.Alpha);
+    private bool IsIconOnly => !_label.Visible && _icon != null;
+    private float ControlHeight => _size switch { ButtonSize.Sm => 30f, ButtonSize.Lg => 42f, _ => 36f };
+    private float HorizontalPadding => _size switch { ButtonSize.Sm => 10f, ButtonSize.Lg => 18f, _ => 14f };
+    private float IconSize => _size == ButtonSize.Lg ? 18f : 16f;
 
-        _pressColor = new SKColor(
-            (byte)Math.Max(0, _normalColor.Red - 25),
-            (byte)Math.Max(0, _normalColor.Green - 25),
-            (byte)Math.Max(0, _normalColor.Blue - 25),
-            _normalColor.Alpha);
+    private void ApplySize()
+    {
+        _label.Style.Text.Size = _size switch { ButtonSize.Sm => 12.5f, ButtonSize.Lg => 14.5f, _ => 13.5f };
+        Transform.Height = ControlHeight;
+        InvalidateLayout();
+    }
+
+    protected override void OnStateChanged()
+    {
+        this.UseStyle("button");
+        float press = IsPressed && Enabled ? 0.97f : 1f;
+        Transform.ScaleX = press;
+        Transform.ScaleY = press;
+    }
+
+    protected override void LayoutChildren()
+    {
+        float gap = 8f;
+        float iconW = _icon != null ? IconSize : 0f;
+        float labelW = _label.Visible ? _label.GetPreferredSize(0, 0).Width : 0f;
+        float contentW = iconW + labelW + (iconW > 0 && labelW > 0 ? gap : 0f);
+
+        float x = Transform.AbsoluteX + (Transform.Width - contentW) / 2f;
+        float cy = Transform.AbsoluteY + Transform.Height / 2f;
+
+        if (_icon != null)
+        {
+            _icon.Transform.SetAbsoluteFrame(MathF.Round(x), MathF.Round(cy - IconSize / 2f), IconSize, IconSize);
+            x += iconW + gap;
+        }
+        if (_label.Visible)
+            _label.Transform.SetAbsoluteFrame(x, Transform.AbsoluteY, labelW, Transform.Height);
     }
 
     public override SKSize GetPreferredSize(float maxWidth, float maxHeight)
     {
-        var size = base.GetPreferredSize(maxWidth, maxHeight);
-        float w = Math.Max(size.Width, 48f);
-        float h = Math.Max(size.Height, 28f);
+        float h = ControlHeight;
+        float w;
+        if (IsIconOnly)
+            w = h;
+        else
+        {
+            float labelW = _label.Visible ? _label.GetPreferredSize(0, 0).Width : 0f;
+            float iconW = _icon != null ? IconSize + (labelW > 0 ? 8f : 0f) : 0f;
+            w = labelW + iconW + HorizontalPadding * 2f;
+        }
+        if (MinWidth.HasValue) w = Math.Max(w, MinWidth.Value);
         if (maxWidth > 0) w = Math.Min(w, maxWidth);
-        if (maxHeight > 0) h = Math.Min(h, maxHeight);
         return new SKSize(w, h);
     }
 }

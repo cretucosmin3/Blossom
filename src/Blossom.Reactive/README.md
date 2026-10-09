@@ -8,7 +8,7 @@ Blossom already owns a live element graph. This package mutates those nodes in p
 Signal / Memo  →  Effect  →  VisualElement property or child list
 ```
 
-The demo host (`src/Blossom.Demo`) uses this layer in **Blossom Studio**: the Board tab (`For.Each` kanban) and the Controls tab (two-way bindings, `Batch`, derived validation). Framework host contracts (window, keyboard, overlays, 3D) are in [`guide/`](../../guide/README.md).
+The demo host (`src/Blossom.Demo`) uses this layer in **Blossom Gallery**: routing with `Show.When`, the Tasks board and toasts with `For.Each`, two-way bindings and validation memos on the Components page, and theme switching driven by an effect. Framework host contracts (window, keyboard, overlays, 3D) are in [`guide/`](../../guide/README.md).
 
 ---
 
@@ -271,6 +271,6 @@ src/Blossom.Reactive/
 
 ## See also
 
-- Demo: `src/Blossom.Demo/Tabs/TasksTab.cs`, `src/Blossom.Demo/Tabs/ControlsTab.cs`
+- Demo: `src/Blossom.Demo/State/AppState.cs`, `src/Blossom.Demo/Pages/TasksPage.cs`, `src/Blossom.Demo/Pages/ComponentsPage.cs`
 - Tests: `tests/Blossom.Reactive.Tests/ReactiveTests.cs`
 - SolidJS mental model: [https://docs.solidjs.com/concepts/intro-to-reactivity](https://docs.solidjs.com/concepts/intro-to-reactivity)

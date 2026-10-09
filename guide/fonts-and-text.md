@@ -35,6 +35,6 @@ int word = layout.MoveByWord(index, -1);
 int n = layout.GraphemeCount;
 ```
 
-One width for drawing and caret. The demo `InputField` uses these APIs. A custom password field is policy (mask, paste, max length) on top of `TextLayout` + keyboard + pointer capture + clipboard.
+One width for drawing and caret. The demo `TextField` (on `TextInputBase`) measures with `Blossom.Utils.Text`. A custom password field is policy (mask, paste, max length) on top of `TextLayout` + keyboard + pointer capture + clipboard.
 
 Blossom will ship a field primitive later on this same surface.

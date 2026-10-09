@@ -1,43 +1,39 @@
 using System;
 using Blossom.Core;
+using Blossom.Testing.Frame;
 using Blossom.Testing.Views;
 
 namespace Blossom.Testing
 {
     public class TestingApplication : Application
     {
-        private readonly StudioView? _studioView;
-        private readonly BenchmarkStaticView? _benchStaticView;
-        private readonly BenchmarkDynamicView? _benchDynamicView;
-
         public TestingApplication()
         {
-            Title = "Blossom Studio";
+            Title = "Blossom Gallery";
             EnableStatsOverlay = true;
 
             if (BenchmarkManager.IsBenchmarkMode)
             {
                 Log.Info("Booting up in Benchmark mode...");
 
-                _benchStaticView = new BenchmarkStaticView();
-                _benchDynamicView = new BenchmarkDynamicView();
+                var benchStaticView = new BenchmarkStaticView();
+                var benchDynamicView = new BenchmarkDynamicView();
 
-                AddView(_benchStaticView);
-                AddView(_benchDynamicView);
+                AddView(benchStaticView);
+                AddView(benchDynamicView);
 
                 BenchmarkManager.OnRequestNextBenchmarkView += () =>
                 {
-                    SetActiveView(_benchDynamicView);
+                    SetActiveView(benchDynamicView);
                 };
 
-                SetActiveView(_benchStaticView);
+                SetActiveView(benchStaticView);
                 return;
             }
 
-            DemoThemes.Ensure();
-            _studioView = new StudioView();
-            AddView(_studioView);
-            SetActiveView(_studioView);
+            var gallery = new GalleryView();
+            AddView(gallery);
+            SetActiveView(gallery);
         }
     }
 }

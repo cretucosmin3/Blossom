@@ -140,7 +140,10 @@ public class Stack : LayoutElement
 
         foreach (var child in ParticipatingChildren())
         {
-            var size = child.GetPreferredSize(vertical ? maxWidth : 0f, vertical ? 0f : maxHeight);
+            // Children measure against the inner box: padding is not theirs to fill.
+            float innerMaxW = maxWidth > 0 ? Math.Max(1f, maxWidth - Padding.Horizontal) : 0f;
+            float innerMaxH = maxHeight > 0 ? Math.Max(1f, maxHeight - Padding.Vertical) : 0f;
+            var size = child.GetPreferredSize(vertical ? innerMaxW : 0f, vertical ? 0f : innerMaxH);
             float w = size.Width > 0 ? size.Width : child.Transform.Width;
             float h = size.Height > 0 ? size.Height : child.Transform.Height;
             if (vertical)
