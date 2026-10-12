@@ -39,7 +39,6 @@ public static class Shell
     internal static IWindow window;
     internal static Application ShellApp = null!;
     internal static RectangleF RenderRect = new(0, 0, 0, 0);
-    internal static bool WasResized;
 
     internal static Action OnRenderRequired;
 
@@ -474,7 +473,6 @@ public static class Shell
             return;
 
         RenderRect = new System.Drawing.RectangleF(0, 0, logicalW, logicalH);
-        WasResized = true;
 
         if (ShellApp?.ActiveView != null)
         {
@@ -1054,7 +1052,6 @@ public static class Shell
         LoadLogo();
 
         HandleClientSize(window.Size.X, window.Size.Y);
-        WasResized = true; // Ensure full render on startup
         StartWindow();
     }
 
@@ -1350,8 +1347,6 @@ public static class Shell
         {
             PostMarkers.Clear();
         }
-
-        WasResized = false;
 
         Renderer.FlushToScreen();
     }

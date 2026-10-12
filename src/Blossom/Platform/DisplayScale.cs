@@ -315,7 +315,6 @@ public static class DisplayScale
         float logicalH = winH / Factor;
 
         Shell.RenderRect = new RectangleF(0, 0, logicalW, logicalH);
-        Shell.WasResized = true;
 
         if (Shell.ShellApp?.ActiveView is { } view)
         {
