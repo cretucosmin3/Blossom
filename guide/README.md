@@ -31,6 +31,7 @@ Shell (static process host)
 | [Drawing and 3D](drawing-and-3d.md) | Retained paint, shaders, `SKMatrix44`, unprojection |
 | [Fonts and text](fonts-and-text.md) | Register faces, `SKFont`, `TextLayout` caret |
 | [Primitives](primitives.md) | `Blossom.Primitives`: Stack, Grid, Split, Colours, Theme |
+| [Game UI](game-ui.md) | Headless game engine embedding (MonoGame, Raylib, Stride, custom engines, `UiSession`, `MaxFps`) |
 
 Reactive signals live in [`src/Blossom.Reactive/README.md`](../src/Blossom.Reactive/README.md). Layout hosts and future widgets live in [`src/Blossom.Primitives/README.md`](../src/Blossom.Primitives/README.md).
 
