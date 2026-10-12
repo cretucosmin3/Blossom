@@ -223,11 +223,6 @@ public static class Shell
         catch { }
     }
 
-    internal static void DrainPostQueue() => UiDispatcher.DrainPostQueue();
-    static void DrainTimers() => UiDispatcher.DrainTimers();
-    static double? SecondsUntilNextTimer() => UiDispatcher.SecondsUntilNextTimer();
-    static long? NextTimerDueTicks() => UiDispatcher.NextTimerDueTicks();
-
     private static void InstallSynchronizationContext()
     {
         UiDispatcher.BindUiThread();
@@ -565,19 +560,19 @@ public static class Shell
         {
             while (!window.IsClosing)
             {
-                DrainPostQueue();
-                DrainTimers();
+                UiDispatcher.DrainPostQueue();
+                UiDispatcher.DrainTimers();
                 ShellApp.ActiveView?.TriggerLoop();
-                DrainPostQueue();
-                DrainTimers();
+                UiDispatcher.DrainPostQueue();
+                UiDispatcher.DrainTimers();
 
                 if (ShellApp.ActiveView?.RenderRequired == true)
                 {
                     WaitForFrameSlot();
                     if (window.IsClosing)
                         break;
-                    DrainPostQueue();
-                    DrainTimers();
+                    UiDispatcher.DrainPostQueue();
+                    UiDispatcher.DrainTimers();
                     if (ShellApp.ActiveView?.RenderRequired != true)
                         continue;
 
@@ -595,7 +590,7 @@ public static class Shell
                 }
                 else
                 {
-                    WaitForEvents(SecondsUntilNextTimer());
+                    WaitForEvents(UiDispatcher.SecondsUntilNextTimer());
                 }
             }
         }
@@ -634,22 +629,22 @@ public static class Shell
         while (now < target && !window.IsClosing)
         {
             long waitUntil = target;
-            long? timerDue = NextTimerDueTicks();
+            long? timerDue = UiDispatcher.NextTimerDueTicks();
             if (timerDue is long due && due < waitUntil)
                 waitUntil = due;
 
             double remainSec = (waitUntil - now) / (double)freq;
             if (remainSec <= 0)
             {
-                DrainPostQueue();
-                DrainTimers();
+                UiDispatcher.DrainPostQueue();
+                UiDispatcher.DrainTimers();
                 now = Stopwatch.GetTimestamp();
                 continue;
             }
 
             WaitForEvents(remainSec);
-            DrainPostQueue();
-            DrainTimers();
+            UiDispatcher.DrainPostQueue();
+            UiDispatcher.DrainTimers();
             now = Stopwatch.GetTimestamp();
         }
 
@@ -1283,7 +1278,7 @@ public static class Shell
 
     private static void Render(double time)
     {
-        DrainPostQueue();
+        UiDispatcher.DrainPostQueue();
         Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = (float)time;
         Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += (float)time;
 
