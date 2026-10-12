@@ -3,6 +3,7 @@ using Blossom.Core.Design;
 using Blossom.Core.Visual;
 using Blossom.Core.Input;
 using Blossom.Core.Delegates.Common;
+using Blossom.Hosting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -727,21 +728,6 @@ namespace Blossom.Core
 
         internal void Render()
         {
-            if (Shell.WasResized)
-            {
-                FullRenderRequired = true;
-                // Re-evaluate layout on visible elements without wiping cached bitmap borders/shaders.
-                for (int i = 0; i < CachedRenderQueue.Count; i++)
-                {
-                    var element = CachedRenderQueue[i];
-                    if (element == null || !element.EffectiveVisible) continue;
-                    element.InvalidateLayout();
-                    element.Transform._transformDirty = true;
-                    element.MarkVisibilityClippingDirty();
-                }
-                _hierarchyDirty = true;
-            }
-
             lock (_dirtyRectsLock)
             {
                 if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired && !_hierarchyDirty && !LayoutRequired) return;
@@ -890,23 +876,33 @@ namespace Blossom.Core
                     return;
             }
 
-            using (new SKAutoCanvasRestore(Renderer.Canvas))
+            var frame = GpuPass.Frame;
+            var canvas = frame.Canvas;
+            if (canvas is null)
+                return;
+
+            using (new SKAutoCanvasRestore(canvas))
             {
-                float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
-                float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                float logicalW = frame.LogicalSize.Width;
+                float logicalH = frame.LogicalSize.Height;
+                float scaleX = logicalW > 0 && frame.FramebufferSize.Width > 0
+                    ? frame.FramebufferSize.Width / logicalW : 1f;
+                float scaleY = logicalH > 0 && frame.FramebufferSize.Height > 0
+                    ? frame.FramebufferSize.Height / logicalH : 1f;
                 if (scaleX > 0 && scaleY > 0 && (scaleX != 1f || scaleY != 1f))
                 {
-                    Renderer.Canvas.Scale(scaleX, scaleY);
+                    canvas.Scale(scaleX, scaleY);
                 }
 
                 var r = _localDirtyRects[0];
                 // Round outward in device pixels: a clip edge that is whole in logical units is fractional
                 // at 125% / 150%, and AA edge pixels on it get blended twice across partial repaints.
                 var rounded = PixelGrid.SnapOutward(new SKRect(r.Left - 1f, r.Top - 1f, r.Right + 1f, r.Bottom + 1f));
-                Renderer.Canvas.ClipRect(rounded, SKClipOperation.Intersect, false);
+                if (GpuPass.PaintMode != PaintMode.FullFrame)
+                    canvas.ClipRect(rounded, SKClipOperation.Intersect, false);
 
-                // Clear dirty region to background
-                Renderer.Canvas.DrawColor(BackColor);
+                if (frame.ClearCanvas)
+                    canvas.DrawColor(frame.ClearColor);
 
                 // Painter's algorithm: every visible element that intersects the damage region
                 // must redraw (including scroll panels under the cards — not only the top card).
@@ -920,10 +916,10 @@ namespace Blossom.Core
                     var elementRect = element.RenderBounds;
                     elementRect.Inflate(4, 4);
 
-                    if (!rounded.IntersectsWith(elementRect))
+                    if (GpuPass.PaintMode != PaintMode.FullFrame && !rounded.IntersectsWith(elementRect))
                         continue;
 
-                    element.RenderSingle(Renderer.Canvas);
+                    element.RenderSingle(canvas);
                     element.IsDirty = false;
                 }
             }
@@ -948,7 +944,9 @@ namespace Blossom.Core
 
             foreach (var element in Elements.Items)
             {
-                if (element != null && element.EffectiveVisible)
+                if (element == null) continue;
+                element.Transform._transformDirty = true;
+                if (element.EffectiveVisible)
                 {
                     element.InvalidateLayout();
                     element.MarkVisibilityClippingDirty();

@@ -785,11 +785,6 @@ public class Transform : IDisposable
 
     internal bool Evaluate()
     {
-        if (Shell.WasResized)
-        {
-            _transformDirty = true;
-        }
-
         if (!_anchorsInitialized)
         {
             if (!HasRealParentSize)

@@ -1284,14 +1284,32 @@ public static class Shell
 
         Renderer.ResetContext();
         // Renderer.Canvas.Clear(ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
-        
+
         if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
         {
             Blossom.Core.BenchmarkManager.StartFrame(ShellApp.ActiveView?.Name ?? "Unknown");
         }
 
         frameTimer.Restart();
-        ShellApp.Render();
+        try
+        {
+            GpuPass.InGpuPass = true;
+            GpuPass.PaintMode = PaintMode.DirtyRect;
+            GpuPass.Frame = new RenderFrame(
+                canvas: Renderer.Canvas,
+                logicalSize: new UiSize(RenderRect.Width, RenderRect.Height),
+                framebufferSize: new FramebufferSize(Renderer.FramebufferWidth, Renderer.FramebufferHeight),
+                clearCanvas: true,
+                clearColor: ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
+
+            ShellApp.Render();
+        }
+        finally
+        {
+            GpuPass.InGpuPass = false;
+            GpuPass.PaintMode = default;
+            GpuPass.Frame = default;
+        }
         frameTimer.Stop();
 
         if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
