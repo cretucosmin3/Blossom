@@ -10,6 +10,7 @@ using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using Blossom.Core.Delegates.Common;
+using Blossom.Hosting;
 using Blossom.Platform;
 using System;
 using System.Globalization;
@@ -163,66 +164,29 @@ public static class Shell
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
 
-    private static readonly System.Collections.Concurrent.ConcurrentQueue<Action> _postQueue = new();
-    private static int _uiThreadId;
     private static SynchronizationContext? _previousSyncContext;
-    private static readonly object _timerLock = new();
-    private static readonly List<PostedTimer> _timerHeap = new();
 
     /// <summary>True when the caller is already on the window / UI thread.</summary>
-    public static bool CheckAccess() =>
-        _uiThreadId != 0 && Environment.CurrentManagedThreadId == _uiThreadId;
+    public static bool CheckAccess() => UiHost.Current.CheckAccess();
 
-    public static void Post(Action action)
-    {
-        if (action == null) return;
-        _postQueue.Enqueue(action);
-        WakeWait();
-    }
+    public static void Post(Action action) => UiDispatcher.Post(action);
 
     /// <summary>
     /// Queue <paramref name="action"/> on the UI thread and return a task that completes after it runs.
     /// Always queues (does not run inline). Do not <c>Wait</c> this task on the UI thread.
     /// </summary>
-    public static Task PostAsync(Action action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Post(() =>
-        {
-            try
-            {
-                action();
-                tcs.TrySetResult(null);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-        return tcs.Task;
-    }
+    public static Task PostAsync(Action action) => UiDispatcher.PostAsync(action);
 
     /// <summary>Run <paramref name="action"/> on the UI thread after <paramref name="delay"/>. Dispose to cancel.</summary>
-    public static IDisposable PostDelayed(TimeSpan delay, Action action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        if (delay < TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(delay));
-        return ScheduleTimer(delay, TimeSpan.Zero, periodic: false, action);
-    }
+    public static IDisposable PostDelayed(TimeSpan delay, Action action) =>
+        UiDispatcher.PostDelayed(delay, action);
 
     /// <summary>
     /// Run <paramref name="action"/> on the UI thread every <paramref name="period"/> (first fire after one period).
     /// Dispose to cancel.
     /// </summary>
-    public static IDisposable PostPeriodic(TimeSpan period, Action action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        if (period <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(period));
-        return ScheduleTimer(period, period, periodic: true, action);
-    }
+    public static IDisposable PostPeriodic(TimeSpan period, Action action) =>
+        UiDispatcher.PostPeriodic(period, action);
 
     public static string GetClipboardText()
     {
@@ -259,174 +223,18 @@ public static class Shell
         catch { }
     }
 
-    internal static void DrainPostQueue()
-    {
-        while (_postQueue.TryDequeue(out var action))
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Exception executing posted action:\n{ex}");
-            }
-        }
-    }
-
-    private static void WakeWait()
-    {
-        if (!IsLoaded)
-            return;
-        try
-        {
-            GlfwProvider.GLFW.Value.PostEmptyEvent();
-        }
-        catch { }
-    }
+    internal static void DrainPostQueue() => UiDispatcher.DrainPostQueue();
+    static void DrainTimers() => UiDispatcher.DrainTimers();
+    static double? SecondsUntilNextTimer() => UiDispatcher.SecondsUntilNextTimer();
+    static long? NextTimerDueTicks() => UiDispatcher.NextTimerDueTicks();
 
     private static void InstallSynchronizationContext()
     {
-        _uiThreadId = Environment.CurrentManagedThreadId;
+        UiDispatcher.BindUiThread();
         if (SynchronizationContext.Current is ShellSynchronizationContext)
             return;
         _previousSyncContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new ShellSynchronizationContext());
-    }
-
-    private static IDisposable ScheduleTimer(TimeSpan delay, TimeSpan period, bool periodic, Action action)
-    {
-        var timer = new PostedTimer
-        {
-            DueTicks = Stopwatch.GetTimestamp() + ToStopwatchTicks(delay),
-            Period = period,
-            Action = action,
-            IsPeriodic = periodic
-        };
-        lock (_timerLock)
-            TimerPush(timer);
-        WakeWait();
-        return timer;
-    }
-
-    private static long ToStopwatchTicks(TimeSpan span) =>
-        (long)(span.TotalSeconds * Stopwatch.Frequency);
-
-    private static void DrainTimers()
-    {
-        while (true)
-        {
-            PostedTimer? due;
-            long now = Stopwatch.GetTimestamp();
-            lock (_timerLock)
-            {
-                CompactCancelledTimers();
-                if (_timerHeap.Count == 0 || _timerHeap[0].DueTicks > now)
-                    return;
-                due = TimerPop();
-            }
-
-            if (due.Cancelled)
-                continue;
-
-            try
-            {
-                due.Action();
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Exception executing timed action:\n{ex}");
-            }
-
-            if (!due.IsPeriodic || due.Cancelled)
-                continue;
-
-            due.DueTicks = Stopwatch.GetTimestamp() + ToStopwatchTicks(due.Period);
-            lock (_timerLock)
-            {
-                if (!due.Cancelled)
-                    TimerPush(due);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Seconds until the next scheduled timer, 0 if one is already due, or null to wait indefinitely.
-    /// </summary>
-    private static double? SecondsUntilNextTimer()
-    {
-        long due;
-        lock (_timerLock)
-        {
-            CompactCancelledTimers();
-            if (_timerHeap.Count == 0)
-                return null;
-            due = _timerHeap[0].DueTicks;
-        }
-
-        long now = Stopwatch.GetTimestamp();
-        if (due <= now)
-            return 0;
-        return (due - now) / (double)Stopwatch.Frequency;
-    }
-
-    private static long? NextTimerDueTicks()
-    {
-        lock (_timerLock)
-        {
-            CompactCancelledTimers();
-            if (_timerHeap.Count == 0)
-                return null;
-            return _timerHeap[0].DueTicks;
-        }
-    }
-
-    private static void CompactCancelledTimers()
-    {
-        while (_timerHeap.Count > 0 && _timerHeap[0].Cancelled)
-            TimerPop();
-    }
-
-    private static void TimerPush(PostedTimer timer)
-    {
-        _timerHeap.Add(timer);
-        int i = _timerHeap.Count - 1;
-        while (i > 0)
-        {
-            int parent = (i - 1) >> 1;
-            if (_timerHeap[parent].DueTicks <= timer.DueTicks)
-                break;
-            _timerHeap[i] = _timerHeap[parent];
-            i = parent;
-        }
-        _timerHeap[i] = timer;
-    }
-
-    private static PostedTimer TimerPop()
-    {
-        int last = _timerHeap.Count - 1;
-        var min = _timerHeap[0];
-        var x = _timerHeap[last];
-        _timerHeap.RemoveAt(last);
-        if (last == 0)
-            return min;
-
-        int i = 0;
-        int n = _timerHeap.Count;
-        while (true)
-        {
-            int left = i * 2 + 1;
-            if (left >= n)
-                break;
-            int right = left + 1;
-            int smallest = (right < n && _timerHeap[right].DueTicks < _timerHeap[left].DueTicks) ? right : left;
-            if (x.DueTicks <= _timerHeap[smallest].DueTicks)
-                break;
-            _timerHeap[i] = _timerHeap[smallest];
-            i = smallest;
-        }
-        _timerHeap[i] = x;
-        return min;
     }
 
     /// <summary>
@@ -448,26 +256,6 @@ public static class Shell
         catch
         {
             try { window.DoEvents(); } catch { }
-        }
-    }
-
-    private sealed class PostedTimer : IDisposable
-    {
-        public long DueTicks;
-        public TimeSpan Period;
-        public Action Action = null!;
-        public bool IsPeriodic;
-        public bool Cancelled;
-
-        public void Dispose()
-        {
-            lock (_timerLock)
-            {
-                if (Cancelled)
-                    return;
-                Cancelled = true;
-            }
-            WakeWait();
         }
     }
 
@@ -493,7 +281,7 @@ public static class Shell
 
             // Inline on the UI thread. Also inline before the window thread exists so
             // Send during startup does not wait on a pump that has not started.
-            if (CheckAccess() || _uiThreadId == 0)
+            if (CheckAccess() || !UiDispatcher.HasUiThread)
             {
                 d(state);
                 return;
@@ -572,8 +360,9 @@ public static class Shell
     /// </summary>
     public static void Initialize(Application application)
     {
-        _uiThreadId = Environment.CurrentManagedThreadId;
         ShellApp = application ?? throw new ArgumentNullException(nameof(application));
+        UiDispatcher.BindUiThread();
+        UiHost.Install(new DesktopUiHost());
 
         try
         {
@@ -663,7 +452,7 @@ public static class Shell
             if (state != WindowState.Minimized)
             {
                 HandleClientSize(window.Size.X, window.Size.Y);
-                try { GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+                UiHost.Current.Wake();
             }
         };
 
@@ -699,7 +488,7 @@ public static class Shell
             ShellApp.ActiveView.ForceLayoutEvaluation();
         }
 
-        try { GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+        UiHost.Current.Wake();
 
         ClientResized?.Invoke((int)logicalW, (int)logicalH);
     }
@@ -1192,7 +981,8 @@ public static class Shell
         ShellApp.Dispose();
         if (SynchronizationContext.Current is ShellSynchronizationContext)
             SynchronizationContext.SetSynchronizationContext(_previousSyncContext);
-        _uiThreadId = 0;
+        UiDispatcher.ClearUiThread();
+        UiHost.Install(NullUiHost.Instance);
     }
 
     private static void OnFileDrop(string[] paths)

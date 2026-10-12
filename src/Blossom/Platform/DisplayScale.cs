@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Blossom.Core;
+using Blossom.Hosting;
 using Silk.NET.Core.Contexts;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
@@ -324,7 +325,7 @@ public static class DisplayScale
         ScaleChanged?.Invoke(Factor);
         Shell.RaiseClientResized((int)logicalW, (int)logicalH);
 
-        try { GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
+        UiHost.Current.Wake();
         return true;
     }
 

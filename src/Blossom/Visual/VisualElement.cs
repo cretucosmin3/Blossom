@@ -6,6 +6,7 @@ using SkiaSharp;
 using Blossom.Core;
 using Blossom.Core.Design;
 using Blossom.Core.Visual.Enums;
+using Blossom.Hosting;
 using Silk.NET.Input;
 
 namespace Blossom.Core.Visual;
@@ -146,9 +147,7 @@ public class VisualElement : IDisposable
 
             ParentView.RenderRequired = true;
             if (LayoutMutationDepth == 0)
-            {
-                try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
-            }
+                UiHost.Current.Wake();
         }
     }
 

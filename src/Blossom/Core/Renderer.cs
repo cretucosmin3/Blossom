@@ -1,4 +1,5 @@
 using System;
+using Blossom.Hosting;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using SkiaSharp;
@@ -254,11 +255,7 @@ internal static class Renderer
             }
 
             // Event-driven loop may be waiting; wake it so the frame paints immediately
-            try
-            {
-                Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent();
-            }
-            catch { /* GLFW may not be ready during teardown */ }
+            UiHost.Current.Wake();
 
             // On Windows, the Win32 modal sizing loop (WM_ENTERSIZEMOVE / WM_SIZING) blocks the
             // main thread inside DefWindowProc until mouse release. Render synchronously so the
