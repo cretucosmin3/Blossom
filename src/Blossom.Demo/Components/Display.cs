@@ -142,11 +142,12 @@ public class ScrollView : ScrollContainer
 
     protected override void LayoutChildren()
     {
-        base.LayoutChildren();
+        // Content size first: the base pass decides scrollbar visibility from it.
         float w = Math.Max(1f, Transform.Computed.Width);
         float h = Math.Max(1f, Content.GetPreferredSize(w, 0).Height);
         Content.Transform.SetLocalFrame(0, 0, w, h);
         SetContentSize(w, h);
+        base.LayoutChildren();
     }
 }
 

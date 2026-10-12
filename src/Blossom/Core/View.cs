@@ -137,6 +137,7 @@ namespace Blossom.Core
         public VisualElement? ActiveKeyboardElement { get; private set; }
 
         private readonly List<OverlayEntry> _overlays = new();
+        private bool _continuationFrame;
 
         // Legacy compatibility
         public VisualElement? FocusedElement
@@ -755,12 +756,13 @@ namespace Blossom.Core
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                     FullRenderRequired = false;
                 }
-                else if (RenderRequired && DirtyRects.Count == 0)
+                else if (RenderRequired && DirtyRects.Count == 0 && !_continuationFrame)
                 {
                     float rw = Math.Max(1, Shell.RenderRect.Width);
                     float rh = Math.Max(1, Shell.RenderRect.Height);
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                 }
+                _continuationFrame = false;
 
                 _localDirtyRects.Clear();
                 _localDirtyRects.AddRange(DirtyRects);
@@ -818,12 +820,15 @@ namespace Blossom.Core
             // 2. Perform layout on dirty nodes (LayoutChildren hook)
             // 3. Evaluate visibility and clipping
             // Layout can produce additional dirty rects (children moving) — merge those before paint.
+            // The first frame after an idle wait reports the whole wait as its delta. Cap it so OnUpdate
+            // animations start from their first step instead of jumping straight to the end.
+            float animationDt = Math.Min(Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime, 1f / 30f);
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
                 if (!element.EffectiveVisible) continue;
 
-                element.UpdateHover(Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime);
+                element.UpdateHover(animationDt);
 
                 if (element.Transform.Evaluate())
                 {
@@ -857,6 +862,11 @@ namespace Blossom.Core
                 {
                     _localDirtyRects.AddRange(DirtyRects);
                     DirtyRects.Clear();
+                    // Invalidations raised while this frame updated (OnUpdate animations, scroll easing) are
+                    // painted now. The render request they also raised only means "run another frame";
+                    // without this the next frame finds no dirty rects and repaints the whole window.
+                    if (RenderRequired && !FullRenderRequired && !_hierarchyDirty)
+                        _continuationFrame = true;
                 }
             }
 
@@ -890,11 +900,9 @@ namespace Blossom.Core
                 }
 
                 var r = _localDirtyRects[0];
-                var rounded = SKRect.Create(
-                    (int)Math.Floor(r.Left),
-                    (int)Math.Floor(r.Top),
-                    (int)Math.Ceiling(r.Width) + 2,
-                    (int)Math.Ceiling(r.Height) + 2);
+                // Round outward in device pixels: a clip edge that is whole in logical units is fractional
+                // at 125% / 150%, and AA edge pixels on it get blended twice across partial repaints.
+                var rounded = PixelGrid.SnapOutward(new SKRect(r.Left - 1f, r.Top - 1f, r.Right + 1f, r.Bottom + 1f));
                 Renderer.Canvas.ClipRect(rounded, SKClipOperation.Intersect, false);
 
                 // Clear dirty region to background

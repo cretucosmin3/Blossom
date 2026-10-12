@@ -40,24 +40,24 @@ public sealed class BarChart : Control
     {
         _labels = labels;
         _values = values;
+        // A different bar count is a different series (days vs months): grow the new bars from zero
+        // instead of easing Monday out of January's value.
         if (_shown.Length != values.Length)
-        {
-            var next = new float[values.Length];
-            Array.Copy(_shown, next, Math.Min(_shown.Length, next.Length));
-            _shown = next;
-        }
+            _shown = new float[values.Length];
         InvalidatePaint();
     }
 
     private const float AxisH = 24f;
     private const float TopPad = 28f;
 
+    /// <summary>Axis top. Includes the values still easing out, so bars never outgrow the plot mid-animation.</summary>
     private float Peak
     {
         get
         {
             float max = 1f;
             foreach (var v in _values) max = Math.Max(max, v);
+            foreach (var v in _shown) max = Math.Max(max, v);
             return NiceCeiling(max);
         }
     }
@@ -97,7 +97,8 @@ public sealed class BarChart : Control
         for (int i = 0; i < _shown.Length; i++)
         {
             float d = _values[i] - _shown[i];
-            if (Math.Abs(d) < 0.01f) { _shown[i] = _values[i]; continue; }
+            if (d == 0f) continue;
+            if (Math.Abs(d) < 0.01f) { _shown[i] = _values[i]; moving = true; continue; }
             _shown[i] += d * Math.Min(1f, dt * 9f);
             moving = true;
         }
@@ -108,6 +109,8 @@ public sealed class BarChart : Control
     {
         float plotH = H - AxisH - TopPad;
         float peak = Peak;
+        // Never paint outside the element: the engine only repaints our bounds, so stray pixels would linger.
+        c.ClipRect(new SKRect(0, 0, W, H));
         using var paint = new SKPaint { IsAntialias = true };
         var small = Ui.Font(11f);
 
@@ -122,7 +125,7 @@ public sealed class BarChart : Control
         for (int i = 0; i < _values.Length; i++)
         {
             var (x, bw) = Slot(i);
-            float h = Math.Max(2f, plotH * (_shown[i] / peak));
+            float h = Math.Clamp(plotH * (_shown[i] / peak), 2f, plotH);
             float top = TopPad + plotH - h;
             paint.Color = i == _hover ? Palette.BarHover : Palette.Bar;
             using var rr = new SKRoundRect();
@@ -142,7 +145,7 @@ public sealed class BarChart : Control
         if (_hover >= 0 && _hover < _values.Length)
         {
             var (x, bw) = Slot(_hover);
-            float h = Math.Max(2f, plotH * (_shown[_hover] / peak));
+            float h = Math.Clamp(plotH * (_shown[_hover] / peak), 2f, plotH);
             string text = Format(_values[_hover]);
             var font = Ui.Font(12f, 600);
             float tw = Blossom.Utils.Text.MeasureWidth(text, font) + 16f;
@@ -185,6 +188,7 @@ public sealed class Sparkline : Control
     protected override void Paint(SKCanvas c)
     {
         if (_values.Length < 2) return;
+        c.ClipRect(new SKRect(0, 0, W, H));
         float min = float.MaxValue, max = float.MinValue;
         foreach (var v in _values) { min = Math.Min(min, v); max = Math.Max(max, v); }
         float range = Math.Max(0.001f, max - min);

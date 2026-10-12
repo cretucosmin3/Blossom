@@ -844,7 +844,10 @@ public class Transform : IDisposable
                     var newBounds = ParentElement.RenderBounds;
                     ParentElement.ParentView.AddDirtyRect(newBounds);
                     ParentElement._lastRenderBounds = newBounds;
-                    ParentElement._isPaintDirty = true;
+                    // Draw commands are local: a pure move (scrolling, re-flow) repaints the old and new
+                    // bounds above but keeps the recorded commands. Only a size change re-records.
+                    if (sizeChanged)
+                        ParentElement._isPaintDirty = true;
                     ParentElement.ParentView.RenderRequired = true;
                 }
             }
@@ -865,7 +868,7 @@ public class Transform : IDisposable
                 ParentElement?.ClearRenderCache();
             }
 
-            if (VisualElement.LayoutMutationDepth == 0)
+            if (sizeChanged && VisualElement.LayoutMutationDepth == 0)
             {
                 ParentElement?.InvalidatePaint();
             }

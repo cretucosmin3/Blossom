@@ -617,8 +617,8 @@ public class DrawBackdropBlurCommand : DrawCommand
         if (snapshot == null) return;
 
         // 2. Create the local rounded rectangle path
-        float w = _element.Transform.Computed.Width;
-        float h = _element.Transform.Computed.Height;
+        float w = _element.PaintWidth;
+        float h = _element.PaintHeight;
         if (w <= 0 || h <= 0) return;
 
         var rect = new SKRect(0, 0, w, h);
@@ -750,7 +750,7 @@ public class DrawShaderBackgroundCommand : DrawCommand
         _element = element;
         _renderMode = renderMode;
 
-        var rect = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
+        var rect = new SKRect(0, 0, _element.PaintWidth, _element.PaintHeight);
         _roundRect = new SKRoundRect(rect);
         _roundRect.SetRectRadii(rect, new SKPoint[] {
             new(_rTopLeft, _rTopLeft),
@@ -763,8 +763,8 @@ public class DrawShaderBackgroundCommand : DrawCommand
     public override void Execute(SKCanvas canvas)
     {
         bool aa = _element.IsAntialias;
-        float w = Math.Max(1f, _element.Transform.Computed.Width);
-        float h = Math.Max(1f, _element.Transform.Computed.Height);
+        float w = Math.Max(1f, _element.PaintWidth);
+        float h = Math.Max(1f, _element.PaintHeight);
         var dest = new SKRect(0, 0, w, h);
         using var blitPaint = new SKPaint
         {
@@ -939,7 +939,7 @@ public class DrawBorderCommand : DrawCommand
         _element = element;
         _renderMode = renderMode;
 
-        _localBounds = new SKRect(0, 0, _element.Transform.Computed.Width, _element.Transform.Computed.Height);
+        _localBounds = new SKRect(0, 0, _element.PaintWidth, _element.PaintHeight);
         _localBounds.Inflate(_width / 2f, _width / 2f);
 
         _roundRect = new SKRoundRect(_localBounds);
@@ -1007,8 +1007,8 @@ public class DrawBorderCommand : DrawCommand
                             using var backdropShader = snapshot.ToShader();
                             var global44 = _element.Transform.GetGlobalM44();
                             var globalMatrix = global44.Matrix;
-                            float localW = _element.Transform.Computed.Width;
-                            float localH = _element.Transform.Computed.Height;
+                            float localW = _element.PaintWidth;
+                            float localH = _element.PaintHeight;
                             var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
                             float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
                             float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
@@ -1048,8 +1048,8 @@ public class DrawBorderCommand : DrawCommand
                 using var backdropShader = snapshot.ToShader();
                 var global44 = _element.Transform.GetGlobalM44();
                 var globalMatrix = global44.Matrix;
-                float localW = _element.Transform.Computed.Width;
-                float localH = _element.Transform.Computed.Height;
+                float localW = _element.PaintWidth;
+                float localH = _element.PaintHeight;
                 var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
                 float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
                 float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;

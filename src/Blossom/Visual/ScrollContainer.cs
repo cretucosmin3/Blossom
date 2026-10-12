@@ -450,6 +450,8 @@ public class ScrollContainer : VisualElement
         InvalidateLayout();
     }
 
+    private (float, float, float, float, float, bool, bool, float, float) _lastScrollbarFrame;
+
     protected override void LayoutChildren()
     {
         base.LayoutChildren();
@@ -478,6 +480,13 @@ public class ScrollContainer : VisualElement
             ParentView?.MarkHierarchyDirty();
 
         float thickness = ScrollbarThickness;
+
+        // Relayout of the content (e.g. a label changing text) must not repaint full-height scrollbars
+        // when their frame is unchanged; scroll offset changes repaint them via OnScrollOffsetChanged.
+        var frame = (viewW, viewH, originX, originY, thickness, showV, showH, ContentWidth, ContentHeight);
+        if (frame == _lastScrollbarFrame)
+            return;
+        _lastScrollbarFrame = frame;
 
         if (showV)
         {

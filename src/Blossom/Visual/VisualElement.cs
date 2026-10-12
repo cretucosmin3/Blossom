@@ -1447,13 +1447,24 @@ public class VisualElement : IDisposable
         {
             if (_Text.ToString() != value)
             {
+                // Single-line, non-wrapping text measures the same under any width constraint, so if the
+                // new string has the same size (e.g. "71%" -> "72%") ancestors need no relayout: a
+                // per-frame label would otherwise re-layout the whole page on every change.
+                bool sizeIndependent = Style?.Text is { Overflow: TextOverflow.Visible, MaxLines: <= 1 } && !ScrollsTextContent;
+                float oldW = _textLayout?.Width ?? -1f;
+                float oldH = _textLayout?.Height ?? -1f;
+
                 _Text.Clear();
                 _Text.Append(value);
 
                 _localBoundsDirty = true;
                 _textLayout = null;
                 CalculateText();
-                InvalidateLayout();
+
+                bool sameSize = sizeIndependent && oldW >= 0f && _textLayout != null &&
+                    Math.Abs(_textLayout.Width - oldW) < 0.01f && Math.Abs(_textLayout.Height - oldH) < 0.01f;
+                if (!sameSize)
+                    InvalidateLayout();
                 InvalidatePaint();
             }
         }
@@ -1477,14 +1488,17 @@ public class VisualElement : IDisposable
         // Re-record when size changes so fills/borders match current bounds (scrolled cards
         // often first recorded at 0×0 or stale size and kept empty backgrounds).
         string drawKey = DrawCommandKey;
-        float w = Transform.Computed.Width;
-        float h = Transform.Computed.Height;
+        // Compare the device-pixel paint size: a sub-pixel layout change can still move an edge by one pixel.
+        float w = PaintWidth;
+        float h = PaintHeight;
         bool sizeChanged =
             float.IsNaN(_lastRecordedWidth) ||
-            Math.Abs(_lastRecordedWidth - w) > 0.5f ||
-            Math.Abs(_lastRecordedHeight - h) > 0.5f;
+            Math.Abs(_lastRecordedWidth - w) > 0.001f ||
+            Math.Abs(_lastRecordedHeight - h) > 0.001f;
 
-        if (IsDirty || _isPaintDirty || sizeChanged || ParentView.Ledger.GetCommands(drawKey) == null)
+        // Commands are recorded in local coordinates, so a move (scrolling, layout shift) only needs a
+        // repaint of the dirty region. IsDirty tracks that repaint; re-record only when content or size changed.
+        if (_isPaintDirty || sizeChanged || ParentView.Ledger.GetCommands(drawKey) == null)
         {
             RecordDrawCommands(ParentView.Ledger);
             _lastRecordedWidth = w;
@@ -1509,7 +1523,8 @@ public class VisualElement : IDisposable
                 ApplyClippingHierarchy(targetCanvas);
             }
 
-            var globalMatrix3D = Transform.GetGlobalM44();
+            // Paint at a device-pixel origin so box edges and 1px lines do not straddle two pixel rows.
+            var globalMatrix3D = PixelGrid.SnapTranslation(Transform.GetGlobalM44());
 
             bool hasTransition = transitionType == TransitionEffectType.HalftoneDots && transitionProgress < 1.0f;
             bool hasOpacity = opacity < 0.999f;
@@ -1541,8 +1556,8 @@ public class VisualElement : IDisposable
             // Ancestor clip alone does not clip Overflow=Clip content that draws past local bounds.
             if (IsClipping)
             {
-                float cw = Transform.Computed.Width;
-                float ch = Transform.Computed.Height;
+                float cw = PaintWidth;
+                float ch = PaintHeight;
                 if (cw > 0 && ch > 0)
                 {
                     int startIdx = 0;
@@ -1665,14 +1680,15 @@ public class VisualElement : IDisposable
         return _cachedRoundRect;
     }
 
+    /// <summary>Width used for painting: the layout width rounded to whole device pixels.</summary>
+    internal float PaintWidth => PixelGrid.SnapLength(Transform.Computed.Width, PixelGrid.ScaleX);
+
+    /// <summary>Height used for painting: the layout height rounded to whole device pixels.</summary>
+    internal float PaintHeight => PixelGrid.SnapLength(Transform.Computed.Height, PixelGrid.ScaleY);
+
     internal SKRoundRect GetLocalRoundRect()
     {
-        var rect = new SKRect(
-            0,
-            0,
-            Transform.Width,
-            Transform.Height
-        );
+        var rect = new SKRect(0, 0, PaintWidth, PaintHeight);
         float r1 = Style?.Border?.RoundnessTopLeft ?? 0;
         float r2 = Style?.Border?.RoundnessTopRight ?? 0;
         float r3 = Style?.Border?.RoundnessBottomRight ?? 0;
@@ -1754,7 +1770,7 @@ public class VisualElement : IDisposable
                 using var path = new SKPath();
                 path.AddRoundRect(localRoundRect);
                 
-                var globalMatrix3D = ancestor.Transform.GetGlobalM44();
+                var globalMatrix3D = PixelGrid.SnapTranslation(ancestor.Transform.GetGlobalM44());
                 if (ancestor.Transform.Has3DTransforms)
                 {
                     using var mapped = Transform.MapPath(path, globalMatrix3D);
@@ -1775,8 +1791,10 @@ public class VisualElement : IDisposable
     {
         var cmds = new List<DrawCommand>();
 
-        // Local boundaries relative to element origin (0, 0)
-        var rect = new SKRect(0, 0, Transform.Computed.Width, Transform.Computed.Height);
+        // Local boundaries relative to element origin (0, 0), in whole device pixels
+        var rect = new SKRect(0, 0, PaintWidth, PaintHeight);
+        // A 1px border at 125% is 1.25 device px and always smears; round strokes to whole pixels.
+        float borderWidth = PixelGrid.SnapStroke(Style?.Border?.Width ?? 0f, PixelGrid.ScaleX);
 
         // 1. Draw Shadow
         if (Style?.Shadow?.HasValidValues() == true)
@@ -1883,7 +1901,7 @@ public class VisualElement : IDisposable
             {
                 cmds.Add(new DrawBorderCommand(
                     Style.BorderEffect,
-                    Style.Border.Width,
+                    borderWidth,
                     Style.BorderEffectSpeed,
                     Style.BorderEffectAmount,
                     Style.Border.Color,
@@ -1901,13 +1919,13 @@ public class VisualElement : IDisposable
                 {
                     Style = SKPaintStyle.Stroke,
                     IsAntialias = IsAntialias,
-                    StrokeWidth = Style.Border.Width,
+                    StrokeWidth = borderWidth,
                     Color = Style.Border.Color,
                     PathEffect = Style.Border.PathEffect
                 };
                 
                 var borderRect = rect;
-                float halfBw = Style.Border.Width / 2f;
+                float halfBw = borderWidth / 2f;
                 borderRect.Inflate(halfBw, halfBw);
 
                 float rTL = Style.Border.RoundnessTopLeft > 0 ? Style.Border.RoundnessTopLeft + halfBw : 0;
