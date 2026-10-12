@@ -15,6 +15,7 @@ public class ScrollContainer : VisualElement
     private float _targetScrollY = 0f;
     private bool _isAnimatingX = false;
     private bool _isAnimatingY = false;
+    private bool _scrollKeepAliveCounted;
 
     public bool SmoothScroll { get; set; } = true;
     public float ScrollDuration { get; set; } = 0.22f;
@@ -35,6 +36,7 @@ public class ScrollContainer : VisualElement
                 _scrollX = clamped;
                 OnScrollOffsetChanged();
             }
+            SyncScrollKeepAlive();
         }
     }
 
@@ -51,6 +53,7 @@ public class ScrollContainer : VisualElement
                 _scrollY = clamped;
                 OnScrollOffsetChanged();
             }
+            SyncScrollKeepAlive();
         }
     }
 
@@ -277,6 +280,8 @@ public class ScrollContainer : VisualElement
                 _isAnimatingX = false;
             }
         }
+
+        SyncScrollKeepAlive();
     }
 
     public void AnimateScrollBy(float deltaX, float deltaY)
@@ -362,6 +367,8 @@ public class ScrollContainer : VisualElement
                 _isAnimatingX = false;
             }
         }
+
+        SyncScrollKeepAlive();
     }
 
     protected override void OnUpdate(float dt)
@@ -410,6 +417,8 @@ public class ScrollContainer : VisualElement
 
             ScheduleRender();
         }
+
+        SyncScrollKeepAlive();
     }
 
     public void MarkChildrenTransformDirty()
@@ -441,6 +450,20 @@ public class ScrollContainer : VisualElement
             OnScrollOffsetChanged();
             ScheduleRender();
         }
+
+        SyncScrollKeepAlive();
+    }
+
+    void SyncScrollKeepAlive()
+    {
+        bool should = _isAnimatingX || _isAnimatingY;
+        if (should == _scrollKeepAliveCounted)
+            return;
+        _scrollKeepAliveCounted = should;
+        if (should)
+            ParentView?.AddContinuousKeepAlive();
+        else
+            ParentView?.RemoveContinuousKeepAlive();
     }
 
     protected override void OnSizeChanged(float width, float height)

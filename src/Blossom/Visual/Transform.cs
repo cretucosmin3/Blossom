@@ -254,8 +254,8 @@ public class Transform : IDisposable
         }
     }
 
-    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : DesignCanvas.DefaultDesignWidth);
-    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : DesignCanvas.DefaultDesignHeight);
+    private float ParentWidth => Parent != null ? Parent.Width : (ParentElement?.ParentView != null ? ParentElement.ParentView.HostLayoutWidth : DesignCanvas.DefaultDesignWidth);
+    private float ParentHeight => Parent != null ? Parent.Height : (ParentElement?.ParentView != null ? ParentElement.ParentView.HostLayoutHeight : DesignCanvas.DefaultDesignHeight);
 
     /// <summary>
     /// True when stretch anchors can be captured against a real parent or view size
@@ -268,7 +268,7 @@ public class Transform : IDisposable
             if (Parent != null)
                 return Parent.Width > 0 || Parent.Height > 0;
             var view = ParentElement?.ParentView;
-            return view != null && (view.Width > 0 || view.Height > 0);
+            return view != null && (view.HostLayoutWidth > 0 || view.HostLayoutHeight > 0);
         }
     }
 
@@ -664,7 +664,7 @@ public class Transform : IDisposable
     {
         float ParentWidth = Parent is not null
             ? Parent.ComputedTransform.Width
-            : (ParentElement?.ParentView != null ? ParentElement.ParentView.Width : DesignCanvas.DefaultDesignWidth);
+            : (ParentElement?.ParentView != null ? ParentElement.ParentView.HostLayoutWidth : DesignCanvas.DefaultDesignWidth);
 
         if (_Anchor.HasFlag(Anchor.Left) && !_Anchor.HasFlag(Anchor.Right))
         {
@@ -724,7 +724,7 @@ public class Transform : IDisposable
     {
         float ParentHeight = Parent != null
             ? Parent.Computed.Height
-            : (ParentElement?.ParentView != null ? ParentElement.ParentView.Height : DesignCanvas.DefaultDesignHeight);
+            : (ParentElement?.ParentView != null ? ParentElement.ParentView.HostLayoutHeight : DesignCanvas.DefaultDesignHeight);
 
         bool bottomAnchored = _Anchor.HasFlag(Anchor.Bottom);
         bool topAnchored = _Anchor.HasFlag(Anchor.Top);

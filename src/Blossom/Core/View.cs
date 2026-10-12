@@ -66,18 +66,22 @@ namespace Blossom.Core
         /// </summary>
         public Ru LayoutHeight => new(GetLayoutHeight());
 
+        internal float HostLayoutWidth => GetLayoutWidth();
+        internal float HostLayoutHeight => GetLayoutHeight();
+
         private float GetLayoutWidth()
         {
-            // Apps fill the window: layout size is the client size so anchors reflow on resize.
-            if (Shell.RenderRect.Width > 0)
-                return Shell.RenderRect.Width;
+            var size = Application?.Session?.LogicalSize;
+            if (size is { Width: > 0 })
+                return size.Value.Width;
             return Canvas.Width;
         }
 
         private float GetLayoutHeight()
         {
-            if (Shell.RenderRect.Height > 0)
-                return Shell.RenderRect.Height;
+            var size = Application?.Session?.LogicalSize;
+            if (size is { Height: > 0 })
+                return size.Value.Height;
             return Canvas.Height;
         }
 
@@ -110,7 +114,7 @@ namespace Blossom.Core
         /// Maps a window coordinate to host design canvas units.
         /// </summary>
         public Vector2 PointToDesign(float winX, float winY) =>
-            Canvas.PointToDesign(winX, winY, Shell.RenderRect.Width, Shell.RenderRect.Height);
+            Canvas.PointToDesign(winX, winY, GetLayoutWidth(), GetLayoutHeight());
 
         /// <summary>
         /// Maps a design canvas unit point to window coordinates.
@@ -122,7 +126,7 @@ namespace Blossom.Core
         /// Maps a design canvas unit point to window coordinates.
         /// </summary>
         public Vector2 PointToWindow(float desX, float desY) =>
-            Canvas.PointToWindow(desX, desY, Shell.RenderRect.Width, Shell.RenderRect.Height);
+            Canvas.PointToWindow(desX, desY, GetLayoutWidth(), GetLayoutHeight());
 
         public event ForVoid Loop;
 
@@ -130,6 +134,24 @@ namespace Blossom.Core
         public bool RenderRequired { get; set; } = true;
         public bool FullRenderRequired { get; set; } = true;
         public bool LayoutRequired { get; internal set; } = true;
+        internal int ContinuousKeepAliveCount;
+        internal bool HasContinuousKeepAlive => ContinuousKeepAliveCount > 0;
+
+        internal void AddContinuousKeepAlive() => ContinuousKeepAliveCount++;
+
+        internal void RemoveContinuousKeepAlive()
+        {
+            if (ContinuousKeepAliveCount > 0)
+                ContinuousKeepAliveCount--;
+        }
+
+        internal bool ComputeNeedsPaint()
+        {
+            if (RenderRequired || FullRenderRequired || LayoutRequired || _hierarchyDirty || HasContinuousKeepAlive)
+                return true;
+            lock (_dirtyRectsLock)
+                return DirtyRects.Count > 0;
+        }
 
         private VisualElement? hoveredElement;
         public VisualElement? HoveredElement => hoveredElement;
@@ -689,6 +711,7 @@ namespace Blossom.Core
         {
             Elements.AddElement(ref element);
             element.AddedToView();
+            element.SyncContinuousKeepAlive();
             _hierarchyDirty = true;
             RenderRequired = true;
         }
@@ -736,16 +759,15 @@ namespace Blossom.Core
                 {
                     // Full redraw required (e.g. view switch or resize)
                     DirtyRects.Clear();
-                    // Use framebuffer-sized dirty in logical pixels (RenderRect)
-                    float rw = Math.Max(1, Shell.RenderRect.Width);
-                    float rh = Math.Max(1, Shell.RenderRect.Height);
+                    float rw = Math.Max(1, GetLayoutWidth());
+                    float rh = Math.Max(1, GetLayoutHeight());
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                     FullRenderRequired = false;
                 }
                 else if (RenderRequired && DirtyRects.Count == 0 && !_continuationFrame)
                 {
-                    float rw = Math.Max(1, Shell.RenderRect.Width);
-                    float rh = Math.Max(1, Shell.RenderRect.Height);
+                    float rw = Math.Max(1, GetLayoutWidth());
+                    float rh = Math.Max(1, GetLayoutHeight());
                     DirtyRects.Add(new SKRect(0, 0, rw, rh));
                 }
                 _continuationFrame = false;
@@ -866,8 +888,8 @@ namespace Blossom.Core
                     unionRect = SKRect.Union(unionRect, _localDirtyRects[i]);
                 unionRect.Inflate(8, 8);
                 // Clamp to view
-                float rw = Math.Max(1, Shell.RenderRect.Width);
-                float rh = Math.Max(1, Shell.RenderRect.Height);
+                float rw = Math.Max(1, GetLayoutWidth());
+                float rh = Math.Max(1, GetLayoutHeight());
                 unionRect.Intersect(new SKRect(0, 0, rw, rh));
                 _localDirtyRects.Clear();
                 if (unionRect.Width > 0 && unionRect.Height > 0)
@@ -902,7 +924,12 @@ namespace Blossom.Core
                     canvas.ClipRect(rounded, SKClipOperation.Intersect, false);
 
                 if (frame.ClearCanvas)
-                    canvas.DrawColor(frame.ClearColor);
+                {
+                    if (GpuPass.PaintMode == PaintMode.FullFrame)
+                        canvas.Clear(frame.ClearColor);
+                    else
+                        canvas.DrawColor(frame.ClearColor);
+                }
 
                 // Painter's algorithm: every visible element that intersects the damage region
                 // must redraw (including scroll panels under the cards — not only the top card).

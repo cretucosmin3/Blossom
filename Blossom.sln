@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blossom.Primitives.Tests", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blossom.Pack", "src\Blossom.Pack\Blossom.Pack.csproj", "{0A1B2C3D-4E5F-6789-ABCD-EF0123456789}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blossom.Hosting.Tests", "tests\Blossom.Hosting.Tests\Blossom.Hosting.Tests.csproj", "{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{0A1B2C3D-4E5F-6789-ABCD-EF0123456789}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A1B2C3D-4E5F-6789-ABCD-EF0123456789}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A1B2C3D-4E5F-6789-ABCD-EF0123456789}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A2B3C4D-5E6F-7081-92A3-B4C5D6E7F809}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -15,7 +15,6 @@ using Blossom.Platform;
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
-using System.Runtime.ExceptionServices;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
@@ -38,7 +37,43 @@ public static class Shell
 
     internal static IWindow window;
     internal static Application ShellApp = null!;
-    internal static RectangleF RenderRect = new(0, 0, 0, 0);
+    internal static UiSession? Session { get; private set; }
+    static RectangleF s_renderRect = new(0, 0, 0, 0);
+
+    /// <summary>Logical layout size facade over the desktop session. Pre-session uses a backing rect.</summary>
+    internal static RectangleF RenderRect
+    {
+        get
+        {
+            if (Session != null)
+            {
+                var size = Session.LogicalSize;
+                return new RectangleF(0, 0, size.Width, size.Height);
+            }
+            return s_renderRect;
+        }
+        set
+        {
+            s_renderRect = value;
+            if (Session == null)
+                return;
+
+            int fbW = Session.FramebufferSize.Width;
+            int fbH = Session.FramebufferSize.Height;
+            if (window is not null && window.FramebufferSize.X > 0 && window.FramebufferSize.Y > 0)
+            {
+                fbW = window.FramebufferSize.X;
+                fbH = window.FramebufferSize.Y;
+            }
+            else if (fbW <= 0 || fbH <= 0)
+            {
+                fbW = Math.Max(1, Renderer.FramebufferWidth);
+                fbH = Math.Max(1, Renderer.FramebufferHeight);
+            }
+
+            Session.SetSize(value.Width, value.Height, Math.Max(1, fbW), Math.Max(1, fbH));
+        }
+    }
 
     internal static Action OnRenderRequired;
 
@@ -163,8 +198,6 @@ public static class Shell
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
 
-    private static SynchronizationContext? _previousSyncContext;
-
     /// <summary>True when the caller is already on the window / UI thread.</summary>
     public static bool CheckAccess() => UiHost.Current.CheckAccess();
 
@@ -224,11 +257,7 @@ public static class Shell
 
     private static void InstallSynchronizationContext()
     {
-        UiDispatcher.BindUiThread();
-        if (SynchronizationContext.Current is ShellSynchronizationContext)
-            return;
-        _previousSyncContext = SynchronizationContext.Current;
-        SynchronizationContext.SetSynchronizationContext(new ShellSynchronizationContext());
+        UiDispatcher.TryInstallSynchronizationContext();
     }
 
     /// <summary>
@@ -250,57 +279,6 @@ public static class Shell
         catch
         {
             try { window.DoEvents(); } catch { }
-        }
-    }
-
-    /// <summary>
-    /// Marshals <see cref="SynchronizationContext.Post"/> / <see cref="SynchronizationContext.Send"/>
-    /// through <see cref="Shell.Post"/> so <c>await</c> after I/O resumes on the window thread.
-    /// </summary>
-    private sealed class ShellSynchronizationContext : SynchronizationContext
-    {
-        public override SynchronizationContext CreateCopy() => this;
-
-        public override void Post(SendOrPostCallback d, object? state)
-        {
-            if (d == null)
-                return;
-            Shell.Post(() => d(state));
-        }
-
-        public override void Send(SendOrPostCallback d, object? state)
-        {
-            if (d == null)
-                return;
-
-            // Inline on the UI thread. Also inline before the window thread exists so
-            // Send during startup does not wait on a pump that has not started.
-            if (CheckAccess() || !UiDispatcher.HasUiThread)
-            {
-                d(state);
-                return;
-            }
-
-            Exception? error = null;
-            using var done = new ManualResetEventSlim(false);
-            Shell.Post(() =>
-            {
-                try
-                {
-                    d(state);
-                }
-                catch (Exception ex)
-                {
-                    error = ex;
-                }
-                finally
-                {
-                    done.Set();
-                }
-            });
-            done.Wait();
-            if (error != null)
-                ExceptionDispatchInfo.Throw(error);
         }
     }
 
@@ -367,24 +345,6 @@ public static class Shell
         OnLoaded = () =>
         {
             ManageInputEvents();
-
-            if (ShellApp.ActiveView != null)
-            {
-                try
-                {
-                    ShellApp.ActiveView.Init();
-                }
-                catch (Exception ex)
-                {
-                    Log.Fatal("Exception during ActiveView.Init():\n" + ex.ToString());
-                    throw;
-                }
-                ShellApp.ActiveView.IsLoaded = true;
-            }
-            else
-            {
-                Log.Warning("No active view");
-            }
         };
 
         SetWindow();
@@ -400,7 +360,7 @@ public static class Shell
         if (appWindow.MinHeight > 0)
             height = Math.Max(height, appWindow.MinHeight);
 
-        RenderRect = new System.Drawing.RectangleF(0, 0, width, height);
+        s_renderRect = new System.Drawing.RectangleF(0, 0, width, height);
         _minClientWidth = Math.Max(0, appWindow.MinWidth);
         _minClientHeight = Math.Max(0, appWindow.MinHeight);
 
@@ -454,8 +414,8 @@ public static class Shell
     }
 
     /// <summary>
-    /// Track a live client-area size. Updates <see cref="RenderRect"/>, relayouts the active view,
-    /// and raises <see cref="ClientResized"/> only when the size actually changed.
+    /// Track a live client-area size. Updates session <see cref="UiSession.SetSize"/> / <see cref="RenderRect"/>,
+    /// relayouts the active view, and raises <see cref="ClientResized"/> only when the size actually changed.
     /// </summary>
     internal static void HandleClientSize(int width, int height)
     {
@@ -468,13 +428,36 @@ public static class Shell
         float logicalW = width / DisplayScale.Factor;
         float logicalH = height / DisplayScale.Factor;
 
+        int fbW;
+        int fbH;
+        if (window is not null && window.FramebufferSize.X > 0 && window.FramebufferSize.Y > 0)
+        {
+            fbW = Math.Max(1, window.FramebufferSize.X);
+            fbH = Math.Max(1, window.FramebufferSize.Y);
+        }
+        else
+        {
+            float factor = DisplayScale.Factor > 0 ? DisplayScale.Factor : 1f;
+            fbW = Math.Max(1, (int)MathF.Ceiling(logicalW * factor));
+            fbH = Math.Max(1, (int)MathF.Ceiling(logicalH * factor));
+        }
+
         bool changed = Math.Abs(RenderRect.Width - logicalW) > 0.01f || Math.Abs(RenderRect.Height - logicalH) > 0.01f;
+        if (Session != null)
+        {
+            var fb = Session.FramebufferSize;
+            changed = changed || fb.Width != fbW || fb.Height != fbH;
+        }
         if (!changed)
             return;
 
-        RenderRect = new System.Drawing.RectangleF(0, 0, logicalW, logicalH);
+        s_renderRect = new System.Drawing.RectangleF(0, 0, logicalW, logicalH);
 
-        if (ShellApp?.ActiveView != null)
+        if (Session != null)
+        {
+            Session.SetSize(logicalW, logicalH, fbW, fbH);
+        }
+        else if (ShellApp?.ActiveView != null)
         {
             ShellApp.ActiveView.FullRenderRequired = true;
             ShellApp.ActiveView.RenderRequired = true;
@@ -554,24 +537,22 @@ public static class Shell
 
     internal static void StartWindow()
     {
+        var tickClock = Stopwatch.StartNew();
         try
         {
             while (!window.IsClosing)
             {
-                UiDispatcher.DrainPostQueue();
-                UiDispatcher.DrainTimers();
-                ShellApp.ActiveView?.TriggerLoop();
-                UiDispatcher.DrainPostQueue();
-                UiDispatcher.DrainTimers();
+                float dt = (float)tickClock.Elapsed.TotalSeconds;
+                tickClock.Restart();
+                Session?.Tick(dt);
 
-                if (ShellApp.ActiveView?.RenderRequired == true)
+                if (Session?.NeedsPaint == true)
                 {
                     WaitForFrameSlot();
                     if (window.IsClosing)
                         break;
-                    UiDispatcher.DrainPostQueue();
-                    UiDispatcher.DrainTimers();
-                    if (ShellApp.ActiveView?.RenderRequired != true)
+                    Session?.Tick(0f);
+                    if (Session?.NeedsPaint != true)
                         continue;
 
                     window.DoRender();
@@ -971,9 +952,17 @@ public static class Shell
     {
         DisplayScale.Shutdown();
 
-        ShellApp.Dispose();
-        if (SynchronizationContext.Current is ShellSynchronizationContext)
-            SynchronizationContext.SetSynchronizationContext(_previousSyncContext);
+        if (Session != null)
+        {
+            Session.Dispose();
+            Session = null;
+        }
+        else
+        {
+            ShellApp?.Dispose();
+        }
+
+        UiDispatcher.RestoreSynchronizationContext();
         UiDispatcher.ClearUiThread();
         UiHost.Install(NullUiHost.Instance);
     }
@@ -1047,6 +1036,17 @@ public static class Shell
         if (ShellApp.Window.CenterOnLoad)
             window.Center();
         Renderer.SetCanvas(window);
+
+        Session = new UiSession(UiHost.Current, ShellApp, new UiSessionOptions
+        {
+            PaintMode = PaintMode.DirtyRect,
+            ClearColor = SKColors.White,
+            ClearCanvas = true,
+            InstallSynchronizationContext = false
+        });
+        HandleClientSize(window.Size.X, window.Size.Y);
+        Session.Init();
+
         OnLoaded.Invoke();
 
         LoadLogo();
@@ -1273,14 +1273,9 @@ public static class Shell
         PostMarkers.Clear();
     }
 
-    private static void Render(double time)
+    private static void Render(double _)
     {
-        UiDispatcher.DrainPostQueue();
-        Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = (float)time;
-        Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += (float)time;
-
         Renderer.ResetContext();
-        // Renderer.Canvas.Clear(ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
 
         if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
         {
@@ -1288,26 +1283,32 @@ public static class Shell
         }
 
         frameTimer.Restart();
-        try
-        {
-            GpuPass.InGpuPass = true;
-            GpuPass.PaintMode = PaintMode.DirtyRect;
-            GpuPass.Frame = new RenderFrame(
-                canvas: Renderer.Canvas,
-                logicalSize: new UiSize(RenderRect.Width, RenderRect.Height),
-                framebufferSize: new FramebufferSize(Renderer.FramebufferWidth, Renderer.FramebufferHeight),
-                gpuContext: Renderer.grContext,
-                surface: Renderer.OffscreenSurface,
-                clearCanvas: true,
-                clearColor: ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
+        var frame = new RenderFrame(
+            canvas: Renderer.Canvas,
+            logicalSize: Session?.LogicalSize ?? new UiSize(RenderRect.Width, RenderRect.Height),
+            framebufferSize: Session?.FramebufferSize ?? new FramebufferSize(Renderer.FramebufferWidth, Renderer.FramebufferHeight),
+            gpuContext: Renderer.grContext,
+            surface: Renderer.OffscreenSurface,
+            clearCanvas: true,
+            clearColor: ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
 
-            ShellApp.Render();
-        }
-        finally
+        if (Session != null)
+            Session.Paint(frame, force: true);
+        else
         {
-            GpuPass.InGpuPass = false;
-            GpuPass.PaintMode = default;
-            GpuPass.Frame = default;
+            try
+            {
+                GpuPass.InGpuPass = true;
+                GpuPass.PaintMode = PaintMode.DirtyRect;
+                GpuPass.Frame = frame;
+                ShellApp.Render();
+            }
+            finally
+            {
+                GpuPass.InGpuPass = false;
+                GpuPass.PaintMode = default;
+                GpuPass.Frame = default;
+            }
         }
         frameTimer.Stop();
 

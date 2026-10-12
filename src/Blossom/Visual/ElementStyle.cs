@@ -198,6 +198,7 @@ public class ElementStyle : IDisposable
         {
             element.ClearRenderCache();
             element.ScheduleRender();
+            element.SyncContinuousKeepAlive();
         }
     }
 

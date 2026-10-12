@@ -82,3 +82,32 @@ string? text = Shell.GetClipboardText();
 Shell.SetClipboardText("copied");
 Shell.SetCursor(StandardCursor.Hand);
 ```
+
+## Embed (`UiSession`)
+
+Desktop apps still call `Shell.Initialize`. Games and tests construct a `UiSession` with an `IUiHost` and pump `Tick` / `Paint` themselves (CI uses `SoftwareUiHost`; no GLFW window).
+
+```csharp
+var host = new SoftwareUiHost();
+var app = new MyApplication();
+using var session = new UiSession(host, app, new UiSessionOptions
+{
+    PaintMode = PaintMode.FullFrame,
+    ClearColor = SKColors.Transparent,
+    ClearCanvas = true
+});
+session.SetSize(logicalW, logicalH, pixelW, pixelH);
+session.Init();
+
+session.Tick(dt);
+if (session.NeedsPaint)
+{
+    session.Paint(new RenderFrame(
+        canvas, session.LogicalSize, session.FramebufferSize,
+        gpuContext: null, surface: surface, clearCanvas: true));
+}
+```
+
+`Tick` is CPU-only (dispatcher, timers, SKSL clocks). `Paint` is the only GPU scope — do not call `Gpu.*` from Tick or a posted callback. `UiHost.Install` is process-lifetime; Tick/Paint cannot nest and do not uninstall the host.
+
+Size is per session (`SetSize`). Layout (`View.Width` / `LayoutWidth`) reads `Application.Session.LogicalSize` at any time, including after `Init` without a paint pass.

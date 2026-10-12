@@ -1,5 +1,6 @@
 using System;
 using Blossom.Core.Input;
+using Blossom.Hosting;
 using System.Collections.Generic;
 
 namespace Blossom.Core;
@@ -26,6 +27,8 @@ public abstract class Application : IDisposable
         }
     }
 
+    internal UiSession? Session { get; set; }
+
     private readonly Dictionary<string, View> Views = new();
     private string _ActiveView = "";
     public View ActiveView
@@ -48,7 +51,7 @@ public abstract class Application : IDisposable
 
         _ActiveView = name;
 
-        if (Shell.IsLoaded && !ActiveView.IsLoaded)
+        if (Session?.IsLoaded == true && ActiveView != null && !ActiveView.IsLoaded)
         {
             ActiveView.Init();
             ActiveView.IsLoaded = true;
@@ -99,5 +102,6 @@ public abstract class Application : IDisposable
 
         Views.Clear();
         Events.Dispose();
+        Session = null;
     }
 }

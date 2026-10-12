@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace Blossom.Hosting;
 
-/// <summary>Set only inside Shell.Render (and later UiSession.Paint). Not a layout-size source.</summary>
+/// <summary>Set only inside UiSession.Paint (and desktop Shell.Render). Not a layout-size source.</summary>
 internal static class GpuPass
 {
     [ThreadStatic] internal static bool InGpuPass;

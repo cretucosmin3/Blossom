@@ -806,6 +806,7 @@ public class VisualElement : IDisposable
                 InvalidateLayout();
                 ParentView?.MarkHierarchyDirty();
                 ScheduleRender();
+                SyncContinuousKeepAlive();
             }
         }
     }
@@ -1410,6 +1411,7 @@ public class VisualElement : IDisposable
 
         view.UntrackElement(ref element);
         element._ParentView = null!;
+        element.SyncContinuousKeepAlive();
     }
 
     public Rect BoundingRect
@@ -2255,6 +2257,31 @@ public class VisualElement : IDisposable
         InvalidatePaint();
     }
 
+    bool _continuousKeepAliveCounted;
+    View? _continuousKeepAliveView;
+
+    internal void SyncContinuousKeepAlive()
+    {
+        bool should = ParentView != null && Visible && Style != null &&
+            Style.ShaderRenderMode == EffectRenderMode.Continuous &&
+            (Style.BackgroundShader != BackgroundShaderType.None ||
+             Style.BorderEffect != BorderEffectType.None);
+
+        if (_continuousKeepAliveCounted && (!should || _continuousKeepAliveView != ParentView))
+        {
+            _continuousKeepAliveView?.RemoveContinuousKeepAlive();
+            _continuousKeepAliveCounted = false;
+            _continuousKeepAliveView = null;
+        }
+
+        if (should && !_continuousKeepAliveCounted)
+        {
+            ParentView!.AddContinuousKeepAlive();
+            _continuousKeepAliveCounted = true;
+            _continuousKeepAliveView = ParentView;
+        }
+    }
+
     public void GetFocus()
     {
         if (ParentView != null && EffectiveInteractive)
@@ -2340,6 +2367,8 @@ public class VisualElement : IDisposable
             RemovedFromView();
             _ParentView = null!;
         }
+
+        SyncContinuousKeepAlive();
 
         ClearRenderCache();
         Transform.Dispose();

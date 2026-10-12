@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,12 +19,39 @@ internal static class UiDispatcher
     static readonly object s_timerLock = new();
     static readonly List<PostedTimer> s_timerHeap = new();
 
+    static SynchronizationContext? s_previousSyncContext;
+
     internal static bool HasUiThread => s_uiThreadId != 0;
 
     internal static void BindUiThread() =>
         s_uiThreadId = Environment.CurrentManagedThreadId;
 
     internal static void ClearUiThread() => s_uiThreadId = 0;
+
+    /// <summary>True when a timer is already due (does not drain it).</summary>
+    internal static bool HasDueTimer()
+    {
+        var seconds = SecondsUntilNextTimer();
+        return seconds.HasValue && seconds.Value <= 0;
+    }
+
+    /// <returns>True if this call installed a new context (false if one was already in place).</returns>
+    internal static bool TryInstallSynchronizationContext()
+    {
+        BindUiThread();
+        if (SynchronizationContext.Current is UiSynchronizationContext)
+            return false;
+        s_previousSyncContext = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new UiSynchronizationContext());
+        return true;
+    }
+
+    internal static void RestoreSynchronizationContext()
+    {
+        if (SynchronizationContext.Current is UiSynchronizationContext)
+            SynchronizationContext.SetSynchronizationContext(s_previousSyncContext);
+        s_previousSyncContext = null;
+    }
 
     internal static bool CheckAccess() =>
         s_uiThreadId != 0 && Environment.CurrentManagedThreadId == s_uiThreadId;
@@ -237,6 +265,51 @@ internal static class UiDispatcher
                 Cancelled = true;
             }
             UiHost.Current.Wake();
+        }
+    }
+
+    sealed class UiSynchronizationContext : SynchronizationContext
+    {
+        public override SynchronizationContext CreateCopy() => this;
+
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            if (d == null)
+                return;
+            UiDispatcher.Post(() => d(state));
+        }
+
+        public override void Send(SendOrPostCallback d, object? state)
+        {
+            if (d == null)
+                return;
+
+            if (CheckAccess() || !HasUiThread)
+            {
+                d(state);
+                return;
+            }
+
+            Exception? error = null;
+            using var done = new ManualResetEventSlim(false);
+            UiDispatcher.Post(() =>
+            {
+                try
+                {
+                    d(state);
+                }
+                catch (Exception ex)
+                {
+                    error = ex;
+                }
+                finally
+                {
+                    done.Set();
+                }
+            });
+            done.Wait();
+            if (error != null)
+                ExceptionDispatchInfo.Throw(error);
         }
     }
 }

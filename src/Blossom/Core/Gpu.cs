@@ -8,7 +8,7 @@ namespace Blossom.Core;
 /// Shared Skia GPU (or CPU) surfaces for the current paint pass.
 /// Apps create offscreen surfaces here (including F16/F32 ping-pong), then blit an
 /// <see cref="SKImage"/> into the element tree with <see cref="DrawSkImageCommand"/>.
-/// Legal only while <c>GpuPass.InGpuPass</c> is true (<c>Shell.Render</c> / later <c>UiSession.Paint</c>).
+/// Legal only while <c>GpuPass.InGpuPass</c> is true (<c>UiSession.Paint</c> / desktop <c>Shell.Render</c>).
 /// </summary>
 public static class Gpu
 {
