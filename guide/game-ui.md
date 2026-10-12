@@ -307,12 +307,12 @@ public class HudView : View
         // 2. Player Status Bar anchored to Top-Left
         var statsPanel = new VisualElement { Name = "StatsPanel" };
         statsPanel.Transform.Anchor = Anchor.Left | Anchor.Top;
-        statsPanel.Transform.X = 20;
-        statsPanel.Transform.Y = 20;
+        statsPanel.Transform.LocalX = 20;
+        statsPanel.Transform.LocalY = 20;
         statsPanel.Transform.Width = 200;
         statsPanel.Transform.Height = 24;
         statsPanel.Style.BackColor = new SKColor(0, 0, 0, 160); // Semitransparent dark backing
-        statsPanel.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(255, 255, 255, 60), Radius = 4 };
+        statsPanel.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(255, 255, 255, 60), Roundness = 4 };
 
         // Health fill
         HealthBar = new VisualElement { Name = "HealthFill" };
@@ -323,16 +323,15 @@ public class HudView : View
         statsPanel.AddChild(HealthBar);
         root.AddChild(statsPanel);
 
-        // 3. Minimap frame anchored to Top-Right
-        var minimapFrame = new VisualElement { Name = "MinimapFrame" };
-        minimapFrame.Transform.Anchor = Anchor.Right | Anchor.Top;
-        minimapFrame.Transform.X = 20; // 20px from right edge
-        minimapFrame.Transform.Y = 20;
-        minimapFrame.Transform.Width = 150;
-        minimapFrame.Transform.Height = 150;
-        minimapFrame.Style.Border = new BorderStyle { Width = 2, Color = SKColors.Gold, Radius = 8 };
-
-        root.AddChild(minimapFrame);
+        // 3. Bottom Dock anchored flush to Bottom (in e.g. 800x600 viewport)
+        var bottomDock = new VisualElement { Name = "BottomDock" };
+        bottomDock.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Bottom;
+        bottomDock.Transform.LocalX = 0;
+        bottomDock.Transform.LocalY = 600 - 72; // Height 72 -> 0px distance from bottom
+        bottomDock.Transform.Height = 72;
+        bottomDock.Style.BackColor = new SKColor(10, 14, 23, 230);
+        bottomDock.Style.Border = new BorderStyle { Width = 1, Color = new SKColor(56, 189, 248, 80), Roundness = 0 };
+        root.AddChild(bottomDock);
 
         AddElement(root);
     }
@@ -355,8 +354,8 @@ public class PlayerState
 }
 
 // In your HUD element initialization:
-Bind.Width(healthBar, () => (PlayerState.Health.Value / 100f) * 200f);
-Bind.Text(ammoLabel, () => $"AMMO: {PlayerState.Ammo.Value}");
+healthBar.Bind(el => el.Transform.Width = (PlayerState.Health.Value / 100f) * 200f);
+ammoLabel.BindText(() => $"AMMO: {PlayerState.Ammo.Value}");
 
 // In your game gameplay code:
 PlayerState.Health.Value -= damageTaken; // Automatically schedules paint!
