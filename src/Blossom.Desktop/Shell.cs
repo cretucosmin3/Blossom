@@ -37,7 +37,7 @@ public static class Shell
 
     internal static IWindow window;
     internal static Application ShellApp = null!;
-    internal static UiSession? Session { get; private set; }
+    public static UiSession? Session { get; private set; }
     static RectangleF s_renderRect = new(0, 0, 0, 0);
 
     /// <summary>Logical layout size facade over the desktop session. Pre-session uses a backing rect.</summary>
@@ -197,6 +197,18 @@ public static class Shell
     public static bool IsRunning { get; } = false;
     public static int TotalRenders { get; private set; }
     public static bool SkipCountingNextRender { get; set; } = false;
+    public static double PresentedFps { get; private set; }
+
+    private static readonly Queue<long> s_presentTimestamps = new();
+    private static void RecordPresentTimestamp()
+    {
+        long nowTicks = Stopwatch.GetTimestamp();
+        s_presentTimestamps.Enqueue(nowTicks);
+        long oneSecAgo = nowTicks - Stopwatch.Frequency;
+        while (s_presentTimestamps.Count > 0 && s_presentTimestamps.Peek() < oneSecAgo)
+            s_presentTimestamps.Dequeue();
+        PresentedFps = s_presentTimestamps.Count;
+    }
 
     /// <summary>True when the caller is already on the window / UI thread.</summary>
     public static bool CheckAccess() => UiHost.Current.CheckAccess();
@@ -297,7 +309,12 @@ public static class Shell
     public static int MaxFps
     {
         get => _maxFps;
-        set => _maxFps = Math.Max(0, value);
+        set
+        {
+            _maxFps = Math.Max(0, value);
+            if (Session != null)
+                Session.MaxFps = _maxFps > 0 ? _maxFps : null;
+        }
     }
 
     private static int _maxFps = 120;
@@ -562,6 +579,7 @@ public static class Shell
                     if (!SkipCountingNextRender)
                     {
                         TotalRenders++;
+                        RecordPresentTimestamp();
                         OnRenderRequired?.Invoke();
                     }
                     else
@@ -571,7 +589,16 @@ public static class Shell
                 }
                 else
                 {
-                    WaitForEvents(UiDispatcher.SecondsUntilNextTimer());
+                    double? nextTimer = UiDispatcher.SecondsUntilNextTimer();
+                    double? nextPaint = Session?.SecondsUntilNextPaint();
+
+                    double? timeout;
+                    if (nextTimer.HasValue && nextPaint.HasValue)
+                        timeout = Math.Min(nextTimer.Value, nextPaint.Value);
+                    else
+                        timeout = nextTimer ?? nextPaint;
+
+                    WaitForEvents(timeout);
                 }
             }
         }
@@ -944,7 +971,8 @@ public static class Shell
             PaintMode = PaintMode.DirtyRect,
             ClearColor = SKColors.White,
             ClearCanvas = true,
-            InstallSynchronizationContext = false
+            InstallSynchronizationContext = false,
+            MaxFps = _maxFps > 0 ? _maxFps : null
         });
         HandleClientSize(window.Size.X, window.Size.Y);
         Session.Init();
@@ -1092,9 +1120,18 @@ public static class Shell
         Renderer.Canvas.DrawRect(bgRect, HudBgPaint);
         Renderer.Canvas.DrawRect(borderRect, HudBorderPaint);
 
-        // Performance color coding based on theoretical FPS / draw latency
+        // Performance color coding based on presented FPS when capped, or theoretical FPS / draw latency
         SKColor perfColor;
-        if (theoreticalFps >= 60.0 || avgDrawMs <= 16.667)
+        if (MaxFps > 0)
+        {
+            if (PresentedFps >= MaxFps * 0.9)
+                perfColor = new SKColor(16, 185, 129, 255); // Emerald green
+            else if (PresentedFps >= MaxFps * 0.6)
+                perfColor = new SKColor(245, 158, 11, 255); // Amber
+            else
+                perfColor = new SKColor(239, 68, 68, 255);  // Crimson red
+        }
+        else if (theoreticalFps >= 60.0 || avgDrawMs <= 16.667)
             perfColor = new SKColor(16, 185, 129, 255); // Emerald green
         else if (theoreticalFps >= 30.0 || avgDrawMs <= 33.333)
             perfColor = new SKColor(245, 158, 11, 255); // Amber
@@ -1116,8 +1153,15 @@ public static class Shell
         float fpsBlockY = headerY + 32f;
         Renderer.Canvas.DrawText("FPS", panelX + 14, fpsBlockY + 18, SKTextAlign.Left, HudMetricLabelFont, HudMetricLabelPaint);
         HudFpsValuePaint.Color = perfColor;
-        string fpsStr = theoreticalFps >= 1000.0 ? $"{theoreticalFps:0}" : (theoreticalFps > 0 ? $"{theoreticalFps:0.0}" : "--.-");
+        string fpsStr = MaxFps > 0
+            ? $"{PresentedFps:0.0}"
+            : (theoreticalFps >= 1000.0 ? $"{theoreticalFps:0}" : (theoreticalFps > 0 ? $"{theoreticalFps:0.0}" : "--.-"));
         Renderer.Canvas.DrawText(fpsStr, panelX + 14, fpsBlockY + 45, SKTextAlign.Left, HudFpsValueFont, HudFpsValuePaint);
+        if (MaxFps > 0)
+        {
+            float fpsW = HudFpsValueFont.MeasureText(fpsStr);
+            Renderer.Canvas.DrawText($" /{MaxFps}", panelX + 14 + fpsW, fpsBlockY + 45, SKTextAlign.Left, HudMetricUnitFont, HudMetricUnitPaint);
+        }
 
         // Separator between metrics
         float div2Y = fpsBlockY + 54.5f;

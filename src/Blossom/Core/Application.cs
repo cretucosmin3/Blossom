@@ -27,7 +27,7 @@ public abstract class Application : IDisposable
         }
     }
 
-    internal UiSession? Session { get; set; }
+    public UiSession? Session { get; internal set; }
 
     private readonly Dictionary<string, View> Views = new();
     private string _ActiveView = "";

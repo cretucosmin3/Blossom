@@ -56,26 +56,42 @@ public sealed class UiSession : IDisposable
         set => _maxFps = value is > 0 ? value : null;
     }
 
+    /// <summary>
+    /// Computes the seconds until the next paint is allowed or due.
+    /// Returns 0 if paint is needed immediately.
+    /// Returns a positive duration if changes are pending but throttled by <see cref="MaxFps"/>.
+    /// Returns null if there are no pending changes.
+    /// </summary>
+    public double? SecondsUntilNextPaint()
+    {
+        ThrowIfDisposed();
+
+        bool hasChanges = Application.ActiveView?.ComputeNeedsPaint() == true || UiDispatcher.HasDueTimer();
+        if (!hasChanges)
+            return null;
+
+        if (_maxFps is > 0)
+        {
+            long now = Stopwatch.GetTimestamp();
+            long minTicks = Stopwatch.Frequency / _maxFps.Value;
+            long elapsed = now - _lastPaintTicks;
+            if (_lastPaintTicks > 0 && elapsed < minTicks)
+            {
+                long remainTicks = minTicks - elapsed;
+                return Math.Max(0.0, (double)remainTicks / Stopwatch.Frequency);
+            }
+        }
+
+        return 0.0;
+    }
+
     /// <summary>Computed; does not consume dirty flags. Respects <see cref="MaxFps"/> if configured.</summary>
     public bool NeedsPaint
     {
         get
         {
             ThrowIfDisposed();
-
-            bool hasChanges = Application.ActiveView?.ComputeNeedsPaint() == true || UiDispatcher.HasDueTimer();
-            if (!hasChanges)
-                return false;
-
-            if (_maxFps is > 0)
-            {
-                long now = Stopwatch.GetTimestamp();
-                long minTicks = Stopwatch.Frequency / _maxFps.Value;
-                if (_lastPaintTicks > 0 && now - _lastPaintTicks < minTicks)
-                    return false;
-            }
-
-            return true;
+            return SecondsUntilNextPaint() == 0.0;
         }
     }
 

@@ -31,14 +31,12 @@ namespace Blossom
 
             AppDomain.CurrentDomain.ProcessExit += (sender, e) => Log.Info("Application exiting");
 
-            bool enableStatsOverlay = false;
+            bool enableStatsOverlay = true;
             foreach (var arg in _args)
             {
-                if (arg.Equals("--show-fps", StringComparison.OrdinalIgnoreCase) ||
-                    arg.Equals("--fps", StringComparison.OrdinalIgnoreCase) ||
-                    arg.Equals("--debug-overlay", StringComparison.OrdinalIgnoreCase))
+                if (arg.Equals("--no-fps", StringComparison.OrdinalIgnoreCase))
                 {
-                    enableStatsOverlay = true;
+                    enableStatsOverlay = false;
                 }
             }
 
@@ -47,12 +45,19 @@ namespace Blossom
             // Run SKSL Shader verification tests
             Blossom.Core.Visual.SKSLShaderManager.TestCompilation();
 
+            Shell.MaxFps = 10;
+            for (int i = 0; i < _args.Length; i++)
+            {
+                if (_args[i].Equals("--max-fps", StringComparison.OrdinalIgnoreCase) && i + 1 < _args.Length && int.TryParse(_args[i + 1], out int customFps))
+                {
+                    Shell.MaxFps = customFps;
+                }
+            }
+            Log.Info($"Configured Shell.MaxFps = {Shell.MaxFps}");
+
             var app = new TestingApplication();
             app.EnableStatsOverlay = true;
-            if (enableStatsOverlay)
-            {
-                Shell.ShowDebugOverlay = true;
-            }
+            Shell.ShowDebugOverlay = enableStatsOverlay;
 
             Shell.Initialize(app);
             Environment.Exit(0);
