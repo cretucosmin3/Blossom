@@ -20,24 +20,15 @@ public static class Px
     /// <returns>The design unit length equal to 1 device pixel (minimum 0.0001f).</returns>
     public static float Hairline(View? view = null)
     {
-        float winW;
-        float fbW;
         var frame = GpuPass.Frame;
-        if (GpuPass.InGpuPass && frame.LogicalSize.Width > 0)
+        if (GpuPass.InGpuPass && frame.LogicalSize.Width > 0 && frame.FramebufferSize.Width > 0)
         {
-            winW = frame.LogicalSize.Width;
-            fbW = frame.FramebufferSize.Width;
-        }
-        else
-        {
-            winW = Shell.RenderRect.Width;
-            fbW = Renderer.FramebufferWidth;
+            float dpi = (float)frame.FramebufferSize.Width / frame.LogicalSize.Width;
+            return dpi > 1e-6f ? 1f / dpi : 1f;
         }
 
-        if (winW <= 0) return 1f;
-
-        float dpiScale = (fbW > 0 && winW > 0) ? fbW / winW : 1f;
-        return dpiScale > 1e-6f ? 1f / dpiScale : 1f;
+        float hostDpi = UiHost.Current.DpiScale;
+        return hostDpi > 1e-6f ? 1f / hostDpi : 1f;
     }
 
     /// <summary>

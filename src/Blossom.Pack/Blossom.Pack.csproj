@@ -19,6 +19,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Blossom\Blossom.csproj" PrivateAssets="all" />
+        <ProjectReference Include="..\Blossom.Desktop\Blossom.Desktop.csproj" PrivateAssets="all" />
         <ProjectReference Include="..\Blossom.Reactive\Blossom.Reactive.csproj" PrivateAssets="all" />
         <ProjectReference Include="..\Blossom.Primitives\Blossom.Primitives.csproj" PrivateAssets="all" />
     </ItemGroup>
@@ -58,6 +59,8 @@
             <TfmSpecificPackageFile Include="$(TargetDir)Blossom.Reactive.pdb" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(TargetDir)Blossom.Reactive.pdb')" />
             <TfmSpecificPackageFile Include="$(TargetDir)Blossom.Primitives.dll" PackagePath="lib/$(TargetFramework)/" />
             <TfmSpecificPackageFile Include="$(TargetDir)Blossom.Primitives.pdb" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(TargetDir)Blossom.Primitives.pdb')" />
+            <TfmSpecificPackageFile Include="$(TargetDir)Blossom.Desktop.dll" PackagePath="lib/$(TargetFramework)/" />
+            <TfmSpecificPackageFile Include="$(TargetDir)Blossom.Desktop.pdb" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(TargetDir)Blossom.Desktop.pdb')" />
         </ItemGroup>
     </Target>
 </Project>

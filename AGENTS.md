@@ -36,16 +36,17 @@ Blossom/
 ├── .github/workflows/      # NuGet pack / release
 ├── guide/                  # Public guide (capabilities, APIs, pitfalls)
 ├── src/
-│   ├── Blossom/            # Framework library (class lib)
+│   ├── Blossom/            # Core framework library (Silk-free: retained tree, layout, styles, UiSession)
 │   │   ├── Blossom.csproj
-│   │   ├── Shell.cs        # Window loop, input wiring, frame timing
-│   │   ├── Core/           # Application, View, ElementsMap, EventMap, Renderer, ledger, Gpu, Design
+│   │   ├── Core/           # Application, View, ElementsMap, EventMap, Gpu, Design, Input (UiKey)
+│   │   ├── Hosting/        # UiSession, UiInput, UiDispatcher, SoftwareUiHost, RenderFrame
 │   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
 │   │   ├── Utils/          # Fonts, imaging helpers
 │   │   └── External/       # Vendored quadtree helpers
+│   ├── Blossom.Desktop/    # Desktop app host (Silk.NET, GLFW window loop, Shell, Renderer present)
 │   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
 │   ├── Blossom.Primitives/ # Layout hosts, Colours, Theme, future widgets
-│   ├── Blossom.Pack/       # One NuGet id `Blossom` (all three libraries)
+│   ├── Blossom.Pack/       # One NuGet id `Blossom` (all four libraries)
 │   └── Blossom.Demo/       # Sample host app (not the public API)
 │       ├── Blossom.Demo.csproj
 │       ├── Program.cs
@@ -93,7 +94,7 @@ Shell (static host)
 
 | Concern | Primary files |
 |---|---|
-| Window + input entry | `src/Blossom/Shell.cs` |
+| Window + input entry | `src/Blossom.Desktop/Shell.cs` |
 | App / multi-view | `src/Blossom/Core/Application.cs` |
 | View render + mouse routing | `src/Blossom/Core/View.cs` |
 | Hit-test tree | `src/Blossom/Core/ElementsMap.cs` |

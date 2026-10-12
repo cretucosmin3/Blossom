@@ -219,7 +219,7 @@ public class TextInputBase : Control
     public void Copy()
     {
         if (HasSelection && !IsPassword)
-            Shell.SetClipboardText(SelectedText);
+            UiHost.Current.SetClipboardText(SelectedText);
     }
 
     /// <summary>Cuts the selected text to the system clipboard.</summary>
@@ -238,7 +238,7 @@ public class TextInputBase : Control
         if (IsReadOnly || !Enabled)
             return;
 
-        string clip = Shell.GetClipboardText();
+        string? clip = UiHost.Current.GetClipboardText();
         if (!string.IsNullOrEmpty(clip))
             InsertText(clip);
     }
@@ -267,7 +267,7 @@ public class TextInputBase : Control
         if (focused)
         {
             _isCaretShown = true;
-            _blinkTimer = Shell.PostPeriodic(TimeSpan.FromMilliseconds(BlinkPeriodMs), () =>
+            _blinkTimer = UiHost.Current.PostPeriodic(TimeSpan.FromMilliseconds(BlinkPeriodMs), () =>
             {
                 if (!_isFocused) return;
                 _isCaretShown = !_isCaretShown;

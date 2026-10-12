@@ -1,6 +1,6 @@
-# Host (`Shell`)
+# Host (`Shell` / `Blossom.Desktop`)
 
-`Shell` is the static process host: GLFW window, input wiring, frame timing, clipboard, and the UI thread. It used to be named `Browser`. Do not also name a widget `Shell`.
+`Shell` is the static desktop process host (located in `Blossom.Desktop`): GLFW window, input wiring, frame timing, clipboard, and the UI thread. It used to be named `Browser`. Do not also name a widget `Shell`. Core `Blossom` is Silk-free and hosts can also run headlessly via `UiSession`.
 
 Tree: **Shell → Application → View → VisualElement**.
 

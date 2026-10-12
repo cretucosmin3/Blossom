@@ -1163,7 +1163,7 @@ public class VisualElement : IDisposable
                 var bmp = SKBitmap.Decode(bytes);
                 if (bmp != null)
                 {
-                    Shell.Post(() =>
+                    UiHost.Current.Post(() =>
                     {
                         if (_isDisposed)
                         {
@@ -1240,7 +1240,7 @@ public class VisualElement : IDisposable
                 {
                     var svg = new Svg.Skia.SKSvg();
                     svg.Load(ms);
-                    Shell.Post(() =>
+                    UiHost.Current.Post(() =>
                     {
                         if (_isDisposed)
                         {

@@ -9,10 +9,19 @@ namespace Blossom.Hosting;
 /// </summary>
 public sealed class SoftwareUiHost : IUiHost
 {
+    int _uiThreadId;
+
+    public SoftwareUiHost() => _uiThreadId = Environment.CurrentManagedThreadId;
+
     public float DpiScale { get; set; } = 1f;
     public nint NativeHandle => 0;
 
-    public bool CheckAccess() => UiDispatcher.CheckAccess();
+    public bool CheckAccess()
+    {
+        if (_uiThreadId == 0)
+            _uiThreadId = Environment.CurrentManagedThreadId;
+        return Environment.CurrentManagedThreadId == _uiThreadId;
+    }
 
     public void Post(Action action) => UiDispatcher.Post(action);
     public Task PostAsync(Action action) => UiDispatcher.PostAsync(action);

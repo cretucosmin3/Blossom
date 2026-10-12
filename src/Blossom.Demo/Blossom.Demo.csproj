@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Blossom\Blossom.csproj" />
+        <ProjectReference Include="..\Blossom.Desktop\Blossom.Desktop.csproj" />
         <ProjectReference Include="..\Blossom.Reactive\Blossom.Reactive.csproj" />
         <ProjectReference Include="..\Blossom.Primitives\Blossom.Primitives.csproj" />
     </ItemGroup>

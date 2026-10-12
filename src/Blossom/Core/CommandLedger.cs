@@ -639,8 +639,9 @@ public class DrawBackdropBlurCommand : DrawCommand
         var global44 = _element.Transform.GetGlobalM44();
         using var logicalPath = Transform.MapPath(localPath, global44);
 
-        float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
-        float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+        var frame = GpuPass.Frame;
+        float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+        float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
 
         using var devicePath = new SKPath();
         if (scaleX != 1f || scaleY != 1f)
@@ -804,8 +805,9 @@ public class DrawShaderBackgroundCommand : DrawCommand
                     var global44 = _element.Transform.GetGlobalM44();
                     var globalMatrix = global44.Matrix;
                     var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
-                    float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
-                    float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                    var frame = GpuPass.Frame;
+                    float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+                    float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
                     var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                     shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
                         _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, physScreenRect, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY, mixingRate: 0.25f, antialias: aaAmount);
@@ -1013,8 +1015,9 @@ public class DrawBorderCommand : DrawCommand
                             float localW = _element.PaintWidth;
                             float localH = _element.PaintHeight;
                             var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
-                            float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
-                            float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                            var frame = GpuPass.Frame;
+                            float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+                            float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
                             var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                             
                             using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
@@ -1054,8 +1057,9 @@ public class DrawBorderCommand : DrawCommand
                 float localW = _element.PaintWidth;
                 float localH = _element.PaintHeight;
                 var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
-                float scaleX = Shell.RenderRect.Width > 0 ? (float)Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
-                float scaleY = Shell.RenderRect.Height > 0 ? (float)Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+                var frame = GpuPass.Frame;
+                float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+                float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
                 var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                 
                 using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(

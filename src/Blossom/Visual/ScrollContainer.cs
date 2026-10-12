@@ -211,7 +211,7 @@ public class ScrollContainer : VisualElement
 
         Events.OnScroll += (sender, args) =>
         {
-            bool isShift = ParentView?.Events.IsShiftDown ?? Shell.ShellApp?.Events.IsShiftDown ?? false;
+            bool isShift = ParentView?.Events.IsShiftDown ?? ParentView?.Application?.Events.IsShiftDown ?? false;
 
             float deltaX = args.Offset.X;
             float deltaY = args.Offset.Y;
