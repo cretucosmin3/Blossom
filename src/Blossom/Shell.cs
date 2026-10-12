@@ -551,7 +551,9 @@ public static class Shell
                     WaitForFrameSlot();
                     if (window.IsClosing)
                         break;
-                    Session?.Tick(0f);
+                    // Drain only: Tick(0) would zero SKSL DeltaTime and stall hover/OnUpdate.
+                    UiDispatcher.DrainPostQueue();
+                    UiDispatcher.DrainTimers();
                     if (Session?.NeedsPaint != true)
                         continue;
 
