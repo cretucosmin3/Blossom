@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Blossom.Core;
 using Blossom.Core.Visual;
 using SkiaSharp;
@@ -14,6 +15,8 @@ public sealed class UiSession : IDisposable
     readonly UiSessionOptions _options;
     bool _disposed;
     bool _installedSyncContext;
+    int? _maxFps;
+    long _lastPaintTicks;
 
     public UiSession(IUiHost host, Application application, UiSessionOptions? options = null)
     {
@@ -26,6 +29,7 @@ public sealed class UiSession : IDisposable
         PaintMode = _options.PaintMode;
         ClearColor = _options.ClearColor;
         ClearCanvas = _options.ClearCanvas;
+        _maxFps = _options.MaxFps is > 0 ? _options.MaxFps : null;
         Input = new UiInput(this);
         application.Session = this;
     }
@@ -40,15 +44,38 @@ public sealed class UiSession : IDisposable
     public UiSize LogicalSize { get; private set; }
     public FramebufferSize FramebufferSize { get; private set; }
 
-    /// <summary>Computed; does not consume dirty flags.</summary>
+    /// <summary>
+    /// Gets or sets the maximum UI frames per second.
+    /// When set to a positive value (e.g. 30 or 60), <see cref="NeedsPaint"/> will throttle
+    /// and return false until the internal frame time has elapsed, allowing Blossom to accumulate
+    /// changes without premature rendering. Set to null or &lt;= 0 to uncap (ready as soon as dirty).
+    /// </summary>
+    public int? MaxFps
+    {
+        get => _maxFps;
+        set => _maxFps = value is > 0 ? value : null;
+    }
+
+    /// <summary>Computed; does not consume dirty flags. Respects <see cref="MaxFps"/> if configured.</summary>
     public bool NeedsPaint
     {
         get
         {
             ThrowIfDisposed();
-            if (Application.ActiveView?.ComputeNeedsPaint() == true)
-                return true;
-            return UiDispatcher.HasDueTimer();
+
+            bool hasChanges = Application.ActiveView?.ComputeNeedsPaint() == true || UiDispatcher.HasDueTimer();
+            if (!hasChanges)
+                return false;
+
+            if (_maxFps is > 0)
+            {
+                long now = Stopwatch.GetTimestamp();
+                long minTicks = Stopwatch.Frequency / _maxFps.Value;
+                if (_lastPaintTicks > 0 && now - _lastPaintTicks < minTicks)
+                    return false;
+            }
+
+            return true;
         }
     }
 
@@ -171,6 +198,8 @@ public sealed class UiSession : IDisposable
 
         if (!force && !NeedsPaint)
             return;
+
+        _lastPaintTicks = Stopwatch.GetTimestamp();
 
         var view = Application.ActiveView;
         if (force || view?.HasContinuousKeepAlive == true)

@@ -74,6 +74,43 @@ public class UiSessionTests
         Assert.Equal(1, ran);
     }
 
+    [Fact]
+    public void NeedsPaint_RespectsMaxFps_ThrottlesUntilFramePeriodElapses()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var host = new SoftwareUiHost();
+        var app = new HostingApp();
+        var options = HudOptions();
+        options.MaxFps = 30;
+        using var session = new UiSession(host, app, options);
+        session.SetSize(80, 40, 80, 40);
+        session.Init();
+
+        Assert.True(session.NeedsPaint);
+        session.Paint(Frame(surface, session));
+        Assert.False(session.NeedsPaint);
+
+        // Mark an element dirty
+        app.Main.Stretch!.Style.BackColor = SKColors.Green;
+        Assert.False(session.NeedsPaint);
+
+        // Removing MaxFps unthrottles immediately
+        session.MaxFps = null;
+        Assert.True(session.NeedsPaint);
+
+        // Re-enabling MaxFps throttles again after paint
+        session.MaxFps = 20;
+        session.Paint(Frame(surface, session));
+        Assert.False(session.NeedsPaint);
+
+        app.Main.Stretch.Style.BackColor = SKColors.Blue;
+        Assert.False(session.NeedsPaint);
+
+        // Wait past 50ms (for 20fps)
+        Thread.Sleep(60);
+        Assert.True(session.NeedsPaint);
+    }
+
     static UiSession CreateSession(IUiHost host, Application app, float logicalW, float logicalH)
     {
         var session = new UiSession(host, app, HudOptions());
