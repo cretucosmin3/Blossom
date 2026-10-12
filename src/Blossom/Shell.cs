@@ -1296,6 +1296,8 @@ public static class Shell
                 canvas: Renderer.Canvas,
                 logicalSize: new UiSize(RenderRect.Width, RenderRect.Height),
                 framebufferSize: new FramebufferSize(Renderer.FramebufferWidth, Renderer.FramebufferHeight),
+                gpuContext: Renderer.grContext,
+                surface: Renderer.OffscreenSurface,
                 clearCanvas: true,
                 clearColor: ShellApp.ActiveView?.BackColor ?? DefaultBackColor);
 
