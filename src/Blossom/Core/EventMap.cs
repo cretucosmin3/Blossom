@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System;
-using Silk.NET.Input;
 using Blossom.Core.Delegates.Inputs;
 using Blossom.Utils;
 using System.Numerics;
@@ -13,27 +12,27 @@ public class EventMap : IDisposable
     // TODO: manage events by access
     public EventAccess Access = EventAccess.All;
 
-    private readonly List<Key> CtrlKeys = new()
+    private readonly List<UiKey> CtrlKeys = new()
     {
-        Key.ControlLeft,
-        Key.ControlRight,
-        Key.AltLeft,
-        Key.AltRight
+        UiKey.ControlLeft,
+        UiKey.ControlRight,
+        UiKey.AltLeft,
+        UiKey.AltRight
     };
 
     private bool IsCommand = false;
-    private readonly List<Key> KeySequence = new();
+    private readonly List<UiKey> KeySequence = new();
     private readonly Dictionary<string, Hotkey> Hotkeys = new();
     private readonly DateTime[] lastClicks = new DateTime[15];
     private readonly bool[] wasDoubleClick = new bool[15];
     private readonly bool[] keysDown = new bool[20];
-    private readonly HashSet<Key> _keysDown = new();
+    private readonly HashSet<UiKey> _keysDown = new();
 
-    public bool IsKeyDown(Key key) => _keysDown.Contains(key);
-    public bool IsShiftDown => _keysDown.Contains(Key.ShiftLeft) || _keysDown.Contains(Key.ShiftRight);
-    public bool IsControlDown => _keysDown.Contains(Key.ControlLeft) || _keysDown.Contains(Key.ControlRight);
-    public bool IsAltDown => _keysDown.Contains(Key.AltLeft) || _keysDown.Contains(Key.AltRight);
-    public bool IsSuperDown => _keysDown.Contains(Key.SuperLeft) || _keysDown.Contains(Key.SuperRight);
+    public bool IsKeyDown(UiKey key) => _keysDown.Contains(key);
+    public bool IsShiftDown => _keysDown.Contains(UiKey.ShiftLeft) || _keysDown.Contains(UiKey.ShiftRight);
+    public bool IsControlDown => _keysDown.Contains(UiKey.ControlLeft) || _keysDown.Contains(UiKey.ControlRight);
+    public bool IsAltDown => _keysDown.Contains(UiKey.AltLeft) || _keysDown.Contains(UiKey.AltRight);
+    public bool IsSuperDown => _keysDown.Contains(UiKey.SuperLeft) || _keysDown.Contains(UiKey.SuperRight);
     public bool IsMouseButtonDown(int button) =>
         button >= 0 && button < keysDown.Length && keysDown[button];
 
@@ -68,7 +67,7 @@ public class EventMap : IDisposable
     /// <summary>
     /// Register series of keys to one event
     /// </summary>
-    public Hotkey AddHotkey(Key[] keybind, string id = "")
+    public Hotkey AddHotkey(UiKey[] keybind, string id = "")
     {
         Arr.Map(keybind, out int[] karr);
         Array.Sort(karr);
@@ -89,7 +88,7 @@ public class EventMap : IDisposable
     }
 
     #region Keyboard
-    internal void TrackKeyDown(Key key)
+    internal void TrackKeyDown(UiKey key)
     {
         _keysDown.Add(key);
 
@@ -104,7 +103,7 @@ public class EventMap : IDisposable
         }
     }
 
-    internal void TrackKeyUp(Key key)
+    internal void TrackKeyUp(UiKey key)
     {
         _keysDown.Remove(key);
         if (CtrlKeys.Contains(key))
@@ -245,7 +244,7 @@ public class EventMap : IDisposable
 
 public sealed class KeyEvent
 {
-    public Key Key { get; init; }
+    public UiKey Key { get; init; }
     public int ScanCode { get; init; }
     public bool IsRepeat { get; init; }
     public bool Control { get; init; }

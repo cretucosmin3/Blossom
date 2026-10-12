@@ -635,27 +635,23 @@ public static class Shell
             _nextPresentTicks = now + period;
     }
 
-    internal static void ChangeCursor(StandardCursor cursor)
-    {
-        SetCursor(cursor);
-    }
-
     /// <summary>Set a platform standard mouse cursor.</summary>
-    private static StandardCursor _appliedStandardCursor = (StandardCursor)(-1);
+    private static UiCursor _appliedCursor = (UiCursor)(-1);
 
-    public static void SetCursor(StandardCursor cursor)
+    public static void SetCursor(UiCursor cursor)
     {
         if (input == null || input.Mice == null) return;
-        if (cursor == _appliedStandardCursor)
+        if (cursor == _appliedCursor)
             return;
-        _appliedStandardCursor = cursor;
+        _appliedCursor = cursor;
+        var silk = (StandardCursor)(int)cursor;
         foreach (IMouse mouse in input.Mice)
         {
             try
             {
                 var c = mouse.Cursor;
                 c.Type = CursorType.Standard;
-                c.StandardCursor = cursor;
+                c.StandardCursor = silk;
             }
             catch { }
         }
@@ -665,7 +661,7 @@ public static class Shell
     public static void SetCustomCursor(RawImage image, int hotspotX, int hotspotY)
     {
         if (input == null || input.Mice == null) return;
-        _appliedStandardCursor = (StandardCursor)(-1);
+        _appliedCursor = (UiCursor)(-1);
         foreach (IMouse mouse in input.Mice)
         {
             try
@@ -716,31 +712,26 @@ public static class Shell
                     ShellApp.ActiveView.ReleasePointerCapture();
                 }
                 Vector2 logicalPos = ScaleFactor > 0f ? pos / ScaleFactor : pos;
-                ShellApp.Events.HandleMouseMove(logicalPos);
-                ShellApp.ActiveView?.Events.HandleMouseMove(logicalPos);
+                Session?.Input.PointerMove(logicalPos.X, logicalPos.Y);
             };
 
             mouse.Scroll += (IMouse _, ScrollWheel wheel) =>
             {
-                var pos = new Vector2(wheel.X, wheel.Y);
-                ShellApp.Events.HandleMouseScroll(pos);
-                ShellApp.ActiveView?.Events.HandleMouseScroll(pos);
+                Session?.Input.Scroll(wheel.X, wheel.Y);
             };
 
             mouse.MouseDown += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
                 Vector2 logicalPos = ScaleFactor > 0f ? m.Position / ScaleFactor : m.Position;
-                ShellApp.Events.HandleMouseDown(mouseButton, logicalPos);
-                ShellApp.ActiveView?.Events.HandleMouseDown(mouseButton, logicalPos);
+                Session?.Input.PointerDown(logicalPos.X, logicalPos.Y, mouseButton);
             };
 
             mouse.MouseUp += (IMouse m, Silk.NET.Input.MouseButton btn) =>
             {
                 int mouseButton = (int)btn;
                 Vector2 logicalPos = ScaleFactor > 0f ? m.Position / ScaleFactor : m.Position;
-                ShellApp.Events.HandleMouseUp(mouseButton, logicalPos);
-                ShellApp.ActiveView?.Events.HandleMouseUp(mouseButton, logicalPos);
+                Session?.Input.PointerUp(logicalPos.X, logicalPos.Y, mouseButton);
             };
         }
     }
@@ -785,8 +776,7 @@ public static class Shell
         if (action != InputAction.Repeat)
             return;
 
-        var key = (Key)glfwKey;
-        DispatchKeyDown(key, scanCode, isRepeat: true);
+        DispatchKeyDown((Key)glfwKey, scanCode, isRepeat: true);
     }
 
     private static unsafe void OnGlfwChar(WindowHandle* glfwWindow, uint codepoint)
@@ -823,9 +813,11 @@ public static class Shell
         DispatchText(ch.ToString());
     }
 
+    static UiKey FromSilk(Key silkKey) => (UiKey)(int)silkKey;
+
     private static void DispatchKeyDown(Key key, int scanCode, bool isRepeat)
     {
-        if (ShellApp is null)
+        if (ShellApp is null || Session is null)
             return;
 
         if (ShellApp.EnableStatsOverlay && key == Key.F12)
@@ -842,112 +834,20 @@ public static class Shell
             return;
         }
 
-        var appEvents = ShellApp.Events;
-        var view = ShellApp.ActiveView;
-        var focused = view?.ActiveKeyboardElement;
-
-        if (!isRepeat)
-        {
-            appEvents.TrackKeyDown(key);
-            view?.Events.TrackKeyDown(key);
-            for (var el = focused; el != null; el = el.Parent)
-                el.Events.TrackKeyDown(key);
-        }
-
-        var e = new KeyEvent
-        {
-            Key = key,
-            ScanCode = scanCode,
-            IsRepeat = isRepeat,
-            Control = appEvents.IsControlDown,
-            Alt = appEvents.IsAltDown,
-            Shift = appEvents.IsShiftDown,
-            Super = appEvents.IsSuperDown
-        };
-
-        for (var el = focused; el != null && !e.Handled; el = el.Parent)
-            el.Events.RaiseKeyDown(e);
-
-        if (!e.Handled)
-            view?.Events.RaiseKeyDown(e);
-
-        if (!e.Handled)
-            appEvents.RaiseKeyDown(e);
-
-        if (!e.Handled && !isRepeat)
-        {
-            for (var el = focused; el != null && !e.Handled; el = el.Parent)
-            {
-                if (el.Events.TryInvokeHotkeys())
-                    e.Handled = true;
-            }
-
-            if (!e.Handled && view != null && view.Events.TryInvokeHotkeys())
-                e.Handled = true;
-
-            if (!e.Handled && appEvents.TryInvokeHotkeys())
-                e.Handled = true;
-        }
-
-        if (!e.Handled && key == Key.Tab && !e.Control && !e.Alt && !e.Super && view != null)
-        {
-            if (view.TryHandleDefaultTab(e.Shift))
-                e.Handled = true;
-        }
+        Session.Input.KeyDown(FromSilk(key), scanCode, isRepeat);
     }
 
     private static void DispatchKeyUp(Key key, int scanCode)
     {
-        if (ShellApp is null)
+        if (Session is null)
             return;
 
-        var appEvents = ShellApp.Events;
-        var view = ShellApp.ActiveView;
-        var focused = view?.ActiveKeyboardElement;
-
-        var e = new KeyEvent
-        {
-            Key = key,
-            ScanCode = scanCode,
-            IsRepeat = false,
-            Control = appEvents.IsControlDown,
-            Alt = appEvents.IsAltDown,
-            Shift = appEvents.IsShiftDown,
-            Super = appEvents.IsSuperDown
-        };
-
-        appEvents.TrackKeyUp(key);
-        view?.Events.TrackKeyUp(key);
-        for (var el = focused; el != null; el = el.Parent)
-            el.Events.TrackKeyUp(key);
-
-        for (var el = focused; el != null && !e.Handled; el = el.Parent)
-            el.Events.RaiseKeyUp(e);
-
-        if (!e.Handled)
-            view?.Events.RaiseKeyUp(e);
-
-        if (!e.Handled)
-            appEvents.RaiseKeyUp(e);
+        Session.Input.KeyUp(FromSilk(key), scanCode);
     }
 
     private static void DispatchText(string text)
     {
-        if (ShellApp is null || string.IsNullOrEmpty(text))
-            return;
-
-        var e = new TextEvent { Text = text };
-        var view = ShellApp.ActiveView;
-        var focused = view?.ActiveKeyboardElement;
-
-        for (var el = focused; el != null && !e.Handled; el = el.Parent)
-            el.Events.RaiseTextInput(e);
-
-        if (!e.Handled)
-            view?.Events.RaiseTextInput(e);
-
-        if (!e.Handled)
-            ShellApp.Events.RaiseTextInput(e);
+        Session?.Input.Text(text);
     }
 
     private static void Closing()

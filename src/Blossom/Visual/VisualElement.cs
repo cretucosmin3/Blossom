@@ -7,7 +7,6 @@ using Blossom.Core;
 using Blossom.Core.Design;
 using Blossom.Core.Visual.Enums;
 using Blossom.Hosting;
-using Silk.NET.Input;
 
 namespace Blossom.Core.Visual;
 
@@ -480,7 +479,7 @@ public class VisualElement : IDisposable
     /// Standard mouse cursor displayed when hovering over this element.
     /// If null, inherits cursor from the nearest ancestor with a non-null Cursor, or standard default.
     /// </summary>
-    public StandardCursor? Cursor { get; set; }
+    public UiCursor? Cursor { get; set; }
 
     /// <summary>
     /// Opt-in flag: if true, this element can become the active keyboard target on mouse-down.

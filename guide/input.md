@@ -5,7 +5,7 @@
 ```csharp
 public sealed class KeyEvent
 {
-    public Key Key { get; init; }
+    public UiKey Key { get; init; }
     public int ScanCode { get; init; }
     public bool IsRepeat { get; init; }
     public bool Control { get; init; }
@@ -22,19 +22,40 @@ public sealed class TextEvent
 }
 ```
 
+`UiKey` is Blossom-owned. Names and numeric values match Silk.NET.Input.Key / GLFW (`ShiftLeft`, `ControlLeft`, `Enter = 257`, arrows `262–265`). Desktop casts with `(UiKey)(int)silkKey`. MonoGame `Keys` uses different numbers (`Enter = 13`); that mapper is not in core.
+
 Subscribe on `ElementEvents` / `EventMap`: `OnKeyDown`, `OnKeyUp`, `OnTextInput`. There is no `OnKeyType(char)`.
 
 **Dispatch:** focused `VisualElement` first, then parents until `Handled`, then the view, then the application. Registered hotkeys run only if the event is still unhandled. A terminal that marks Ctrl+C handled keeps the byte; an app-level Ctrl+W still runs when nothing ate it.
 
-**Repeat:** Silk's GLFW backend still drops `InputAction.Repeat`. `Shell` fills `KeyEvent.IsRepeat` from the GLFW key callback.
+**Repeat:** Silk's GLFW backend still drops `InputAction.Repeat`. `Shell` fills `KeyEvent.IsRepeat` from the GLFW key callback, then calls `session.Input.KeyDown`.
 
-**Text:** high surrogates are buffered and emitted as one `TextEvent`. Consumers can `Text.EnumerateRunes()`.
+**Text:** high surrogates are buffered in `Shell` and emitted as one `TextEvent`. Consumers can `Text.EnumerateRunes()`.
 
 **Modifiers:** `EventMap.IsKeyDown`, `IsControlDown`, `IsAltDown`, `IsShiftDown`, `IsSuperDown`. Do not reflect into Silk `IInputContext`.
 
-**F12:** see [Host](host.md) — reserved only when `EnableStatsOverlay` is true.
+**F12:** see [Host](host.md) — reserved only when `EnableStatsOverlay` is true (desktop Shell intercepts before `UiInput`).
 
 Give a primitive keyboard by setting `ReceivesKeyboard = true` and handling the events. Call `GetFocus()` / `View.SetActiveKeyboardElement` to become the target.
+
+## Host injection (`UiInput`)
+
+Core never reads Silk, GLFW, or engine devices. Every host calls `UiSession.Input`:
+
+```csharp
+session.Input.PointerMove(x, y);
+session.Input.PointerDown(x, y, button);   // 0=left, 1=right, 2=middle
+session.Input.PointerUp(x, y, button);
+session.Input.PointerLeave();              // hover only; keep capture if button 0/1 down
+session.Input.Scroll(dx, dy);
+session.Input.KeyDown(UiKey.Enter, scanCode: 0, isRepeat: false);
+session.Input.KeyUp(UiKey.Enter);
+session.Input.Text(utf16);                 // UTF-16 chunk
+```
+
+Coordinates are **logical viewport** (origin top-left of the Blossom surface), same space as desktop mouse after `pos / ScaleFactor`.
+
+`Shell.Initialize` keeps mapping Silk `IInputContext` onto these methods. Games inject from their own `Update`. Surrogate pairing stays in Shell; game `Text` comes from the engine IME if you subscribe.
 
 ## Tab without TabIndex
 
@@ -50,6 +71,14 @@ Default unhandled Tab / Shift+Tab moves `ActiveKeyboardElement` along that list.
 
 Click policy and hover use `ElementTree.Hits` (see below). `IsClickthrough` walks to the nearest ancestor that can receive pointer events (icon/label on a button).
 
+`VisualElement.Cursor` is `UiCursor?` (`Hand`, `IBeam`, `HResize`, …). Null inherits from ancestors; otherwise `UiCursor.Default`. The host applies it via `IUiHost.SetCursor`.
+
+**PointerLeave vs capture.** Leaving the HUD/window:
+
+1. Keep delivering `PointerMove` / `PointerUp` to the capture target (coords may be outside the logical viewport).
+2. `PointerLeave` clears hover only; it does **not** `ReleasePointerCapture` if button 0 or 1 is down.
+3. World click-through: if `!session.WantsPointer(lx, ly)` **and** `PointerCaptureElement == null`, the game keeps the event.
+
 ## Hit-testing
 
 1. Painter order (front to back), overlays first.
@@ -60,6 +89,15 @@ Click policy and hover use `ElementTree.Hits` (see below). `IsClickthrough` walk
 **Do not** invert the 4×4 and `MapPoint(screenX, screenY, z: 0)`. After `RotationX` / `RotationY`, the painted pixel is not at z=0 in that space, so the hit region slides off the drawing. `TryUnproject` solves the row-vector homography for `(lx, ly, 0, 1) * M`.
 
 Override `HitTestLocal` for circles, paths, etc.
+
+Hits are **geometric, not alpha**. Opacity 0 still hits unless `Interactive` is false or `IsClickthrough` is true. A full-window transparent root **steals world clicks**.
+
+`View.HitTest` is internal. Public query:
+
+```csharp
+VisualElement? hit = session.HitTest(x, y);
+bool wants = session.WantsPointer(x, y); // hit != null
+```
 
 ## Overlays (modals, menus, toasts)
 
@@ -82,3 +120,5 @@ IDisposable lease = view.PushOverlay(dialog, new OverlayOptions
 ```
 
 A menu typically uses `BlockHitsUnderneath = false` and `CloseOnPointerOutside = true`. The demo `Modal` uses this stack.
+
+If the top overlay has `BlockHitsUnderneath` (default **true**), a miss still returns the overlay **layer**. `WantsPointer` is then true for the **entire HUD rect**, including empty glass — correct for a modal, **not** world click-through. Use `IsClickthrough` on large empty panels, or a bottom-bar HUD with no full-size hittable backdrop, if the world must receive clicks.

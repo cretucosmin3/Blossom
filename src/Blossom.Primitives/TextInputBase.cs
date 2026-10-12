@@ -4,7 +4,7 @@ using System.Linq;
 using Blossom.Core;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
-using Silk.NET.Input;
+using Blossom.Hosting;
 
 namespace Blossom.Primitives;
 
@@ -37,7 +37,7 @@ public class TextInputBase : Control
     public TextInputBase()
     {
         ReceivesKeyboard = true;
-        Cursor = StandardCursor.IBeam;
+        Cursor = UiCursor.IBeam;
 
         OnFocused += _ => SetFocused(true);
         OnFocusLost += _ => SetFocused(false);
@@ -353,27 +353,27 @@ public class TextInputBase : Control
 
         switch (e.Key)
         {
-            case Key.A when ctrl:
+            case UiKey.A when ctrl:
                 SelectAll();
                 e.Handled = true;
                 break;
 
-            case Key.C when ctrl:
+            case UiKey.C when ctrl:
                 Copy();
                 e.Handled = true;
                 break;
 
-            case Key.X when ctrl:
+            case UiKey.X when ctrl:
                 Cut();
                 e.Handled = true;
                 break;
 
-            case Key.V when ctrl:
+            case UiKey.V when ctrl:
                 Paste();
                 e.Handled = true;
                 break;
 
-            case Key.Left:
+            case UiKey.Left:
                 if (ctrl)
                     MoveCaret(WordLeft(_caret), shift);
                 else if (shift)
@@ -385,7 +385,7 @@ public class TextInputBase : Control
                 e.Handled = true;
                 break;
 
-            case Key.Right:
+            case UiKey.Right:
                 if (ctrl)
                     MoveCaret(WordRight(_caret), shift);
                 else if (shift)
@@ -397,17 +397,17 @@ public class TextInputBase : Control
                 e.Handled = true;
                 break;
 
-            case Key.Home:
+            case UiKey.Home:
                 MoveCaret(0, shift);
                 e.Handled = true;
                 break;
 
-            case Key.End:
+            case UiKey.End:
                 MoveCaret(_text.Length, shift);
                 e.Handled = true;
                 break;
 
-            case Key.Backspace:
+            case UiKey.Backspace:
                 if (HasSelection)
                     DeleteSelection();
                 else if (ctrl)
@@ -425,7 +425,7 @@ public class TextInputBase : Control
                 e.Handled = true;
                 break;
 
-            case Key.Delete:
+            case UiKey.Delete:
                 if (HasSelection)
                     DeleteSelection();
                 else if (ctrl)
@@ -443,12 +443,12 @@ public class TextInputBase : Control
                 e.Handled = true;
                 break;
 
-            case Key.Enter:
+            case UiKey.Enter:
                 Submitted?.Invoke();
                 e.Handled = true;
                 break;
 
-            case Key.Escape:
+            case UiKey.Escape:
                 Escaped?.Invoke();
                 e.Handled = true;
                 break;

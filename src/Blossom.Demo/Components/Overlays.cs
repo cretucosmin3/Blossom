@@ -5,7 +5,6 @@ using Blossom.Core.Visual;
 using Blossom.Primitives;
 using Blossom.Reactive;
 using Blossom.Testing.State;
-using Silk.NET.Input;
 using SkiaSharp;
 
 namespace Blossom.Testing.Components;
@@ -47,8 +46,8 @@ public sealed class Dialog : VisualElement
 
         Events.OnKeyDown += (KeyEvent e) =>
         {
-            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
-            else if (e.Key == Key.Enter && Submit != null) { Submit(); e.Handled = true; }
+            if (e.Key == UiKey.Escape) { Close(); e.Handled = true; }
+            else if (e.Key == UiKey.Enter && Submit != null) { Submit(); e.Handled = true; }
         };
         Events.OnMouseDown += (_, e) =>
         {

@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Silk.NET.Input;
 
 namespace Blossom.Hosting;
 
@@ -23,7 +22,7 @@ public interface IUiHost
 
     string? GetClipboardText();
     void SetClipboardText(string text);
-    void SetCursor(StandardCursor cursor);
+    void SetCursor(UiCursor cursor);
 
     /// <summary>Optional. Desktop uses this for stats overlay / native handle. Games return 0.</summary>
     nint NativeHandle { get; }

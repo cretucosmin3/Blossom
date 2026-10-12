@@ -26,11 +26,13 @@ public sealed class UiSession : IDisposable
         PaintMode = _options.PaintMode;
         ClearColor = _options.ClearColor;
         ClearCanvas = _options.ClearCanvas;
+        Input = new UiInput(this);
         application.Session = this;
     }
 
     public Application Application { get; }
     public IUiHost Host { get; }
+    public UiInput Input { get; }
     public bool IsLoaded { get; private set; }
     public PaintMode PaintMode { get; }
     public SKColor ClearColor { get; }
@@ -209,6 +211,12 @@ public sealed class UiSession : IDisposable
         return Application.ActiveView?.HitTest(logicalX, logicalY);
     }
 
+    /// <summary>
+    /// True if a geometric hit exists at the logical point, including a blocking
+    /// overlay layer (miss on empty glass still wants the pointer). Does not
+    /// consider pointer capture. Opacity 0 still hits unless Interactive is false
+    /// or IsClickthrough is true.
+    /// </summary>
     public bool WantsPointer(float logicalX, float logicalY) => HitTest(logicalX, logicalY) != null;
 
     public void Dispose()
@@ -227,7 +235,7 @@ public sealed class UiSession : IDisposable
             UiDispatcher.RestoreSynchronizationContext();
     }
 
-    void ThrowIfDisposed()
+    internal void ThrowIfDisposed()
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(UiSession));

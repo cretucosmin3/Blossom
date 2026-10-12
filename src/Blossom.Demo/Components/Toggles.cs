@@ -1,4 +1,5 @@
 using System;
+using Blossom.Hosting;
 using Blossom.Primitives;
 using SkiaSharp;
 
@@ -161,7 +162,7 @@ public sealed class Segmented : Control
     public Segmented(params string[] options)
     {
         _options = options;
-        Cursor = Silk.NET.Input.StandardCursor.Hand;
+        Cursor = UiCursor.Hand;
         Transform.Height = 32;
 
         Events.OnMouseMove += (_, e) => SetHoverIndex(IndexAt(e.Relative.X));

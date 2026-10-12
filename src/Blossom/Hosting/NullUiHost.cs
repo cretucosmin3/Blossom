@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Silk.NET.Input;
 
 namespace Blossom.Hosting;
 
@@ -28,5 +27,5 @@ public sealed class NullUiHost : IUiHost
 
     public string? GetClipboardText() => null;
     public void SetClipboardText(string text) { }
-    public void SetCursor(StandardCursor cursor) { }
+    public void SetCursor(UiCursor cursor) { }
 }

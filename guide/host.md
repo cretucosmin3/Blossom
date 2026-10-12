@@ -80,7 +80,7 @@ When there is nothing to paint, the host waits with `glfwWaitEventsTimeout` unti
 ```csharp
 string? text = Shell.GetClipboardText();
 Shell.SetClipboardText("copied");
-Shell.SetCursor(StandardCursor.Hand);
+Shell.SetCursor(UiCursor.Hand);
 ```
 
 ## Embed (`UiSession`)
@@ -100,6 +100,7 @@ session.SetSize(logicalW, logicalH, pixelW, pixelH);
 session.Init();
 
 session.Tick(dt);
+session.Input.PointerMove(x, y); // see Input
 if (session.NeedsPaint)
 {
     session.Paint(new RenderFrame(
@@ -108,6 +109,6 @@ if (session.NeedsPaint)
 }
 ```
 
-`Tick` is CPU-only (dispatcher, timers, SKSL clocks). `Paint` is the only GPU scope — do not call `Gpu.*` from Tick or a posted callback. `UiHost.Install` is process-lifetime; Tick/Paint cannot nest and do not uninstall the host.
+`Tick` is CPU-only (dispatcher, timers, SKSL clocks). `Paint` is the only GPU scope — do not call `Gpu.*` from Tick or a posted callback. `UiHost.Install` is process-lifetime; Tick/Paint cannot nest and do not uninstall the host. Pointer/key/text enter through `session.Input` ([Input](input.md)).
 
 Size is per session (`SetSize`). Layout (`View.Width` / `LayoutWidth`) reads `Application.Session.LogicalSize` at any time, including after `Init` without a paint pass.

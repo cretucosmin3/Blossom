@@ -1,7 +1,7 @@
 using System;
 using Blossom.Core.Input;
+using Blossom.Hosting;
 using Blossom.Primitives;
-using Silk.NET.Input;
 using SkiaSharp;
 
 namespace Blossom.Testing.Components;
@@ -18,7 +18,7 @@ public sealed class Slider : Control
         Max = max;
         Step = step;
         _value = Snap(value);
-        Cursor = StandardCursor.Hand;
+        Cursor = UiCursor.Hand;
         ReceivesKeyboard = true;
         Transform.Height = 22;
 
@@ -43,8 +43,8 @@ public sealed class Slider : Control
         };
         Events.OnKeyDown += (KeyEvent e) =>
         {
-            if (e.Key == Key.Left || e.Key == Key.Down) { Value -= Step; e.Handled = true; }
-            if (e.Key == Key.Right || e.Key == Key.Up) { Value += Step; e.Handled = true; }
+            if (e.Key == UiKey.Left || e.Key == UiKey.Down) { Value -= Step; e.Handled = true; }
+            if (e.Key == UiKey.Right || e.Key == UiKey.Up) { Value += Step; e.Handled = true; }
         };
 
         this.UseStyle("slider");

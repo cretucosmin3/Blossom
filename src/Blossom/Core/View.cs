@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SkiaSharp;
-using Silk.NET.Input;
 
 namespace Blossom.Core
 {
@@ -316,12 +315,14 @@ namespace Blossom.Core
             Events.OnMouseScroll += OnMouseScroll;
         }
 
-        private StandardCursor _lastCursor = (StandardCursor)(-1);
+        private UiCursor _lastCursor = (UiCursor)(-1);
+
+        internal void ClearHover() => UpdateHoverTarget(null, default);
 
         private void UpdateCursorForTarget(VisualElement? target)
         {
             var cursorElem = target;
-            StandardCursor? effectiveCursor = null;
+            UiCursor? effectiveCursor = null;
             while (cursorElem != null)
             {
                 if (cursorElem.Cursor.HasValue)
@@ -332,13 +333,13 @@ namespace Blossom.Core
                 cursorElem = cursorElem.Parent;
             }
 
-            var next = effectiveCursor ?? StandardCursor.Default;
+            var next = effectiveCursor ?? UiCursor.Default;
             if (next == _lastCursor)
                 return;
             _lastCursor = next;
             try
             {
-                Shell.ChangeCursor(next);
+                (Application?.Session?.Host ?? UiHost.Current).SetCursor(next);
             }
             catch { }
         }

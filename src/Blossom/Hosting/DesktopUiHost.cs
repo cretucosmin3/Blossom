@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Blossom.Platform;
 using Silk.NET.GLFW;
-using Silk.NET.Input;
 
 namespace Blossom.Hosting;
 
@@ -34,5 +33,5 @@ public sealed class DesktopUiHost : IUiHost
 
     public string? GetClipboardText() => Shell.GetClipboardText();
     public void SetClipboardText(string text) => Shell.SetClipboardText(text);
-    public void SetCursor(StandardCursor cursor) => Shell.SetCursor(cursor);
+    public void SetCursor(UiCursor cursor) => Shell.SetCursor(cursor);
 }
