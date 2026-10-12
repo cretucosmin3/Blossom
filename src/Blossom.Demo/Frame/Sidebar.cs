@@ -25,7 +25,7 @@ public sealed class Sidebar : Stack
         logo.BackgroundImageScale = ImageScaleMode.Contain;
         logo.LoadImageFromFile(Path.Combine(AppContext.BaseDirectory, "assets", "icon.png"));
 
-        var brand = Ui.Row(10, logo, Ui.Text("Blossom", "text.brand"), Ui.Spacer(), new Badge("0.1", Tone.Primary));
+        var brand = Ui.Row(10, logo, Ui.Text("Blossom", "text.brand"), Ui.Spacer(), new Badge("0.2", Tone.Primary));
         brand.Padding = new Thickness(6, 0, 4, 0);
         brand.Height(32);
         AddChild(brand);
