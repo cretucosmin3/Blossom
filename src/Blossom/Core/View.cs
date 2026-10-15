@@ -781,7 +781,10 @@ namespace Blossom.Core
         {
             lock (_dirtyRectsLock)
             {
-                if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired && !_hierarchyDirty && !LayoutRequired) return;
+                // FullFrame never skips: the host has cleared its target (see the FullFrame branch below),
+                // and NeedsPaint can be true with nothing dirty, e.g. when only a timer is due.
+                if (DirtyRects.Count == 0 && !RenderRequired && !FullRenderRequired && !_hierarchyDirty && !LayoutRequired
+                    && GpuPass.PaintMode != PaintMode.FullFrame) return;
 
                 if (FullRenderRequired)
                 {

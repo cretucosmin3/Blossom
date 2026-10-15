@@ -211,6 +211,8 @@ public void Draw(SKSurface uiSurface)
 
 ## 5. MonoGame / FNA Integration with `SkiaGameRendering`
 
+For a complete game, see [`demos/Snake.MonoGame`](../demos/Snake.MonoGame/README.md): Snake with a Blossom HUD, dialogs, effects and a perf overlay, using the `SkiaGameRendering` NuGet package.
+
 If using [SkiaGameRendering](https://github.com/vchelaru/SkiaGameRendering) in MonoGame or FNA:
 
 ```csharp

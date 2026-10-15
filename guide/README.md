@@ -46,4 +46,4 @@ Reactive signals live in [`src/Blossom.Reactive/README.md`](../src/Blossom.React
 | Scrollable region + scrollbars | `ScrollIntoView` |
 | Host contracts every primitive reuses | A large shipped control library **in this pass** |
 
-Demo widgets under `src/Blossom.Demo/Components` are samples, not a versioned control API.
+Demo widgets under `demos/ApplicationDemo/Components` are samples, not a versioned control API.

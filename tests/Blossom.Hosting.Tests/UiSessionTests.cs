@@ -94,6 +94,27 @@ public class UiSessionTests
     }
 
     [Fact]
+    public void FullFramePaint_RedrawsEverything_WhenOnlyATimerIsDue()
+    {
+        // A game host clears its target whenever NeedsPaint is true, then calls Paint. A due timer
+        // makes NeedsPaint true with nothing dirty; the paint must still produce the whole UI.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var host = new SoftwareUiHost();
+        using var session = CreateSession(host, new HostingApp(), 80, 40);
+        session.Paint(Frame(surface, session), force: true);
+        Assert.False(session.NeedsPaint);
+
+        using var timer = host.PostDelayed(TimeSpan.Zero, () => { });
+        Assert.True(session.NeedsPaint);
+
+        surface.Canvas.Clear(SKColors.Transparent);
+        session.Paint(Frame(surface, session));
+
+        using var pixmap = surface.PeekPixels();
+        Assert.Equal(255, pixmap.GetPixelColor(10, 10).Red);
+    }
+
+    [Fact]
     public void Tick_RunsPostFromWorker()
     {
         var host = new SoftwareUiHost();

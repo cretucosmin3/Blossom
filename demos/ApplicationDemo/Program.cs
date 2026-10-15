@@ -46,7 +46,7 @@ namespace Blossom
             // Run SKSL Shader verification tests
             Blossom.Core.Visual.SKSLShaderManager.TestCompilation();
 
-            Shell.MaxFps = 10;
+            Shell.MaxFps = 120;
             for (int i = 0; i < _args.Length; i++)
             {
                 if (_args[i].Equals("--max-fps", StringComparison.OrdinalIgnoreCase) && i + 1 < _args.Length && int.TryParse(_args[i + 1], out int customFps))

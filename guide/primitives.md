@@ -16,6 +16,6 @@ The Gallery demo builds its frame with these hosts: a `Grid` for sidebar / conte
 
 Named colour scales live on `Colours` (`Colours.Zinc[800]`, Tailwind 50–950). Values are `SKColor`.
 
-Reusable styles and theme swap live on `Theme` / `Themes.Current` (`UseStyle("card")`). Blossom does not ship a look: apps define a theme or set `ElementStyle` on each node. The Gallery demo builds Dark / Light × six accents from signals in `src/Blossom.Demo/Theme/Look.cs`; all recipes live in `Theme/Recipes.cs`. Recipes write each node's `ElementStyle`; switching `Themes.Current` re-applies bound names.
+Reusable styles and theme swap live on `Theme` / `Themes.Current` (`UseStyle("card")`). Blossom does not ship a look: apps define a theme or set `ElementStyle` on each node. The Gallery demo builds Dark / Light × six accents from signals in `demos/ApplicationDemo/Theme/Look.cs`; all recipes live in `Theme/Recipes.cs`. Recipes write each node's `ElementStyle`; switching `Themes.Current` re-applies bound names.
 
 Tests: `tests/Blossom.Primitives.Tests`.

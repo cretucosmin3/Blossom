@@ -9,10 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Blossom\Blossom.csproj" />
-        <ProjectReference Include="..\Blossom.Desktop\Blossom.Desktop.csproj" />
-        <ProjectReference Include="..\Blossom.Reactive\Blossom.Reactive.csproj" />
-        <ProjectReference Include="..\Blossom.Primitives\Blossom.Primitives.csproj" />
+        <ProjectReference Include="..\..\src\Blossom\Blossom.csproj" />
+        <ProjectReference Include="..\..\src\Blossom.Desktop\Blossom.Desktop.csproj" />
+        <ProjectReference Include="..\..\src\Blossom.Reactive\Blossom.Reactive.csproj" />
+        <ProjectReference Include="..\..\src\Blossom.Primitives\Blossom.Primitives.csproj" />
     </ItemGroup>
 
     <ItemGroup>

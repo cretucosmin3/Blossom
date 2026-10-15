@@ -53,4 +53,4 @@ While `LayoutMutationDepth` is non-zero, `Transform.OnChanged` is suppressed (av
 
 ## Sample widgets
 
-`src/Blossom.Demo/Components` (`Button`, `TextField`, `Slider`, `Segmented`, `Dialog`, …) show how to build controls on the `Blossom.Primitives` shells (`ButtonBase`, `ToggleBase`, `TextInputBase`, `Control`). They are not the public control library: copy the pattern, do not take a package dependency on the demo.
+`demos/ApplicationDemo/Components` (`Button`, `TextField`, `Slider`, `Segmented`, `Dialog`, …) show how to build controls on the `Blossom.Primitives` shells (`ButtonBase`, `ToggleBase`, `TextInputBase`, `Control`). They are not the public control library: copy the pattern, do not take a package dependency on the demo.

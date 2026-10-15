@@ -32,9 +32,21 @@ Blossom is a **retained-mode UI framework for C#** — a native desktop “brows
 
 ```text
 Blossom/
-├── Blossom.sln             # Library + demo
+├── Blossom.sln             # Libraries, tests + demos
 ├── .github/workflows/      # NuGet pack / release
 ├── guide/                  # Public guide (capabilities, APIs, pitfalls)
+├── demos/
+│   ├── ApplicationDemo/    # Desktop Application demo, Blossom Gallery (not the public API)
+│   │   ├── ApplicationDemo.csproj
+│   │   ├── Program.cs
+│   │   ├── TestingApp.cs
+│   │   ├── Frame/          # GalleryView, sidebar, top bar, nav item
+│   │   ├── Pages/          # Overview, Components, Tasks, Playground
+│   │   ├── Components/     # Sample controls built on Blossom.Primitives
+│   │   ├── Theme/          # Look (mode/accent signals) + Recipes (all styling)
+│   │   ├── State/          # AppState store (signals + memos)
+│   │   └── Views/          # Benchmark views
+│   └── Snake.MonoGame/     # Headless Blossom UI in a MonoGame game (SkiaGameRendering NuGet)
 ├── src/
 │   ├── Blossom/            # Core framework library (Silk-free: retained tree, layout, styles, UiSession)
 │   │   ├── Blossom.csproj
@@ -47,17 +59,7 @@ Blossom/
 │   ├── Blossom.Desktop/    # Desktop app host (Silk.NET, GLFW window loop, Shell, Renderer present)
 │   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
 │   ├── Blossom.Primitives/ # Layout hosts, Colours, Theme, future widgets
-│   ├── Blossom.Pack/       # One NuGet id `Blossom` (all four libraries)
-│   └── Blossom.Demo/       # Sample host app (not the public API)
-│       ├── Blossom.Demo.csproj
-│       ├── Program.cs
-│       ├── TestingApp.cs
-│       ├── Frame/          # GalleryView, sidebar, top bar, nav item
-│       ├── Pages/          # Overview, Components, Tasks, Playground
-│       ├── Components/     # Sample controls built on Blossom.Primitives
-│       ├── Theme/          # Look (mode/accent signals) + Recipes (all styling)
-│       ├── State/          # AppState store (signals + memos)
-│       └── Views/          # Benchmark views
+│   └── Blossom.Pack/       # One NuGet id `Blossom` (all four libraries)
 ├── assets/                 # Fonts, images, icons (copied to demo output on build)
 ├── glfw/                   # Native GLFW libs for packaging
 └── README.md
@@ -108,8 +110,8 @@ Shell (static host)
 | GPU context / offscreen surfaces | `src/Blossom/Core/Gpu.cs` |
 | Shaders / effects | `src/Blossom/Visual/Style/SKSLShaders.cs` |
 | Design canvas, units, plugin embed | `src/Blossom/Core/Design/` |
-| Demo shell | `src/Blossom.Demo/TestingApp.cs`, `src/Blossom.Demo/Views/*` |
-| Sample widgets | `src/Blossom.Demo/Components/*` (not formal public controls) |
+| Demo shell | `demos/ApplicationDemo/TestingApp.cs`, `demos/ApplicationDemo/Views/*` |
+| Sample widgets | `demos/ApplicationDemo/Components/*` (not formal public controls) |
 
 ### Layout today
 
@@ -131,11 +133,11 @@ Shell (static host)
 
 ## Testing / demos
 
-`src/Blossom.Demo` hosts the primary manual test harness and sample test components (not the framework API boundary):
+`demos/ApplicationDemo` hosts the primary manual test harness and sample test components (not the framework API boundary):
 
 - Single active view: **Blossom Gallery** (`Frame/GalleryView`): sidebar navigation, top bar, pages routed with `Show.When` from `State/AppState` (signals + memos), toasts via `For.Each`.
-- Pages under `Blossom.Demo/Pages`: **Overview** (stat cards, bar chart, activity feed, derived progress), **Components** (every control, validation memos, two-way profile form), **Tasks** (keyed 3-column board, filters, add/move/delete), **Playground** (SKSL shaders, backdrop blur, 3D card with inverse hit-test, auto-orbit timer).
-- Components under `Blossom.Demo/Components` are built on `Blossom.Primitives` shells: `Button` (`ButtonBase`; variants, sizes, icons), `Switch` / `Checkbox` (`ToggleBase`), `TextField` (`TextInputBase`), `Segmented` / `Slider` / `ProgressBar` / `BarChart` / `Sparkline` (`Control`), plus `Icon`, `Badge`, `Avatar`, `Card`, `ScrollView`, `Dialog` (overlay stack), `Toast`, and the layout hooks `WrapPanel` / `ColumnLayout`.
+- Pages under `demos/ApplicationDemo/Pages`: **Overview** (stat cards, bar chart, activity feed, derived progress), **Components** (every control, validation memos, two-way profile form), **Tasks** (keyed 3-column board, filters, add/move/delete), **Playground** (SKSL shaders, backdrop blur, 3D card with inverse hit-test, auto-orbit timer).
+- Components under `demos/ApplicationDemo/Components` are built on `Blossom.Primitives` shells: `Button` (`ButtonBase`; variants, sizes, icons), `Switch` / `Checkbox` (`ToggleBase`), `TextField` (`TextInputBase`), `Segmented` / `Slider` / `ProgressBar` / `BarChart` / `Sparkline` (`Control`), plus `Icon`, `Badge`, `Avatar`, `Card`, `ScrollView`, `Dialog` (overlay stack), `Toast`, and the layout hooks `WrapPanel` / `ColumnLayout`.
 - Theme: `Theme/Look.cs` rebuilds one `Theme` from mode + accent signals; `Theme/Recipes.cs` holds every visual decision. Components stay headless and call `UseStyle` on state changes.
 - Benchmarks: `./Blossom --benchmark` (isolated benchmark views).
 
@@ -149,7 +151,7 @@ When hardening core, update demos only as needed for compile/regression — do n
 - Prefer **primitives and contracts on `VisualElement` / `View`** over new widget types in core.
 - **Do not** expand a focus system (no TabIndex, focus rings, traps) unless the user overrides product direction.
 - **Do not** add `ScrollIntoView` or built-in flex/grid unless explicitly requested.
-- Sample/layout proofs live under `Blossom.Demo`; keep core free of “app chrome” widgets when possible.
+- Sample/layout proofs live under `demos/ApplicationDemo`; keep core free of “app chrome” widgets when possible.
 - No secrets in the repo.
 - Don’t treat `bin/` / `obj/` as source of truth.
 - Nullable is enabled; respect existing patterns for `null!` / events.
@@ -178,7 +180,7 @@ dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
 Run (after build), from output or via project:
 
 ```bash
-dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+dotnet run --project demos/ApplicationDemo/ApplicationDemo.csproj
 # optional: --builder | --benchmark
 ```
 
@@ -198,12 +200,12 @@ Other apps consume the framework with `dotnet add package Blossom`, or with proj
 | Scrolling & scrollbars | `src/Blossom/Visual/ScrollContainer.cs` |
 | Layout hooks | `src/Blossom/Visual/VisualElement.cs` (`LayoutChildren`), `src/Blossom.Primitives/` (`Stack`, `Grid`, `Split`) |
 | Design canvas & units | `src/Blossom/Core/Design/` |
-| Plugin embed & isolation | `src/Blossom/Core/Design/PluginEmbed.cs`, `src/Blossom/Core/Design/PluginRoot.cs`, `src/Blossom.Demo/Views/ComponentDesignView.cs` |
-| Custom control samples | `src/Blossom.Demo/Components/` |
+| Plugin embed & isolation | `src/Blossom/Core/Design/PluginEmbed.cs`, `src/Blossom/Core/Design/PluginRoot.cs`, `demos/ApplicationDemo/Views/ComponentDesignView.cs` |
+| Custom control samples | `demos/ApplicationDemo/Components/` |
 | GPU surfaces / app shaders | `src/Blossom/Core/Gpu.cs` |
 | Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
 | Animation (timelines, transitions, UI clock) | `src/Blossom/Animations/`, `VisualElement.Play`, `View.NextAnimationStep` |
-| Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
+| Multi-view app shell | `src/Blossom/Core/Application.cs`, `demos/ApplicationDemo/TestingApp.cs` |
 | Reactive signals / flow | `src/Blossom.Reactive/` (see that project's README) |
 | Layout hosts, Colours, Theme | `src/Blossom.Primitives/` |
 
@@ -212,7 +214,7 @@ Other apps consume the framework with `dotnet add package Blossom`, or with proj
 ## When unsure
 
 1. Read `VisualElement` and `View` in `src/Blossom`. The behavior is defined there.
-2. Treat demos in `Blossom.Demo` as consumers of the API, not as the definition of core.
+2. Treat the projects under `demos/` as consumers of the API, not as the definition of core.
 3. Ask the user before large product-direction changes (focus model, layout engine shape, new packages).
 4. For an unattended `agy -p` run, pass `--add-dir` set to the absolute repo root, and confirm results with `git status` in this repo.
 5. For public APIs and Skia 4 3D/hit-test, read `guide/` rather than expanding this file.

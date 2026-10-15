@@ -18,7 +18,7 @@ From the repo root:
 
 ```bash
 dotnet build Blossom.sln
-dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+dotnet run --project demos/ApplicationDemo/ApplicationDemo.csproj
 # optional: --builder | --benchmark | --fps
 ```
 
@@ -89,7 +89,8 @@ Blossom/
 ├── src/Blossom.Reactive/   # SolidJS-inspired signals
 ├── src/Blossom.Primitives/ # layout hosts (Stack, Grid, Split)
 ├── src/Blossom.Pack/       # packs the three libraries into one NuGet id `Blossom`
-├── src/Blossom.Demo/       # Blossom Gallery (not the public API)
+├── demos/ApplicationDemo/  # Application demo: Blossom Gallery (not the public API)
+├── demos/Snake.MonoGame/   # Headless game UI demo (MonoGame + SkiaGameRendering)
 ├── tests/Blossom.Reactive.Tests/
 ├── assets/                 # fonts, images (copied to demo output)
 └── README.md
