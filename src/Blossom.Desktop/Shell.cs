@@ -76,7 +76,7 @@ public static class Shell
 
     internal static Action OnRenderRequired;
 
-    public static event ForVoid OnLoaded;
+    public static event ForVoid? OnLoaded;
 
     /// <summary>OS file drop onto the window. Also forwarded to <c>Application.Events</c> and the active view.</summary>
     public static event Action<string[]> FilesDropped;
@@ -358,11 +358,6 @@ public static class Shell
         }
         catch { }
 
-        OnLoaded = () =>
-        {
-            ManageInputEvents();
-        };
-
         SetWindow();
     }
 
@@ -398,7 +393,10 @@ public static class Shell
         options.TransparentFramebuffer = false;
         options.WindowBorder = appWindow.Resizable ? WindowBorder.Resizable : WindowBorder.Fixed;
         options.IsEventDriven = true;
-        options.PreferredDepthBufferBits = null;
+        // The window only receives a blit of the offscreen FBO (Renderer), so it needs no depth or
+        // stencil. Null for both would get GLFW's default 24/8.
+        options.PreferredDepthBufferBits = 0;
+        options.PreferredStencilBufferBits = 0;
 
         options.API = new GraphicsAPI(
     ContextAPI.OpenGL,
@@ -976,7 +974,8 @@ public static class Shell
         HandleClientSize(window.Size.X, window.Size.Y);
         Session.Init();
 
-        OnLoaded.Invoke();
+        ManageInputEvents();
+        OnLoaded?.Invoke();
 
         LoadLogo();
 

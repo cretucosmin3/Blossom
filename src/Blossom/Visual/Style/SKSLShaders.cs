@@ -136,15 +136,15 @@ namespace Blossom.Core.Visual
                 half4 blurred = half4(0.0);
                 float step = 2.0;
                 
-                blurred += sample(u_backdrop, sampleCoord + float2(-step, -step));
-                blurred += sample(u_backdrop, sampleCoord + float2(0.0, -step));
-                blurred += sample(u_backdrop, sampleCoord + float2(step, -step));
-                blurred += sample(u_backdrop, sampleCoord + float2(-step, 0.0));
-                blurred += sample(u_backdrop, sampleCoord);
-                blurred += sample(u_backdrop, sampleCoord + float2(step, 0.0));
-                blurred += sample(u_backdrop, sampleCoord + float2(-step, step));
-                blurred += sample(u_backdrop, sampleCoord + float2(0.0, step));
-                blurred += sample(u_backdrop, sampleCoord + float2(step, step));
+                blurred += u_backdrop.eval(sampleCoord + float2(-step, -step));
+                blurred += u_backdrop.eval(sampleCoord + float2(0.0, -step));
+                blurred += u_backdrop.eval(sampleCoord + float2(step, -step));
+                blurred += u_backdrop.eval(sampleCoord + float2(-step, 0.0));
+                blurred += u_backdrop.eval(sampleCoord);
+                blurred += u_backdrop.eval(sampleCoord + float2(step, 0.0));
+                blurred += u_backdrop.eval(sampleCoord + float2(-step, step));
+                blurred += u_backdrop.eval(sampleCoord + float2(0.0, step));
+                blurred += u_backdrop.eval(sampleCoord + float2(step, step));
                 blurred /= 9.0;
                 
                 // static specular sheen highlight (diagonal sweep)
@@ -186,7 +186,7 @@ namespace Blossom.Core.Visual
                 float2 screenCoord = fragCoord * u_elementScale + u_elementPos;
                 float2 sampleCoord = screenCoord + sampleOffset;
                 
-                half4 backCol = sample(u_backdrop, sampleCoord);
+                half4 backCol = u_backdrop.eval(sampleCoord);
                 
                 // amplify brightness/saturation of refracted background color
                 float3 edgeColor = backCol.rgb * 1.6;
@@ -417,7 +417,7 @@ namespace Blossom.Core.Visual
                 float2 uv = fragCoord / u_resolution;
                 
                 // Sample the drawing canvas bitmap
-                half4 drawing = sample(u_backdrop, fragCoord);
+                half4 drawing = u_backdrop.eval(fragCoord);
                 
                 // Clean sleek slate canvas background
                 float3 canvasBg = float3(0.96, 0.96, 0.95); 
@@ -427,10 +427,10 @@ namespace Blossom.Core.Visual
                 
                 // 3D normal mapping: sample neighbor height gradients
                 float step = 1.2;
-                float hL = sample(u_backdrop, fragCoord + float2(-step, 0.0)).a;
-                float hR = sample(u_backdrop, fragCoord + float2(step, 0.0)).a;
-                float hD = sample(u_backdrop, fragCoord + float2(0.0, -step)).a;
-                float hU = sample(u_backdrop, fragCoord + float2(0.0, step)).a;
+                float hL = u_backdrop.eval(fragCoord + float2(-step, 0.0)).a;
+                float hR = u_backdrop.eval(fragCoord + float2(step, 0.0)).a;
+                float hD = u_backdrop.eval(fragCoord + float2(0.0, -step)).a;
+                float hU = u_backdrop.eval(fragCoord + float2(0.0, step)).a;
                 
                 float3 normal = normalize(float3(hL - hR, hD - hU, 0.22));
                 
@@ -459,28 +459,28 @@ namespace Blossom.Core.Visual
                     
                     half4 n;
                     
-                    n = sample(u_backdrop, fragCoord + float2(-stepVal, 0.0));
+                    n = u_backdrop.eval(fragCoord + float2(-stepVal, 0.0));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(stepVal, 0.0));
+                    n = u_backdrop.eval(fragCoord + float2(stepVal, 0.0));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(0.0, -stepVal));
+                    n = u_backdrop.eval(fragCoord + float2(0.0, -stepVal));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(0.0, stepVal));
+                    n = u_backdrop.eval(fragCoord + float2(0.0, stepVal));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(-diag, -diag));
+                    n = u_backdrop.eval(fragCoord + float2(-diag, -diag));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(diag, -diag));
+                    n = u_backdrop.eval(fragCoord + float2(diag, -diag));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(-diag, diag));
+                    n = u_backdrop.eval(fragCoord + float2(-diag, diag));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
-                    n = sample(u_backdrop, fragCoord + float2(diag, diag));
+                    n = u_backdrop.eval(fragCoord + float2(diag, diag));
                     if (n.a > 0.005) { sumCMY += 1.0 - clamp(n.rgb / n.a, 0.0, 1.0); totalWeight += 1.0; }
                     
                     float3 mixedCMY = sumCMY / totalWeight;
@@ -734,7 +734,7 @@ namespace Blossom.Core.Visual
 
             half4 main(float2 fragCoord) {
                 float2 uv = fragCoord / u_resolution;
-                half4 origColor = sample(u_image, fragCoord);
+                half4 origColor = u_image.eval(fragCoord);
                 
                 if (u_splitPos > 0.001) {
                     if (uv.x < u_splitPos) {
@@ -824,10 +824,10 @@ namespace Blossom.Core.Visual
                 // 10. Sharpen
                 if (u_sharpen > 0.001) {
                     float2 step = float2(1.5);
-                    half4 cUp = sample(u_image, fragCoord + float2(0.0, -step.y));
-                    half4 cDown = sample(u_image, fragCoord + float2(0.0, step.y));
-                    half4 cLeft = sample(u_image, fragCoord + float2(-step.x, 0.0));
-                    half4 cRight = sample(u_image, fragCoord + float2(step.x, 0.0));
+                    half4 cUp = u_image.eval(fragCoord + float2(0.0, -step.y));
+                    half4 cDown = u_image.eval(fragCoord + float2(0.0, step.y));
+                    half4 cLeft = u_image.eval(fragCoord + float2(-step.x, 0.0));
+                    half4 cRight = u_image.eval(fragCoord + float2(step.x, 0.0));
                     float3 sharp = col * 5.0 - (cUp.rgb + cDown.rgb + cLeft.rgb + cRight.rgb);
                     col = mix(col, sharp, u_sharpen * 0.6);
                 }
