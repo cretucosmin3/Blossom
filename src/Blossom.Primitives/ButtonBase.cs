@@ -1,7 +1,7 @@
 using System;
 using Blossom.Core.Input;
 using Blossom.Core.Visual;
-using Silk.NET.Input;
+using Blossom.Hosting;
 
 namespace Blossom.Primitives;
 
@@ -14,7 +14,7 @@ public class ButtonBase : Control
 {
     public ButtonBase()
     {
-        Cursor = StandardCursor.Hand;
+        Cursor = UiCursor.Hand;
         ReceivesKeyboard = true;
 
         Events.OnMouseDown += OnPointerDown;
@@ -74,7 +74,7 @@ public class ButtonBase : Control
         if (!Enabled)
             return;
 
-        if (e.Key is Key.Space or Key.Enter)
+        if (e.Key is UiKey.Space or UiKey.Enter)
         {
             SetPressed(true);
             e.Handled = true;
@@ -86,7 +86,7 @@ public class ButtonBase : Control
         if (!Enabled)
             return;
 
-        if (e.Key is Key.Space or Key.Enter)
+        if (e.Key is UiKey.Space or UiKey.Enter)
         {
             if (IsPressed)
             {

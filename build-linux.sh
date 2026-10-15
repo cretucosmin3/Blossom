@@ -48,7 +48,7 @@ rm -f "$ROOT_DIR/Blossom"
 
 # Perform native ReadyToRun release build
 echo "--> Compiling with dotnet publish (Release, ReadyToRun, Self-Contained)..."
-dotnet publish src/Blossom.Demo/Blossom.Demo.csproj \
+dotnet publish demos/ApplicationDemo/ApplicationDemo.csproj \
   -c Release \
   -r "$RID" \
   --self-contained true \
@@ -73,8 +73,8 @@ if [ -d "$ROOT_DIR/assets" ]; then
 fi
 
 # Ensure binary is executable
-if [ -f "$OUTPUT_DIR/Blossom.Demo" ]; then
-  chmod +x "$OUTPUT_DIR/Blossom.Demo"
+if [ -f "$OUTPUT_DIR/ApplicationDemo" ]; then
+  chmod +x "$OUTPUT_DIR/ApplicationDemo"
 fi
 
 # Create convenience launcher in repo root
@@ -82,7 +82,7 @@ cat << 'EOF' > "$ROOT_DIR/Blossom"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/production"
-exec ./Blossom.Demo "$@"
+exec ./ApplicationDemo "$@"
 EOF
 chmod +x "$ROOT_DIR/Blossom"
 

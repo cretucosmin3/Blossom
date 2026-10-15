@@ -1,7 +1,7 @@
 using System;
 using Blossom.Core;
 using Blossom.Core.Visual;
-using Silk.NET.Input;
+using Blossom.Hosting;
 using SkiaSharp;
 
 namespace Blossom.Primitives;
@@ -150,9 +150,9 @@ public class Split : LayoutElement
         _bar.Visible = showBar;
         _bar.IsClickthrough = !IsResizable;
         if (showBar && IsResizable)
-            _bar.Cursor = horizontal ? StandardCursor.HResize : StandardCursor.VResize;
+            _bar.Cursor = horizontal ? UiCursor.HResize : UiCursor.VResize;
         else
-            _bar.Cursor = StandardCursor.Default;
+            _bar.Cursor = UiCursor.Default;
     }
 
     public override SKSize GetPreferredSize(float maxWidth, float maxHeight)

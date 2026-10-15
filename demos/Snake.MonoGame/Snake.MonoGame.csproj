@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SnakeDemo</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Icon.ico" />
+    <None Remove="Icon.bmp" />
+    <EmbeddedResource Include="Icon.ico" />
+    <EmbeddedResource Include="Icon.bmp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
+    <!-- GPU Skia surfaces backed by MonoGame RenderTarget2D (SkiaRenderTarget2D). -->
+    <PackageReference Include="SkiaGameRendering" Version="0.18.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Headless core only: no Blossom.Desktop, so no Silk.NET / GLFW. -->
+    <ProjectReference Include="..\..\src\Blossom\Blossom.csproj" />
+    <ProjectReference Include="..\..\src\Blossom.Reactive\Blossom.Reactive.csproj" />
+    <ProjectReference Include="..\..\src\Blossom.Primitives\Blossom.Primitives.csproj" />
+  </ItemGroup>
+</Project>

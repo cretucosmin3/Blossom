@@ -1,6 +1,6 @@
-# Host (`Shell`)
+# Host (`Shell` / `Blossom.Desktop`)
 
-`Shell` is the static process host: GLFW window, input wiring, frame timing, clipboard, and the UI thread. It used to be named `Browser`. Do not also name a widget `Shell`.
+`Shell` is the static desktop process host (located in `Blossom.Desktop`): GLFW window, input wiring, frame timing, clipboard, and the UI thread. It used to be named `Browser`. Do not also name a widget `Shell`. Core `Blossom` is Silk-free and hosts can also run headlessly via `UiSession`.
 
 Tree: **Shell → Application → View → VisualElement**.
 
@@ -8,13 +8,14 @@ Do not take Silk's `IWindow` or `IInputContext` by reflection. The public surfac
 
 ## Window
 
-Set policy on the application before `Shell.Initialize`:
+Desktop apps derive from `DesktopApplication` (namespace `Blossom.Desktop`), which adds the window policy to core `Application`. Set it before `Shell.Initialize`:
 
 ```csharp
-public abstract class Application
+public abstract class DesktopApplication : Application
 {
     public WindowOptions Window { get; } = new();
     public bool EnableStatsOverlay { get; set; } // default false
+    public string Title { get; set; } = "";     // empty = active view name
 }
 
 public sealed class WindowOptions
@@ -80,5 +81,35 @@ When there is nothing to paint, the host waits with `glfwWaitEventsTimeout` unti
 ```csharp
 string? text = Shell.GetClipboardText();
 Shell.SetClipboardText("copied");
-Shell.SetCursor(StandardCursor.Hand);
+Shell.SetCursor(UiCursor.Hand);
 ```
+
+## Embed (`UiSession`)
+
+Desktop apps still call `Shell.Initialize`. Games and tests construct a `UiSession` with an `IUiHost` and pump `Tick` / `Paint` themselves (CI uses `SoftwareUiHost`; no GLFW window).
+
+```csharp
+var host = new SoftwareUiHost();
+var app = new MyApplication();
+using var session = new UiSession(host, app, new UiSessionOptions
+{
+    PaintMode = PaintMode.FullFrame,
+    ClearColor = SKColors.Transparent,
+    ClearCanvas = true
+});
+session.SetSize(logicalW, logicalH, pixelW, pixelH);
+session.Init();
+
+session.Tick(dt);
+session.Input.PointerMove(x, y); // see Input
+if (session.NeedsPaint)
+{
+    session.Paint(new RenderFrame(
+        canvas, session.LogicalSize, session.FramebufferSize,
+        gpuContext: null, surface: surface, clearCanvas: true));
+}
+```
+
+`Tick` is CPU-only (dispatcher, timers, SKSL clocks). `Paint` is the only GPU scope — do not call `Gpu.*` from Tick or a posted callback. `UiHost.Install` is process-lifetime; Tick/Paint cannot nest and do not uninstall the host. Pointer/key/text enter through `session.Input` ([Input](input.md)).
+
+Size is per session (`SetSize`). Layout (`View.Width` / `LayoutWidth`) reads `Application.Session.LogicalSize` at any time, including after `Init` without a paint pass.

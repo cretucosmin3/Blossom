@@ -6,7 +6,8 @@ using SkiaSharp;
 using Blossom.Core;
 using Blossom.Core.Design;
 using Blossom.Core.Visual.Enums;
-using Silk.NET.Input;
+using Blossom.Hosting;
+using Blossom.Animations;
 
 namespace Blossom.Core.Visual;
 
@@ -146,9 +147,7 @@ public class VisualElement : IDisposable
 
             ParentView.RenderRequired = true;
             if (LayoutMutationDepth == 0)
-            {
-                try { Silk.NET.GLFW.GlfwProvider.GLFW.Value.PostEmptyEvent(); } catch { }
-            }
+                UiHost.Current.Wake();
         }
     }
 
@@ -481,7 +480,7 @@ public class VisualElement : IDisposable
     /// Standard mouse cursor displayed when hovering over this element.
     /// If null, inherits cursor from the nearest ancestor with a non-null Cursor, or standard default.
     /// </summary>
-    public StandardCursor? Cursor { get; set; }
+    public UiCursor? Cursor { get; set; }
 
     /// <summary>
     /// Opt-in flag: if true, this element can become the active keyboard target on mouse-down.
@@ -573,13 +572,90 @@ public class VisualElement : IDisposable
         if (usesAnimatedVisual)
             ScheduleRender();
 
+        AdvanceAnimations(dt);
+        if (_isDisposed)
+            return; // An animation finished by disposing this element.
+
         OnUpdate(dt);
     }
 
     /// <summary>
-    /// Called each frame during the view update pass. Override to perform per-frame animations.
+    /// Called each frame during the view update pass, after this element's animations have advanced.
+    /// <paramref name="dt"/> is the UI time since the previous pass. For most motion,
+    /// <see cref="Animate"/>, <see cref="Play"/>, and <see cref="AnimatedValue"/> are simpler.
     /// </summary>
     protected virtual void OnUpdate(float dt) { }
+    #endregion
+
+    #region Animations
+    private List<Playback>? _playbacks;
+
+    /// <summary>
+    /// Starts a fluent <see cref="Timeline"/> on this element, playing from the next frame. Chain its
+    /// steps in the same statement.
+    /// </summary>
+    /// <example><code>
+    /// popup.Animate()
+    ///     .MoveBy(0, -40, 0.9f)
+    ///     .With().Scale(1, 0.12f, Ease.OutBack)
+    ///     .At(0.45f).Fade(0, 0.45f, Ease.Linear)
+    ///     .Call(popup.Dispose);
+    /// </code></example>
+    public Timeline Animate()
+    {
+        var timeline = new Timeline(this);
+        timeline.Playback = Play(timeline);
+        return timeline;
+    }
+
+    /// <summary>
+    /// Plays <paramref name="animation"/> on this element. It advances on UI time during paint passes
+    /// while the element is visible, keeps frames coming until it ends, and stops when the element is
+    /// disposed. Several animations can play at once; for the same property, the one started last wins.
+    /// </summary>
+    public Playback Play(Animation animation)
+    {
+        ArgumentNullException.ThrowIfNull(animation);
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+
+        var playback = new Playback(this, animation);
+        (_playbacks ??= new List<Playback>()).Add(playback);
+        ScheduleRender();
+        return playback;
+    }
+
+    /// <summary>Stops every animation playing on this element, leaving properties where they are.</summary>
+    public void StopAnimations()
+    {
+        if (_playbacks == null)
+            return;
+        foreach (var playback in _playbacks)
+            playback.Stop();
+        _playbacks.Clear();
+    }
+
+    private static readonly Predicate<Playback> IsFinished = p => !p.IsPlaying;
+
+    private void AdvanceAnimations(float dt)
+    {
+        var playbacks = _playbacks;
+        if (playbacks == null || playbacks.Count == 0)
+            return;
+
+        // Animations started by a callback during this pass begin on the next one.
+        int count = playbacks.Count;
+        bool needsFrame = false;
+        for (int i = 0; i < count && i < playbacks.Count; i++)
+        {
+            needsFrame |= playbacks[i].Advance(dt);
+            if (_isDisposed)
+                return;
+        }
+
+        playbacks.RemoveAll(IsFinished);
+        if (needsFrame || playbacks.Count > count)
+            ScheduleRender();
+    }
     #endregion
 
     #region Events
@@ -807,6 +883,7 @@ public class VisualElement : IDisposable
                 InvalidateLayout();
                 ParentView?.MarkHierarchyDirty();
                 ScheduleRender();
+                SyncContinuousKeepAlive();
             }
         }
     }
@@ -1164,7 +1241,7 @@ public class VisualElement : IDisposable
                 var bmp = SKBitmap.Decode(bytes);
                 if (bmp != null)
                 {
-                    Shell.Post(() =>
+                    UiHost.Current.Post(() =>
                     {
                         if (_isDisposed)
                         {
@@ -1241,7 +1318,7 @@ public class VisualElement : IDisposable
                 {
                     var svg = new Svg.Skia.SKSvg();
                     svg.Load(ms);
-                    Shell.Post(() =>
+                    UiHost.Current.Post(() =>
                     {
                         if (_isDisposed)
                         {
@@ -1411,6 +1488,7 @@ public class VisualElement : IDisposable
 
         view.UntrackElement(ref element);
         element._ParentView = null!;
+        element.SyncContinuousKeepAlive();
     }
 
     public Rect BoundingRect
@@ -2256,6 +2334,31 @@ public class VisualElement : IDisposable
         InvalidatePaint();
     }
 
+    bool _continuousKeepAliveCounted;
+    View? _continuousKeepAliveView;
+
+    internal void SyncContinuousKeepAlive()
+    {
+        bool should = ParentView != null && Visible && Style != null &&
+            Style.ShaderRenderMode == EffectRenderMode.Continuous &&
+            (Style.BackgroundShader != BackgroundShaderType.None ||
+             Style.BorderEffect != BorderEffectType.None);
+
+        if (_continuousKeepAliveCounted && (!should || _continuousKeepAliveView != ParentView))
+        {
+            _continuousKeepAliveView?.RemoveContinuousKeepAlive();
+            _continuousKeepAliveCounted = false;
+            _continuousKeepAliveView = null;
+        }
+
+        if (should && !_continuousKeepAliveCounted)
+        {
+            ParentView!.AddContinuousKeepAlive();
+            _continuousKeepAliveCounted = true;
+            _continuousKeepAliveView = ParentView;
+        }
+    }
+
     public void GetFocus()
     {
         if (ParentView != null && EffectiveInteractive)
@@ -2309,6 +2412,7 @@ public class VisualElement : IDisposable
     {
         if (_isDisposed) return;
         _isDisposed = true;
+        StopAnimations();
 
         Disposed?.Invoke(this);
         OnDisposing?.Invoke(this);
@@ -2337,10 +2441,15 @@ public class VisualElement : IDisposable
 
         if (ParentView != null)
         {
-            ParentView.Elements.RemoveElement(this);
-            RemovedFromView();
+            // UntrackElement (not just Elements.RemoveElement) so the view also drops hover/capture
+            // references and schedules a frame without this element. Otherwise its last pixels stayed
+            // on screen until something else happened to change.
+            var self = this;
+            ParentView.UntrackElement(ref self);
             _ParentView = null!;
         }
+
+        SyncContinuousKeepAlive();
 
         ClearRenderCache();
         Transform.Dispose();

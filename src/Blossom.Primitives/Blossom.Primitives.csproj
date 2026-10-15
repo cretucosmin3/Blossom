@@ -14,6 +14,5 @@
 
     <ItemGroup>
         <PackageReference Include="SkiaSharp" Version="4.153.0" />
-        <PackageReference Include="Silk.NET.Input.Common" Version="2.23.0" />
     </ItemGroup>
 </Project>

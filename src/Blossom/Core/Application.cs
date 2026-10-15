@@ -1,30 +1,22 @@
 using System;
 using Blossom.Core.Input;
+using Blossom.Hosting;
 using System.Collections.Generic;
 
 namespace Blossom.Core;
 
 public abstract class Application : IDisposable
 {
-    /// <summary>Initial window size, min size, resizable border, and center-on-load. Read by <see cref="Shell"/> at create time.</summary>
-    public WindowOptions Window { get; } = new();
+    public UiSession? Session { get; internal set; }
 
     /// <summary>
-    /// When true, F12 toggles Blossom’s stats overlay and is consumed by the host
-    /// before any element, view, or application key bind. Default false.
+    /// UI time in seconds, advanced only by <see cref="UiSession.Tick"/>. Element animations and the
+    /// <c>dt</c> passed to <c>OnUpdate</c> are measured on this clock, so they follow the host's game time
+    /// (pausing, slow motion) and never depend on how often the host ticks or paints.
     /// </summary>
-    public bool EnableStatsOverlay { get; set; }
+    public double Time { get; private set; }
 
-    private string _title = "";
-    public string Title
-    {
-        get => _title;
-        set
-        {
-            _title = value;
-            //! #render title only
-        }
-    }
+    internal void AdvanceTime(float seconds) => Time += seconds;
 
     private readonly Dictionary<string, View> Views = new();
     private string _ActiveView = "";
@@ -48,7 +40,7 @@ public abstract class Application : IDisposable
 
         _ActiveView = name;
 
-        if (Shell.IsLoaded && !ActiveView.IsLoaded)
+        if (Session?.IsLoaded == true && ActiveView != null && !ActiveView.IsLoaded)
         {
             ActiveView.Init();
             ActiveView.IsLoaded = true;
@@ -99,5 +91,6 @@ public abstract class Application : IDisposable
 
         Views.Clear();
         Events.Dispose();
+        Session = null;
     }
 }

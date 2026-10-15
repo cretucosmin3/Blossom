@@ -1,4 +1,5 @@
 using System;
+using Blossom.Hosting;
 
 namespace Blossom.Core.Design;
 
@@ -19,14 +20,15 @@ public static class Px
     /// <returns>The design unit length equal to 1 device pixel (minimum 0.0001f).</returns>
     public static float Hairline(View? view = null)
     {
-        float winW = Shell.RenderRect.Width;
-        if (winW <= 0) return 1f;
+        var frame = GpuPass.Frame;
+        if (GpuPass.InGpuPass && frame.LogicalSize.Width > 0 && frame.FramebufferSize.Width > 0)
+        {
+            float dpi = (float)frame.FramebufferSize.Width / frame.LogicalSize.Width;
+            return dpi > 1e-6f ? 1f / dpi : 1f;
+        }
 
-        float dpiScale = (Renderer.FramebufferWidth > 0 && winW > 0)
-            ? (float)Renderer.FramebufferWidth / winW
-            : 1f;
-
-        return dpiScale > 1e-6f ? 1f / dpiScale : 1f;
+        float hostDpi = UiHost.Current.DpiScale;
+        return hostDpi > 1e-6f ? 1f / hostDpi : 1f;
     }
 
     /// <summary>

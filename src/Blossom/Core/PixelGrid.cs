@@ -1,4 +1,5 @@
 using System;
+using Blossom.Hosting;
 using SkiaSharp;
 
 namespace Blossom.Core;
@@ -6,15 +7,30 @@ namespace Blossom.Core;
 /// <summary>
 /// Device-pixel snapping. Layout stays in fractional logical units; paint rounds edges to whole
 /// framebuffer pixels so 1px lines and box edges do not straddle two pixel rows at 125% / 150%.
+/// Scale is read from <see cref="GpuPass.Frame"/> during paint.
 /// </summary>
 internal static class PixelGrid
 {
     /// <summary>Framebuffer pixels per logical unit (the display scale the view renders with).</summary>
-    public static float ScaleX => Shell.RenderRect.Width > 0 && Renderer.FramebufferWidth > 0
-        ? Renderer.FramebufferWidth / Shell.RenderRect.Width : 1f;
+    public static float ScaleX
+    {
+        get
+        {
+            var frame = GpuPass.Frame;
+            return frame.LogicalSize.Width > 0 && frame.FramebufferSize.Width > 0
+                ? frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+        }
+    }
 
-    public static float ScaleY => Shell.RenderRect.Height > 0 && Renderer.FramebufferHeight > 0
-        ? Renderer.FramebufferHeight / Shell.RenderRect.Height : 1f;
+    public static float ScaleY
+    {
+        get
+        {
+            var frame = GpuPass.Frame;
+            return frame.LogicalSize.Height > 0 && frame.FramebufferSize.Height > 0
+                ? frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
+        }
+    }
 
     /// <summary>Rounds a logical coordinate to the nearest device pixel boundary.</summary>
     public static float Snap(float value, float scale) => MathF.Floor(value * scale + 0.5f) / scale;

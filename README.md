@@ -24,21 +24,22 @@ dotnet add package Blossom
 
 The `Blossom` package (`net10.0`) includes `Blossom.dll`, `Blossom.Reactive.dll`, and `Blossom.Primitives.dll`.
 
-From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(yourApplication)`.
+From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, `src/Blossom.Primitives`, and `src/Blossom.Desktop`, derive your app from `DesktopApplication`, then `Shell.Initialize(yourApplication)` (`using Blossom.Desktop;`).
 
 ## Projects
 
 - [`src/Blossom`](src/Blossom) — window, tree, draw, input
 - [`src/Blossom.Reactive`](src/Blossom.Reactive/README.md) — signals, memos, effects, `Bind*`, `For.Each`, `Show.When`
 - [`src/Blossom.Primitives`](src/Blossom.Primitives/README.md) — Stack, Grid, Split, `Colours`, `Theme`
-- [`src/Blossom.Demo`](src/Blossom.Demo) — sample host (Blossom Gallery)
+- [`demos/ApplicationDemo`](demos/ApplicationDemo) — desktop Application demo (Blossom Gallery)
+- [`demos/Snake.MonoGame`](demos/Snake.MonoGame/README.md) — headless game UI demo (MonoGame + SkiaGameRendering)
 - [`src/Blossom.Pack`](src/Blossom.Pack) — packs the three libraries into one nupkg
 
 ## Build
 
 ```bash
 dotnet build Blossom.sln
-dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+dotnet run --project demos/ApplicationDemo/ApplicationDemo.csproj
 dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release   # → artifacts/
 ./build.sh   # Linux; --self-contained / --framework-dependent
 ```

@@ -15,7 +15,7 @@ Call `InvalidatePaint` / `ScheduleRender` when state that affects pixels changes
 | Mode | Behavior |
 |---|---|
 | `OnDemand` | Paint once and cache |
-| `Continuous` | Re-record every frame; `SKSLShaderTimeTracker.ElapsedSeconds` |
+| `Continuous` | Re-record every frame; `u_time` is the owning `Application.Time` (UI time, advanced by `UiSession.Tick`) |
 
 `ElementStyle.ShaderSpeed` (default 1) multiplies time-based shaders. The demo synthwave grid uses `u_time * 0.8 * max(u_speed, 0)`.
 

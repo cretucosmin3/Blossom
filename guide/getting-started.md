@@ -18,7 +18,7 @@ From the repo root:
 
 ```bash
 dotnet build Blossom.sln
-dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
+dotnet run --project demos/ApplicationDemo/ApplicationDemo.csproj
 # optional: --builder | --benchmark | --fps
 ```
 
@@ -26,7 +26,7 @@ Packaging script (Linux): `./build.sh` (see the script for `--self-contained` / 
 
 NuGet pack: `dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release`. Version is computed from git (`version.json`: `"0.1"` means `0.1.{commit height}`). Change that string for a minor or major line (e.g. `"1.0"`); do not edit a patch by hand. CI workflow `.github/workflows/nuget.yml` packs on `main` and PRs; tags `v*.*.*` attach the nupkg to a GitHub Release and push nuget.org via Trusted Publishing (`nuget.yml` policy).
 
-`--fps` / `--show-fps` / `--debug-overlay` set both `Application.EnableStatsOverlay` and `Shell.ShowDebugOverlay` so F12 is reserved and the overlay starts visible.
+`--fps` / `--show-fps` / `--debug-overlay` set both `DesktopApplication.EnableStatsOverlay` and `Shell.ShowDebugOverlay` so F12 is reserved and the overlay starts visible.
 
 ## Consume the library
 
@@ -36,14 +36,15 @@ From NuGet (`Blossom` includes core, reactive, and primitives):
 dotnet add package Blossom
 ```
 
-From this repo, reference `src/Blossom/Blossom.csproj` plus `src/Blossom.Reactive` and `src/Blossom.Primitives` (the demo already does). Then:
+From this repo, reference `src/Blossom/Blossom.csproj` plus `src/Blossom.Reactive`, `src/Blossom.Primitives`, and `src/Blossom.Desktop` for the window host (the demo already does). Desktop apps derive from `DesktopApplication`, which adds the window settings to `Application`. Then:
 
 ```csharp
 using Blossom.Core;
 using Blossom.Core.Visual;
 using Blossom.Core.Visual.Enums;
+using Blossom.Desktop;
 
-public sealed class MyApplication : Application
+public sealed class MyApplication : DesktopApplication
 {
     public MyApplication()
     {
@@ -88,7 +89,8 @@ Blossom/
 ├── src/Blossom.Reactive/   # SolidJS-inspired signals
 ├── src/Blossom.Primitives/ # layout hosts (Stack, Grid, Split)
 ├── src/Blossom.Pack/       # packs the three libraries into one NuGet id `Blossom`
-├── src/Blossom.Demo/       # Blossom Gallery (not the public API)
+├── demos/ApplicationDemo/  # Application demo: Blossom Gallery (not the public API)
+├── demos/Snake.MonoGame/   # Headless game UI demo (MonoGame + SkiaGameRendering)
 ├── tests/Blossom.Reactive.Tests/
 ├── assets/                 # fonts, images (copied to demo output)
 └── README.md
