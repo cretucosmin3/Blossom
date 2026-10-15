@@ -213,6 +213,7 @@ namespace Blossom.Core
         }
         internal readonly List<VisualElement> CachedRenderQueue = new();
         internal readonly List<VisualElement> CachedSortedElements = new();
+        private readonly List<VisualElement> _hitTestScratch = new();
 
         /// <summary>
         /// Front-to-back hit test using last paint order so overlapping siblings
@@ -228,28 +229,37 @@ namespace Blossom.Core
 
         private VisualElement? HitTestUnconstrained(float x, float y)
         {
-            var list = CachedSortedElements;
-            if (list.Count > 0)
-            {
-                for (int i = list.Count - 1; i >= 0; i--)
-                {
-                    var el = list[i];
-                    if (el == null || !el.EffectiveVisible || el.ComputedVisibility == Visibility.Hidden)
-                        continue;
-                    if (!ElementTree.Hits(el, x, y))
-                        continue;
-                    var resolved = ElementTree.ResolveClickthrough(el);
-                    if (resolved != null)
-                        return resolved;
-                }
-            }
-
             // The paint-order list holds every visible element until the hierarchy changes, so a
             // miss on a current list is final. Only a stale list (elements shown, added, or
-            // reordered since the last paint) needs the slower full-tree walk.
-            if (!_hierarchyDirty)
-                return null;
-            return Elements.FirstFromPoint(x, y);
+            // reordered since the last paint) needs a fresh walk in the same order.
+            var hit = HitTestPaintOrder(CachedSortedElements, x, y, stale: _hierarchyDirty);
+            if (hit != null || !_hierarchyDirty)
+                return hit;
+
+            CollectPaintOrder(_hitTestScratch);
+            hit = HitTestPaintOrder(_hitTestScratch, x, y, stale: false);
+            _hitTestScratch.Clear();
+            return hit;
+        }
+
+        private VisualElement? HitTestPaintOrder(List<VisualElement> list, float x, float y, bool stale)
+        {
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var el = list[i];
+                if (el == null || !el.EffectiveVisible || el.ComputedVisibility == Visibility.Hidden)
+                    continue;
+                if (!ElementTree.Hits(el, x, y))
+                    continue;
+                // A stale list can still hold elements removed from this view since the last paint.
+                if (stale && el.ParentView != this)
+                    continue;
+                var resolved = ElementTree.ResolveClickthrough(el);
+                if (resolved != null)
+                    return resolved;
+            }
+
+            return null;
         }
 
         private VisualElement? ConstrainHitToOverlays(VisualElement? hit)
@@ -745,14 +755,27 @@ namespace Blossom.Core
             RenderRequired = true;
         }
 
-        private void CollectElements(VisualElement root, List<VisualElement> list)
+        /// <summary>
+        /// Every visible element in paint order: app roots by ZIndex, then the overlay stack.
+        /// </summary>
+        private void CollectPaintOrder(List<VisualElement> list)
         {
-            if (!root.Visible) return;
-            list.Add(root);
-            var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderBy(c => c.ZIndex).ToList();
-            foreach (var child in sortedChildren)
+            var overlayLayers = OverlayLayerSet();
+            var rootElements = Elements.Items
+                .Where(e => e.Parent == null && !overlayLayers.Contains(e))
+                .OrderBy(e => e.ZIndex)
+                .ToList();
+
+            foreach (var element in rootElements)
             {
-                CollectElements(child, list);
+                ElementTree.CollectPaintOrder(element, list);
+            }
+
+            for (int i = 0; i < _overlays.Count; i++)
+            {
+                var layer = _overlays[i].Layer;
+                if (layer == null || layer.IsDisposed) continue;
+                ElementTree.CollectPaintOrder(layer, list);
             }
         }
 
@@ -825,23 +848,7 @@ namespace Blossom.Core
             if (_hierarchyDirty)
             {
                 CachedRenderQueue.Clear();
-                var overlayLayers = OverlayLayerSet();
-                var rootElements = Elements.Items
-                    .Where(e => e.Parent == null && !overlayLayers.Contains(e))
-                    .OrderBy(e => e.ZIndex)
-                    .ToList();
-
-                foreach (var element in rootElements)
-                {
-                    CollectElements(element, CachedRenderQueue);
-                }
-
-                for (int i = 0; i < _overlays.Count; i++)
-                {
-                    var layer = _overlays[i].Layer;
-                    if (layer == null || layer.IsDisposed) continue;
-                    CollectElements(layer, CachedRenderQueue);
-                }
+                CollectPaintOrder(CachedRenderQueue);
 
                 CachedSortedElements.Clear();
                 CachedSortedElements.AddRange(CachedRenderQueue);
@@ -1182,7 +1189,7 @@ namespace Blossom.Core
                 return false;
 
             var list = new List<VisualElement>();
-            CollectElements(layer, list);
+            ElementTree.CollectPaintOrder(layer, list);
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 var el = list[i];

@@ -54,8 +54,7 @@ Blossom/
 │   │   ├── Hosting/        # UiSession, UiInput, UiDispatcher, SoftwareUiHost, RenderFrame
 │   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
 │   │   ├── Animations/     # Timeline, AnimatedValue, Anim builders, Ease, Playback
-│   │   ├── Utils/          # Fonts, imaging helpers
-│   │   └── External/       # Vendored quadtree helpers
+│   │   └── Utils/          # Fonts, imaging helpers
 │   ├── Blossom.Desktop/    # Desktop app host (Silk.NET, GLFW window loop, Shell, Renderer present)
 │   ├── Blossom.Reactive/   # SolidJS-inspired signals, Bind*, For.Each, Show.When
 │   ├── Blossom.Primitives/ # Layout hosts, Colours, Theme, future widgets
