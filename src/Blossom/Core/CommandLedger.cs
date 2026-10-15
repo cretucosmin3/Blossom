@@ -613,13 +613,7 @@ public class DrawBackdropBlurCommand : DrawCommand
             return;
         }
 
-        // 1. Snapshot the current UI surface (in physical framebuffer pixels)
-        var snapshotSurface = GpuPass.ResolveSnapshotSurface();
-        if (snapshotSurface == null) return;
-        using var snapshot = snapshotSurface.Snapshot();
-        if (snapshot == null) return;
-
-        // 2. Create the local rounded rectangle path
+        // 1. Create the local rounded rectangle path
         float w = _element.PaintWidth;
         float h = _element.PaintHeight;
         if (w <= 0 || h <= 0) return;
@@ -659,6 +653,10 @@ public class DrawBackdropBlurCommand : DrawCommand
 
         float physicalBlurSigma = _blurSigma * scaleX;
 
+        // 2. Snapshot only what the blur reads: the element's bounds plus the kernel's reach (3 sigma).
+        using var snapshot = GpuPass.SnapshotRegion(deviceBounds, physicalBlurSigma * 3f + 1f, out var origin);
+        if (snapshot == null) return;
+
         if (_renderMode == EffectRenderMode.OnDemand)
         {
             // Create a GPU-backed offscreen surface matching physical device bounds
@@ -682,7 +680,7 @@ public class DrawBackdropBlurCommand : DrawCommand
                     ImageFilter = SKImageFilter.CreateBlur(physicalBlurSigma, physicalBlurSigma)
                 };
                 // Draw snapshot offset so the element's physical screen location aligns with 0, 0 in cached image
-                tempCanvas.DrawImage(snapshot, -deviceBounds.Left, -deviceBounds.Top, paint);
+                tempCanvas.DrawImage(snapshot, origin.X - deviceBounds.Left, origin.Y - deviceBounds.Top, paint);
 
                 _element.CachedBackdropBlur = tempSurface.Snapshot();
                 _element.CachedBackdropBlurBounds = deviceBounds;
@@ -710,7 +708,7 @@ public class DrawBackdropBlurCommand : DrawCommand
                     IsAntialias = _element.IsAntialias,
                     ImageFilter = SKImageFilter.CreateBlur(physicalBlurSigma, physicalBlurSigma)
                 };
-                canvas.DrawImage(snapshot, 0, 0, paint);
+                canvas.DrawImage(snapshot, origin.X, origin.Y, paint);
             }
         }
     }
@@ -798,17 +796,17 @@ public class DrawShaderBackgroundCommand : DrawCommand
         {
             if (_type == Blossom.Core.Visual.BackgroundShaderType.GlassRefraction)
             {
-                snapshot = GpuPass.ResolveSnapshotSurface()?.Snapshot();
-                if (snapshot != null)
+                var global44 = _element.Transform.GetGlobalM44();
+                var globalMatrix = global44.Matrix;
+                var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
+                var frame = GpuPass.Frame;
+                float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+                float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
+                var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
+                // The refraction wave reaches ~11 px past the element and the blur taps 2 more.
+                backdropShader = GpuPass.SnapshotRegionShader(physScreenRect, 16f, out snapshot);
+                if (backdropShader != null)
                 {
-                    backdropShader = snapshot.ToShader();
-                    var global44 = _element.Transform.GetGlobalM44();
-                    var globalMatrix = global44.Matrix;
-                    var screenRect = Transform.MapRect(global44, new SKRect(0, 0, w, h));
-                    var frame = GpuPass.Frame;
-                    float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
-                    float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
-                    var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                     shader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassShader(
                         _type, time, shaderW, shaderH, _baseColor, hoverProgress, backdropShader, physScreenRect, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY, mixingRate: 0.25f, antialias: aaAmount);
                 }
@@ -1006,19 +1004,20 @@ public class DrawBorderCommand : DrawCommand
 
                     if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
                     {
-                        using var snapshot = GpuPass.ResolveSnapshotSurface()?.Snapshot();
-                        if (snapshot != null)
+                        var global44 = _element.Transform.GetGlobalM44();
+                        var globalMatrix = global44.Matrix;
+                        float localW = _element.PaintWidth;
+                        float localH = _element.PaintHeight;
+                        var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
+                        var frame = GpuPass.Frame;
+                        float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+                        float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
+                        var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
+                        // The shader samples up to two border widths in from each edge, plus the stroke's own half width.
+                        using var backdropShader = GpuPass.SnapshotRegionShader(physScreenRect, _width * 3f * Math.Max(scaleX, scaleY) + 2f, out var snapshot);
+                        using var snapshotImage = snapshot;
+                        if (backdropShader != null)
                         {
-                            using var backdropShader = snapshot.ToShader();
-                            var global44 = _element.Transform.GetGlobalM44();
-                            var globalMatrix = global44.Matrix;
-                            float localW = _element.PaintWidth;
-                            float localH = _element.PaintHeight;
-                            var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
-                            var frame = GpuPass.Frame;
-                            float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
-                            float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
-                            var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                             
                             using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
                                 _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, physScreenRect, _width, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY);
@@ -1048,19 +1047,20 @@ public class DrawBorderCommand : DrawCommand
 
         if (_effectType == Blossom.Core.Visual.BorderEffectType.GlassReflection)
         {
-            using var snapshot = GpuPass.ResolveSnapshotSurface()?.Snapshot();
-            if (snapshot != null)
+            var global44 = _element.Transform.GetGlobalM44();
+            var globalMatrix = global44.Matrix;
+            float localW = _element.PaintWidth;
+            float localH = _element.PaintHeight;
+            var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
+            var frame = GpuPass.Frame;
+            float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
+            float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
+            var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
+            // The shader samples up to two border widths in from each edge, plus the stroke's own half width.
+            using var backdropShader = GpuPass.SnapshotRegionShader(physScreenRect, _width * 3f * Math.Max(scaleX, scaleY) + 2f, out var snapshot);
+            using var snapshotImage = snapshot;
+            if (backdropShader != null)
             {
-                using var backdropShader = snapshot.ToShader();
-                var global44 = _element.Transform.GetGlobalM44();
-                var globalMatrix = global44.Matrix;
-                float localW = _element.PaintWidth;
-                float localH = _element.PaintHeight;
-                var screenRect = Transform.MapRect(global44, new SKRect(0, 0, localW, localH));
-                var frame = GpuPass.Frame;
-                float scaleX = frame.LogicalSize.Width > 0 ? (float)frame.FramebufferSize.Width / frame.LogicalSize.Width : 1f;
-                float scaleY = frame.LogicalSize.Height > 0 ? (float)frame.FramebufferSize.Height / frame.LogicalSize.Height : 1f;
-                var physScreenRect = new SKRect(screenRect.Left * scaleX, screenRect.Top * scaleY, screenRect.Right * scaleX, screenRect.Bottom * scaleY);
                 
                 using var borderShader = Blossom.Core.Visual.SKSLShaderManager.CreateGlassBorderShader(
                     _effectType, time, localW, localH, _color, _element.HoverProgress, backdropShader, physScreenRect, _width, globalMatrix.ScaleX * scaleX, globalMatrix.ScaleY * scaleY);

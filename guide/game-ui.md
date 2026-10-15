@@ -474,3 +474,4 @@ State-driven motion, such as a highlighted menu row or a score that rolls up, fi
 | **Set `Visible = false`** | Avoids redundant layout and hit-testing overhead for offscreen or hidden panels. |
 | **Avoid per-frame string allocations** | Use signals and formatted labels only when values actually change. |
 | **Pre-register Fonts** | Call `Blossom.Utils.Fonts.RegisterFromFile(path)` (or `RegisterFromStream`) once during game asset loading. |
+| **Cap Skia's GPU cache** | If you own the `GRContext`, call `SetResourceCacheLimit` (the desktop host uses 96 MB) and `PurgeUnusedResources(5000)` every few seconds. Skia's default is 256 MB, and it keeps scratch textures from blurs and effects until that fills. |

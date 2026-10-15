@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Blossom.Core;
 using Blossom.Hosting;
 using Silk.NET.OpenGL;
@@ -22,8 +23,16 @@ internal static class Renderer
     private static GL _gl;
     private static uint _offscreenFbo;
     private static uint _offscreenColorTex;
-    private static uint _offscreenDepthStencilRbo;
+    private static uint _offscreenStencilRbo;
     private static GRBackendRenderTarget _offscreenRenderTarget;
+    private static bool _stencilOnly = true;
+
+    // Skia's default budget is 256 MB of cached GPU textures, which a simple app fills with scratch
+    // textures it never needs again. Frames that need more still render; Skia just keeps less.
+    private const long GpuCacheLimitBytes = 96L * 1024 * 1024;
+    private static readonly TimeSpan GpuTrimAfter = TimeSpan.FromSeconds(5);
+    private static IDisposable? s_gpuTrim;
+    private static long s_lastFrameTicks;
 
     internal static SKCanvas Canvas
     {
@@ -62,10 +71,10 @@ internal static class Renderer
                 _gl.DeleteTexture(_offscreenColorTex);
                 _offscreenColorTex = 0;
             }
-            if (_offscreenDepthStencilRbo != 0)
+            if (_offscreenStencilRbo != 0)
             {
-                _gl.DeleteRenderbuffer(_offscreenDepthStencilRbo);
-                _offscreenDepthStencilRbo = 0;
+                _gl.DeleteRenderbuffer(_offscreenStencilRbo);
+                _offscreenStencilRbo = 0;
             }
         }
     }
@@ -92,7 +101,7 @@ internal static class Renderer
             {
                 _offscreenFbo = _gl.GenFramebuffer();
                 _offscreenColorTex = _gl.GenTexture();
-                _offscreenDepthStencilRbo = _gl.GenRenderbuffer();
+                _offscreenStencilRbo = _gl.GenRenderbuffer();
             }
 
             _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _offscreenFbo);
@@ -119,19 +128,26 @@ internal static class Renderer
                 _offscreenColorTex,
                 0);
 
-            _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _offscreenDepthStencilRbo);
-            _gl.RenderbufferStorage(
-                RenderbufferTarget.Renderbuffer,
-                InternalFormat.Depth24Stencil8,
-                (uint)width,
-                (uint)height);
-            _gl.FramebufferRenderbuffer(
-                FramebufferTarget.Framebuffer,
-                FramebufferAttachment.DepthStencilAttachment,
-                RenderbufferTarget.Renderbuffer,
-                _offscreenDepthStencilRbo);
-
-            var status = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+            // Skia never uses depth, but it does need stencil (complex paths and clips), and it cannot
+            // attach one itself to an FBO it did not create. Stencil-only where the driver accepts it,
+            // packed depth+stencil otherwise. The choice sticks, so resizes reuse a known-good format.
+            GLEnum status = GLEnum.FramebufferUndefined;
+            if (_stencilOnly)
+            {
+                AttachStencil(InternalFormat.StencilIndex8, FramebufferAttachment.StencilAttachment, width, height);
+                status = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+                if (status != GLEnum.FramebufferComplete)
+                {
+                    _stencilOnly = false;
+                    _gl.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.StencilAttachment,
+                        RenderbufferTarget.Renderbuffer, 0);
+                }
+            }
+            if (!_stencilOnly)
+            {
+                AttachStencil(InternalFormat.Depth24Stencil8, FramebufferAttachment.DepthStencilAttachment, width, height);
+                status = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+            }
             if (status != GLEnum.FramebufferComplete)
             {
                 Log.Error($"Offscreen FBO incomplete: {status}");
@@ -154,6 +170,36 @@ internal static class Renderer
 
         // Initialize with white background to avoid black screen on startup
         _Canvas.Clear(SKColors.White);
+    }
+
+    private static void AttachStencil(InternalFormat format, FramebufferAttachment attachment, int width, int height)
+    {
+        _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _offscreenStencilRbo);
+        _gl.RenderbufferStorage(RenderbufferTarget.Renderbuffer, format, (uint)width, (uint)height);
+        _gl.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, attachment, RenderbufferTarget.Renderbuffer, _offscreenStencilRbo);
+    }
+
+    /// <summary>
+    /// Arms a trim after a frame. Skia keeps every scratch texture it allocates until its budget is
+    /// full, so textures from a page the user left would sit in VRAM for good. This frees what has
+    /// gone unused for <see cref="GpuTrimAfter"/>: periodically while frames keep coming, and once
+    /// after the app goes idle.
+    /// </summary>
+    private static void ScheduleGpuTrim()
+    {
+        s_lastFrameTicks = Stopwatch.GetTimestamp();
+        s_gpuTrim ??= UiDispatcher.PostDelayed(GpuTrimAfter, TrimGpuCache);
+    }
+
+    private static void TrimGpuCache()
+    {
+        s_gpuTrim = null;
+        grContext?.PurgeUnusedResources((long)GpuTrimAfter.TotalMilliseconds);
+
+        // Not idle long enough for the last frame's textures to count as unused: check again then.
+        var idle = Stopwatch.GetElapsedTime(s_lastFrameTicks);
+        if (idle < GpuTrimAfter)
+            s_gpuTrim = UiDispatcher.PostDelayed(GpuTrimAfter - idle + TimeSpan.FromMilliseconds(100), TrimGpuCache);
     }
 
     public static void FlushToScreen()
@@ -182,6 +228,8 @@ internal static class Renderer
         // Restore default FBO binding and sync Skia's cached GL state
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         grContext?.ResetContext();
+
+        ScheduleGpuTrim();
     }
 
     public static void SetCanvas(IWindow window)
@@ -221,6 +269,7 @@ internal static class Renderer
         }
 
         grContext = GRContext.CreateGl(grGlInterface);
+        grContext.SetResourceCacheLimit(GpuCacheLimitBytes);
 
         RenewCanvas(window.FramebufferSize.X, window.FramebufferSize.Y);
         Shell.HandleClientSize(window.Size.X, window.Size.Y);
