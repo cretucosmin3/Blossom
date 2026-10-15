@@ -243,6 +243,12 @@ namespace Blossom.Core
                         return resolved;
                 }
             }
+
+            // The paint-order list holds every visible element until the hierarchy changes, so a
+            // miss on a current list is final. Only a stale list (elements shown, added, or
+            // reordered since the last paint) needs the slower full-tree walk.
+            if (!_hierarchyDirty)
+                return null;
             return Elements.FirstFromPoint(x, y);
         }
 
@@ -750,6 +756,27 @@ namespace Blossom.Core
             }
         }
 
+        private const float IdleResumeStep = 1f / 60f;
+        private const float MaxAnimationStep = 0.25f;
+        private double _lastUpdateTime = double.NaN;
+        private bool _animatedLastUpdate;
+
+        /// <summary>
+        /// The <c>dt</c> for this frame's update pass: UI time since the previous pass. Hosts often tick far
+        /// more often than they paint (a game with VSync off), so the last tick's delta would be a tiny
+        /// fraction of a frame. After an idle stretch the step is one 60 Hz frame, so animations that this
+        /// frame starts begin at their first step; mid-animation, a long hitch is clamped instead of
+        /// skipping animations to their end.
+        /// </summary>
+        private float NextAnimationStep()
+        {
+            double now = Application?.Time ?? 0;
+            double elapsed = double.IsNaN(_lastUpdateTime) ? 0 : now - _lastUpdateTime;
+            _lastUpdateTime = now;
+            float cap = _animatedLastUpdate ? MaxAnimationStep : IdleResumeStep;
+            return (float)Math.Clamp(elapsed, 0, cap);
+        }
+
         internal void Render()
         {
             lock (_dirtyRectsLock)
@@ -829,9 +856,7 @@ namespace Blossom.Core
             // 2. Perform layout on dirty nodes (LayoutChildren hook)
             // 3. Evaluate visibility and clipping
             // Layout can produce additional dirty rects (children moving) — merge those before paint.
-            // The first frame after an idle wait reports the whole wait as its delta. Cap it so OnUpdate
-            // animations start from their first step instead of jumping straight to the end.
-            float animationDt = Math.Min(Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime, 1f / 30f);
+            float animationDt = NextAnimationStep();
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
@@ -867,6 +892,10 @@ namespace Blossom.Core
             // Fold dirty rects generated during layout/evaluate into this frame's paint set
             lock (_dirtyRectsLock)
             {
+                // Anything that asked for another frame while updating is still animating, so the next
+                // frame's step is the real time between the two.
+                _animatedLastUpdate = DirtyRects.Count > 0 || RenderRequired || HasContinuousKeepAlive;
+
                 if (DirtyRects.Count > 0)
                 {
                     _localDirtyRects.AddRange(DirtyRects);
@@ -879,7 +908,15 @@ namespace Blossom.Core
                 }
             }
 
-            if (_localDirtyRects.Count == 0)
+            if (GpuPass.PaintMode == PaintMode.FullFrame)
+            {
+                // FullFrame clears the canvas and redraws every element, so its damage is always the whole
+                // view. Returning without drawing is not an option: hosts typically clear their target before
+                // Paint, and an empty pass would leave them a blank UI until the next change.
+                _localDirtyRects.Clear();
+                _localDirtyRects.Add(new SKRect(0, 0, Math.Max(1, GetLayoutWidth()), Math.Max(1, GetLayoutHeight())));
+            }
+            else if (_localDirtyRects.Count == 0)
                 return;
 
             // Final union + padding (shadows, AA, sub-pixel movement)

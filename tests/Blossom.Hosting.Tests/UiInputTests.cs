@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using Blossom.Core;
 using Blossom.Core.Input;
@@ -147,10 +148,51 @@ public class UiInputTests
         }
     }
 
-    static (UiSession Session, InputTestView View, VisualElement Button) CreateTestEnvironment()
+    [Fact]
+    public void PointerMove_OverEmptySpace_DoesNotAllocatePerMove()
+    {
+        // A game HUD is mostly clickthrough: the pointer usually sits over the game, where no
+        // element takes the hit. Hosts forward a move every frame, so this path must stay cheap.
+        var (session, view, button) = CreateTestEnvironment(rootClickthrough: true);
+        using (session)
+        {
+            for (int i = 0; i < 10; i++) // Warm up JIT and first-call caches.
+                session.Input.PointerMove(80, 80 - (i % 2));
+
+            const int moves = 200;
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < moves; i++)
+                session.Input.PointerMove(80, 80 - (i % 2));
+            long perMove = (GC.GetAllocatedBytesForCurrentThread() - before) / moves;
+
+            Assert.Null(view.HoveredElement);
+            Assert.True(perMove < 256, $"PointerMove over empty space allocated {perMove} bytes per call");
+        }
+    }
+
+    [Fact]
+    public void PointerMove_HitsElementShownSinceLastPaint()
+    {
+        // The paint-order cache is stale until the next paint; hit-testing must not miss
+        // an element that became visible in between.
+        var (session, view, button) = CreateTestEnvironment(rootClickthrough: true);
+        using (session)
+        {
+            button.Visible = false;
+            using var surface = SKSurface.Create(new SKImageInfo(100, 100, SKColorType.Rgba8888, SKAlphaType.Premul));
+            session.Paint(new RenderFrame(surface.Canvas, session.LogicalSize, session.FramebufferSize), force: true);
+
+            button.Visible = true;
+            session.Input.PointerMove(20, 20);
+
+            Assert.Same(button, view.HoveredElement);
+        }
+    }
+
+    static (UiSession Session, InputTestView View, VisualElement Button) CreateTestEnvironment(bool rootClickthrough = false)
     {
         var host = new SoftwareUiHost();
-        var app = new InputTestApp();
+        var app = new InputTestApp(rootClickthrough);
         var session = new UiSession(host, app, new UiSessionOptions
         {
             PaintMode = PaintMode.FullFrame,
@@ -172,9 +214,9 @@ public class UiInputTests
     {
         public InputTestView Main { get; }
 
-        public InputTestApp()
+        public InputTestApp(bool rootClickthrough)
         {
-            Main = new InputTestView();
+            Main = new InputTestView(rootClickthrough);
             AddView(Main);
             SetActiveView(Main);
         }
@@ -182,13 +224,15 @@ public class UiInputTests
 
     sealed class InputTestView : View
     {
+        readonly bool _rootClickthrough;
+
         public VisualElement Button { get; private set; } = null!;
 
-        public InputTestView() : base("input-test") { }
+        public InputTestView(bool rootClickthrough) : base("input-test") => _rootClickthrough = rootClickthrough;
 
         public override void Init()
         {
-            var root = new VisualElement { Name = "root" };
+            var root = new VisualElement { Name = "root", IsClickthrough = _rootClickthrough };
             root.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
 
             Button = new VisualElement { Name = "button" };

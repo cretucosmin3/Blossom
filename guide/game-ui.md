@@ -37,10 +37,11 @@ Game Engine (MonoGame, Raylib, Stride, Custom)
   │
   └── Render Loop
         ├── Render 3D World / Game Sprites
-        └── If session.NeedsPaint:
-              ├── canvas.Begin()
-              ├── session.Paint(renderFrame)
-              └── canvas.End() -> Composite UI texture over game world
+        ├── If session.NeedsPaint:
+        │     ├── canvas.Begin()
+        │     ├── session.Paint(renderFrame)
+        │     └── canvas.End() -> Composite the fresh UI texture over the game world
+        └── Else: composite the cached UI texture from the last paint
 ```
 
 1. **`Application`**: Owns your game's `View`s (e.g. HUD view, Pause menu view, Inventory view).
@@ -109,7 +110,7 @@ Blossom automatically triggers anchor recalculations and layout reflows without 
 
 ### A. The `Update` Step (Input & Timers)
 
-Call `session.Tick(deltaTime)` and feed input every game tick:
+Call `session.Tick(deltaTime)` every game tick, and feed input when it changes. Send `PointerMove` only when the pointer actually moved: each call runs the hit test and hover pass, and a desktop host doesn't send moves for a still mouse either.
 
 ```csharp
 public void Update(float deltaTime)
@@ -119,12 +120,14 @@ public void Update(float deltaTime)
 
     // 2. Feed mouse / pointer input
     var mouse = Mouse.GetState();
-    _session.Input.PointerMove(mouse.X, mouse.Y);
+    if (mouse.X != _prevMouse.X || mouse.Y != _prevMouse.Y)
+        _session.Input.PointerMove(mouse.X, mouse.Y);
 
+    // Buttons are ints: 0 = left, 1 = right, 2 = middle.
     if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
-        _session.Input.PointerDown(mouse.X, mouse.Y, UiMouseButton.Left);
+        _session.Input.PointerDown(mouse.X, mouse.Y, 0);
     else if (mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed)
-        _session.Input.PointerUp(mouse.X, mouse.Y, UiMouseButton.Left);
+        _session.Input.PointerUp(mouse.X, mouse.Y, 0);
 
     // 3. Feed mouse wheel
     int wheelDelta = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
@@ -201,8 +204,11 @@ public void Draw(SKSurface uiSurface)
 If using [SkiaGameRendering](https://github.com/vchelaru/SkiaGameRendering) in MonoGame or FNA:
 
 ```csharp
+using Blossom.Core;
+using Blossom.Hosting;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using SkiaGameRendering;
 
 public class Game1 : Game
@@ -211,6 +217,7 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     private SkiaRenderTarget2D _uiTarget;
     private UiSession _session;
+    private MouseState _prevMouse;
 
     protected override void Initialize()
     {
@@ -230,6 +237,8 @@ public class Game1 : Game
         _session.SetSize(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height,
                          GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         _session.Init();
+
+        _spriteBatch = new SpriteBatch(GraphicsDevice);
     }
 
     protected override void Update(GameTime gameTime)
@@ -237,9 +246,11 @@ public class Game1 : Game
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
         _session.Tick(dt);
 
-        var mouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
-        _session.Input.PointerMove(mouse.X, mouse.Y);
-        // ... map mouse and keyboard buttons ...
+        var mouse = Mouse.GetState();
+        if (mouse.X != _prevMouse.X || mouse.Y != _prevMouse.Y)
+            _session.Input.PointerMove(mouse.X, mouse.Y);
+        // ... map mouse and keyboard buttons (see section A) ...
+        _prevMouse = mouse;
 
         base.Update(gameTime);
     }
@@ -251,10 +262,10 @@ public class Game1 : Game
         // 1. Draw your game world
         DrawWorld();
 
-        // 2. Draw Blossom UI if dirty
+        // 2. Draw Blossom UI: repaint it when dirty, otherwise reuse the last frame
         if (_session.NeedsPaint)
         {
-            _uiTarget.Begin();
+            _uiTarget.Begin(); // Clears the target; FullFrame Paint then redraws the whole UI
             var frame = new RenderFrame(
                 _uiTarget.Canvas,
                 _session.LogicalSize,
@@ -265,13 +276,15 @@ public class Game1 : Game
                 clearColor: SkiaSharp.SKColors.Transparent);
 
             _session.Paint(frame);
-            _uiTarget.End();
+            _uiTarget.End(); // Also composites the fresh UI over the game world
         }
-
-        // 3. Composite UI target with premultiplied alpha blend
-        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-        _spriteBatch.Draw(_uiTarget, Vector2.Zero, Color.White);
-        _spriteBatch.End();
+        else
+        {
+            // Nothing changed: composite the texture from the last paint (premultiplied alpha)
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+            _spriteBatch.Draw(_uiTarget.Texture, Vector2.Zero, Color.White);
+            _spriteBatch.End();
+        }
 
         base.Draw(gameTime);
     }
@@ -374,28 +387,68 @@ minimapFrame.Visible = false;
 
 ### D. Modal Pause Menus & Hit Blocking (`PushOverlay`)
 
-When the player presses <kbd>Esc</kbd>, display a pause menu that blocks all clicks from reaching the game world underneath:
+When the player presses <kbd>Esc</kbd>, display a pause menu that blocks all clicks from reaching the game world underneath. `PushOverlay` is a `View` method, and it returns a lease: dispose the lease to close the overlay.
 
 ```csharp
-public void OpenPauseMenu()
+using Blossom.Primitives; // ButtonBase: a headless button shell you give a look
+
+// Members to add to the HudView from section A.
+private IDisposable? _pauseMenu;
+
+public void TogglePauseMenu()
 {
+    if (_pauseMenu != null)
+    {
+        _pauseMenu.Dispose(); // Pops the overlay
+        _pauseMenu = null;
+        return;
+    }
+
     var pauseOverlay = new VisualElement { Name = "PauseOverlay" };
     pauseOverlay.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
     pauseOverlay.Style.BackColor = new SKColor(0, 0, 0, 180); // Dark backdrop
 
-    var resumeButton = new Button
-    {
-        Text = "Resume",
-        Width = 160,
-        Height = 40
-    };
-    resumeButton.OnClick += (e) => ActiveView.PopOverlay();
+    var resumeButton = new ButtonBase { Text = "Resume" };
+    resumeButton.Transform.Anchor = Anchor.Left | Anchor.Top;
+    resumeButton.Transform.LocalX = 320;
+    resumeButton.Transform.LocalY = 280;
+    resumeButton.Transform.Width = 160;
+    resumeButton.Transform.Height = 40;
+    resumeButton.Style.BackColor = new SKColor(37, 99, 235);
+    resumeButton.Style.Text.Color = SKColors.White;
+    resumeButton.Clicked += TogglePauseMenu;
     pauseOverlay.AddChild(resumeButton);
 
-    // BlockHitsUnderneath = true ensures mouse clicks do not pass through to the game world or HUD
-    ActiveView.PushOverlay(pauseOverlay, blockHitsUnderneath: true);
+    // BlockHitsUnderneath (the default) keeps clicks from reaching the HUD under the overlay
+    _pauseMenu = PushOverlay(pauseOverlay, new OverlayOptions { BlockHitsUnderneath = true });
 }
 ```
+
+> [!TIP]
+> If the menu should follow game state instead, drive it from a signal with `Show.When(root, () => phase.Value == Phase.Paused, () => CreatePauseMenu())`. Show.When mounts the menu when the condition turns true and disposes it, bindings included, when it turns false.
+
+### E. One-Shot Effects (Score Popups, Banners)
+
+Use `element.Animate()` from [Animation](animation.md). Chain the steps and end with `.Call(Dispose)`. The effect plays on UI time, so it lasts the same at any frame rate, and the UI goes idle once it is gone. Disposing from an animation callback (or from `OnUpdate`) is safe: the element leaves the tree, and the next frame repaints without it.
+
+```csharp
+sealed class ScorePopup : VisualElement
+{
+    public ScorePopup(string text)
+    {
+        Text = text;
+        Animate()
+            .MoveBy(0, -40, 0.8f)
+            .With().Fade(0f, 0.8f, Ease.InQuad)
+            .Call(Dispose);
+    }
+}
+
+// Gameplay code: spawn it at the food's screen position.
+hudRoot.AddChild(new ScorePopup("+20"));
+```
+
+State-driven motion, such as a highlighted menu row or a score that rolls up, fits `AnimatedValue` better. For per-frame logic of your own, override `OnUpdate(dt)`: `dt` is UI time since the previous paint pass, not since the last `Tick`.
 
 ---
 
@@ -408,4 +461,4 @@ public void OpenPauseMenu()
 | **Use `PaintMode.FullFrame`** | Best suited for rendering to game render targets/textures. |
 | **Set `Visible = false`** | Avoids redundant layout and hit-testing overhead for offscreen or hidden panels. |
 | **Avoid per-frame string allocations** | Use signals and formatted labels only when values actually change. |
-| **Pre-register Fonts** | Call `FontManager.RegisterFont(...)` once during game asset loading. |
+| **Pre-register Fonts** | Call `Blossom.Utils.Fonts.RegisterFromFile(path)` (or `RegisterFromStream`) once during game asset loading. |

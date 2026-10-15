@@ -29,6 +29,15 @@ public abstract class Application : IDisposable
 
     public UiSession? Session { get; internal set; }
 
+    /// <summary>
+    /// UI time in seconds, advanced only by <see cref="UiSession.Tick"/>. Element animations and the
+    /// <c>dt</c> passed to <c>OnUpdate</c> are measured on this clock, so they follow the host's game time
+    /// (pausing, slow motion) and never depend on how often the host ticks or paints.
+    /// </summary>
+    public double Time { get; private set; }
+
+    internal void AdvanceTime(float seconds) => Time += seconds;
+
     private readonly Dictionary<string, View> Views = new();
     private string _ActiveView = "";
     public View ActiveView

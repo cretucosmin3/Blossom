@@ -55,6 +55,8 @@ session.Input.Text(utf16);                 // UTF-16 chunk
 
 Coordinates are **logical viewport** (origin top-left of the Blossom surface), same space as desktop mouse after `pos / ScaleFactor`.
 
+Call `PointerMove` when the pointer moves, not on a timer. Each call runs a hit test and hover pass, so a game loop that polls the mouse should compare against last frame's position first.
+
 `Shell.Initialize` keeps mapping Silk `IInputContext` onto these methods. Games inject from their own `Update`. Surrogate pairing stays in Shell; game `Text` comes from the engine IME if you subscribe.
 
 ## Tab without TabIndex

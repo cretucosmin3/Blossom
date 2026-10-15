@@ -30,6 +30,7 @@ Shell (static process host)
 | [Input](input.md) | Keyboard, mouse, overlays, hit-testing |
 | [Drawing and 3D](drawing-and-3d.md) | Retained paint, shaders, `SKMatrix44`, unprojection |
 | [Fonts and text](fonts-and-text.md) | Register faces, `SKFont`, `TextLayout` caret |
+| [Animation](animation.md) | `Animate()` timelines, `AnimatedValue`, `Anim` building blocks, eases, UI time |
 | [Primitives](primitives.md) | `Blossom.Primitives`: Stack, Grid, Split, Colours, Theme |
 | [Game UI](game-ui.md) | Headless game engine embedding (MonoGame, Raylib, Stride, custom engines, `UiSession`, `MaxFps`) |
 

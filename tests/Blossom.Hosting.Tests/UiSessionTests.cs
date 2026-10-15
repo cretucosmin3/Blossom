@@ -111,6 +111,212 @@ public class UiSessionTests
         Assert.True(session.NeedsPaint);
     }
 
+    [Fact]
+    public void Paint_FullFrame_RedrawsEverything_OnFrameThatFollowsAnUpdateInvalidation()
+    {
+        // A host that clears its target before each Paint (SkiaRenderTarget2D.Begin() does) must get a
+        // whole frame back every time NeedsPaint is true, including the follow-up frame that an
+        // invalidation raised during OnUpdate schedules.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var app = new HostingApp(root => root.AddChild(new InvalidatesOnFirstUpdate()));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        session.Paint(Frame(surface, session));
+        Assert.True(session.NeedsPaint);
+
+        surface.Canvas.Clear(SKColors.Transparent);
+        session.Paint(Frame(surface, session));
+
+        using var pixmap = surface.PeekPixels();
+        Assert.Equal(255, pixmap.GetPixelColor(10, 10).Red);
+    }
+
+    [Fact]
+    public void Paint_ElementDisposingItselfInOnUpdate_IsNotDrawnAndDoesNotThrow()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var effect = new DisposesOnUpdate();
+        var app = new HostingApp(root => root.AddChild(effect));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.True(effect.IsDisposed);
+        Assert.Null(effect.Parent);
+        using (var pixmap = surface.PeekPixels())
+            Assert.Equal(0, pixmap.GetPixelColor(50, 30).Alpha);
+
+        // The tree changed mid-pass, so another frame is due, and it paints without the element.
+        Assert.True(session.NeedsPaint);
+        session.Paint(Frame(surface, session));
+        using (var pixmap = surface.PeekPixels())
+        {
+            Assert.Equal(0, pixmap.GetPixelColor(50, 30).Alpha);
+            Assert.Equal(255, pixmap.GetPixelColor(10, 10).Red);
+        }
+    }
+
+    [Fact]
+    public void Paint_ElementRemovedBySiblingInOnUpdate_IsNotDrawn()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var victim = Corner();
+        var remover = new RemovesOnUpdate(victim);
+        var app = new HostingApp(root =>
+        {
+            root.AddChild(remover);
+            root.AddChild(victim); // Updated after the remover, so it is removed before its own turn.
+        });
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        session.Paint(Frame(surface, session), force: true);
+        using (var pixmap = surface.PeekPixels())
+            Assert.Equal(255, pixmap.GetPixelColor(50, 30).Green);
+
+        remover.Armed = true;
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.Null(victim.Parent);
+        Assert.False(victim.IsDisposed);
+        using (var pixmap = surface.PeekPixels())
+            Assert.Equal(0, pixmap.GetPixelColor(50, 30).Alpha);
+    }
+
+    [Fact]
+    public void Paint_ElementDisposedAfterItsOwnUpdate_IsNotDrawn()
+    {
+        // The victim is updated (and judged visible) first; a later sibling then disposes it, so only a
+        // liveness check in the draw loop keeps the pass from painting a disposed element.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var victim = Corner();
+        var remover = new RemovesOnUpdate(victim, dispose: true);
+        var app = new HostingApp(root =>
+        {
+            root.AddChild(victim);
+            root.AddChild(remover);
+        });
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        session.Paint(Frame(surface, session), force: true);
+        remover.Armed = true;
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.True(victim.IsDisposed);
+        using var pixmap = surface.PeekPixels();
+        Assert.Equal(0, pixmap.GetPixelColor(50, 30).Alpha);
+    }
+
+    [Fact]
+    public void OnUpdate_ReceivesTimeSinceLastPaint_WhenHostTicksMoreOftenThanItPaints()
+    {
+        // A game with VSync off ticks thousands of times a second but paints at MaxFps. Animations must
+        // advance by the time that passed since the last paint, not by the last tick's delta.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var recorder = new RecordsDt { KeepAnimating = true };
+        var app = new HostingApp(root => root.AddChild(recorder));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+        session.Paint(Frame(surface, session), force: true);
+
+        for (int i = 0; i < 40; i++) // A 25 FPS frame, ticked at 1000 Hz.
+            session.Tick(0.001f);
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.Equal(0.040f, recorder.LastDt, 4);
+    }
+
+    [Fact]
+    public void OnUpdate_AfterIdleWait_StartsWithOneFrameStep()
+    {
+        // The first frame after the UI sat idle must not report the whole wait, or animations
+        // started by that frame would jump straight to their end.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var recorder = new RecordsDt();
+        var app = new HostingApp(root => root.AddChild(recorder));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+        session.Paint(Frame(surface, session), force: true);
+
+        session.Tick(5f);
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.InRange(recorder.LastDt, 0.001f, 1f / 30f);
+    }
+
+    /// <summary>A green box in the lower-right corner, clear of the red stretch box.</summary>
+    static VisualElement Corner()
+    {
+        var el = new VisualElement { Name = "corner" };
+        el.Transform.Anchor = Anchor.Left | Anchor.Top;
+        el.Transform.LocalX = 40;
+        el.Transform.LocalY = 24;
+        el.Transform.Width = 30;
+        el.Transform.Height = 14;
+        el.Style.BackColor = new SKColor(0, 255, 0, 255);
+        return el;
+    }
+
+    sealed class RecordsDt : VisualElement
+    {
+        public float LastDt = -1;
+        public bool KeepAnimating;
+
+        protected override void OnUpdate(float dt)
+        {
+            LastDt = dt;
+            if (KeepAnimating)
+                InvalidatePaint();
+        }
+    }
+
+    sealed class InvalidatesOnFirstUpdate : VisualElement
+    {
+        private bool _done;
+
+        protected override void OnUpdate(float dt)
+        {
+            if (_done) return;
+            _done = true;
+            InvalidatePaint();
+        }
+    }
+
+    sealed class DisposesOnUpdate : VisualElement
+    {
+        public DisposesOnUpdate()
+        {
+            Transform.Anchor = Anchor.Left | Anchor.Top;
+            Transform.LocalX = 40;
+            Transform.LocalY = 24;
+            Transform.Width = 30;
+            Transform.Height = 14;
+            Style.BackColor = new SKColor(0, 255, 0, 255);
+        }
+
+        protected override void OnUpdate(float dt) => Dispose();
+    }
+
+    sealed class RemovesOnUpdate : VisualElement
+    {
+        private readonly VisualElement _target;
+        private readonly bool _dispose;
+
+        public RemovesOnUpdate(VisualElement target, bool dispose = false)
+        {
+            _target = target;
+            _dispose = dispose;
+        }
+
+        public bool Armed { get; set; }
+
+        protected override void OnUpdate(float dt)
+        {
+            if (!Armed) return;
+            if (_dispose)
+                _target.Dispose();
+            else
+                _target.Parent?.RemoveChild(_target);
+        }
+    }
+
     static UiSession CreateSession(IUiHost host, Application app, float logicalW, float logicalH)
     {
         var session = new UiSession(host, app, HudOptions());
@@ -141,9 +347,9 @@ public class UiSessionTests
     {
         public HostingView Main { get; }
 
-        public HostingApp()
+        public HostingApp(Action<VisualElement>? addToRoot = null)
         {
-            Main = new HostingView();
+            Main = new HostingView(addToRoot);
             AddView(Main);
             SetActiveView(Main);
         }
@@ -151,9 +357,10 @@ public class UiSessionTests
 
     sealed class HostingView : View
     {
+        private readonly Action<VisualElement>? _addToRoot;
         public VisualElement? Stretch;
 
-        public HostingView() : base("main") { }
+        public HostingView(Action<VisualElement>? addToRoot = null) : base("main") => _addToRoot = addToRoot;
 
         public override void Init()
         {
@@ -166,6 +373,7 @@ public class UiSessionTests
             box.Transform.Height = 20;
 
             root.AddChild(box);
+            _addToRoot?.Invoke(root);
             AddElement(root);
             Stretch = box;
         }

@@ -41,6 +41,7 @@ Blossom/
 │   │   ├── Core/           # Application, View, ElementsMap, EventMap, Gpu, Design, Input (UiKey)
 │   │   ├── Hosting/        # UiSession, UiInput, UiDispatcher, SoftwareUiHost, RenderFrame
 │   │   ├── Visual/         # VisualElement, Transform, Style, ScrollContainer, shaders
+│   │   ├── Animations/     # Timeline, AnimatedValue, Anim builders, Ease, Playback
 │   │   ├── Utils/          # Fonts, imaging helpers
 │   │   └── External/       # Vendored quadtree helpers
 │   ├── Blossom.Desktop/    # Desktop app host (Silk.NET, GLFW window loop, Shell, Renderer present)
@@ -201,6 +202,7 @@ Other apps consume the framework with `dotnet add package Blossom`, or with proj
 | Custom control samples | `src/Blossom.Demo/Components/` |
 | GPU surfaces / app shaders | `src/Blossom/Core/Gpu.cs` |
 | Styles / shaders | `src/Blossom/Visual/ElementStyle.cs`, `src/Blossom/Visual/Style/` |
+| Animation (timelines, transitions, UI clock) | `src/Blossom/Animations/`, `VisualElement.Play`, `View.NextAnimationStep` |
 | Multi-view app shell | `src/Blossom/Core/Application.cs`, `src/Blossom.Demo/TestingApp.cs` |
 | Reactive signals / flow | `src/Blossom.Reactive/` (see that project's README) |
 | Layout hosts, Colours, Theme | `src/Blossom.Primitives/` |

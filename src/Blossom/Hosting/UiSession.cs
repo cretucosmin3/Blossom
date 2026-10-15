@@ -182,6 +182,7 @@ public sealed class UiSession : IDisposable
             float dt = deltaSeconds < 0 ? 0 : deltaSeconds;
             Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = dt;
             Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += dt;
+            Application.AdvanceTime(dt);
 
             Application.ActiveView?.TriggerLoop();
 
