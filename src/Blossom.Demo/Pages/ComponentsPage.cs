@@ -7,6 +7,7 @@ using Blossom.Testing.Components;
 using Blossom.Testing.State;
 using Blossom.Testing.Styling;
 using static Blossom.Reactive.ReactiveEngine;
+using Blossom.Desktop;
 
 namespace Blossom.Testing.Pages;
 

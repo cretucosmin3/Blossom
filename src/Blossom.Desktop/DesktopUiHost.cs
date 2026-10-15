@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using Blossom.Platform;
+using Blossom.Hosting;
 using Silk.NET.GLFW;
 
-namespace Blossom.Hosting;
+namespace Blossom.Desktop;
 
 /// <summary>
 /// GLFW desktop host. Wake posts an empty event so <c>glfwWaitEventsTimeout</c> returns.

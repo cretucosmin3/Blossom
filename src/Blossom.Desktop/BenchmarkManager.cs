@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Blossom.Core
+namespace Blossom.Desktop
 {
     public static class BenchmarkManager
     {

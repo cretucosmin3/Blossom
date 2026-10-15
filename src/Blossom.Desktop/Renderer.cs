@@ -1,10 +1,11 @@
 using System;
+using Blossom.Core;
 using Blossom.Hosting;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using SkiaSharp;
 
-namespace Blossom.Core;
+namespace Blossom.Desktop;
 
 internal static class Renderer
 {
@@ -232,8 +233,8 @@ internal static class Renderer
             int winH = Math.Max(1, window.Size.Y);
 
             bool fbChanged = fbW != FramebufferWidth || fbH != FramebufferHeight;
-            float logicalW = winW / Platform.DisplayScale.Factor;
-            float logicalH = winH / Platform.DisplayScale.Factor;
+            float logicalW = winW / DisplayScale.Factor;
+            float logicalH = winH / DisplayScale.Factor;
             bool winChanged = Math.Abs(Shell.RenderRect.Width - logicalW) > 0.01f ||
                               Math.Abs(Shell.RenderRect.Height - logicalH) > 0.01f;
 

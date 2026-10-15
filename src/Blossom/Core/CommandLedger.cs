@@ -782,7 +782,7 @@ public class DrawShaderBackgroundCommand : DrawCommand
             return;
         }
 
-        float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
+        float time = (float)(_element.ParentView?.Application?.Time ?? 0);
         float hoverProgress = _element.HoverProgress;
         float aaAmount = aa ? 1f : 0f;
         float speed = _element.Style?.ShaderSpeed ?? 1f;
@@ -965,7 +965,7 @@ public class DrawBorderCommand : DrawCommand
             return;
         }
 
-        float time = Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds;
+        float time = (float)(_element.ParentView?.Application?.Time ?? 0);
 
         SKPathEffect? effect = null;
         if (_effectType == Blossom.Core.Visual.BorderEffectType.Jitter)

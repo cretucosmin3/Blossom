@@ -990,10 +990,4 @@ namespace Blossom.Core.Visual
             Time = 0f
         };
     }
-
-    public static class SKSLShaderTimeTracker
-    {
-        public static float DeltaTime { get; set; } = 0.016f;
-        public static float ElapsedSeconds { get; set; } = 0f;
-    }
 }

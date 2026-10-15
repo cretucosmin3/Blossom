@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Blossom.Testing;
+using Blossom.Desktop;
 
 namespace Blossom
 {
@@ -40,7 +41,7 @@ namespace Blossom
                 }
             }
 
-            Blossom.Core.BenchmarkManager.CheckArgs(Environment.GetCommandLineArgs());
+            BenchmarkManager.CheckArgs(Environment.GetCommandLineArgs());
 
             // Run SKSL Shader verification tests
             Blossom.Core.Visual.SKSLShaderManager.TestCompilation();

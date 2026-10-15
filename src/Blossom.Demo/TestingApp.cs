@@ -2,10 +2,11 @@ using System;
 using Blossom.Core;
 using Blossom.Testing.Frame;
 using Blossom.Testing.Views;
+using Blossom.Desktop;
 
 namespace Blossom.Testing
 {
-    public class TestingApplication : Application
+    public class TestingApplication : DesktopApplication
     {
         public TestingApplication()
         {

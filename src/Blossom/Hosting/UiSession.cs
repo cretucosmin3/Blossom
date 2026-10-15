@@ -34,6 +34,16 @@ public sealed class UiSession : IDisposable
         application.Session = this;
     }
 
+    /// <summary>
+    /// Session for a single view, without an <see cref="Application"/> subclass (a world-space panel,
+    /// a nameplate). The view is wrapped in a private one-view application; <see cref="Application"/>
+    /// still exposes it for <c>Time</c> and app-level <c>Events</c>.
+    /// </summary>
+    public UiSession(IUiHost host, View view, UiSessionOptions? options = null)
+        : this(host, new SingleViewApplication(view), options)
+    {
+    }
+
     public Application Application { get; }
     public IUiHost Host { get; }
     public UiInput Input { get; }
@@ -180,8 +190,6 @@ public sealed class UiSession : IDisposable
             UiDispatcher.DrainTimers();
 
             float dt = deltaSeconds < 0 ? 0 : deltaSeconds;
-            Blossom.Core.Visual.SKSLShaderTimeTracker.DeltaTime = dt;
-            Blossom.Core.Visual.SKSLShaderTimeTracker.ElapsedSeconds += dt;
             Application.AdvanceTime(dt);
 
             Application.ActiveView?.TriggerLoop();
@@ -291,5 +299,17 @@ public sealed class UiSession : IDisposable
     {
         if (UiDispatcher.HasUiThread && !Host.CheckAccess())
             throw new InvalidOperationException("UiSession.Tick/Paint must run on the UI thread.");
+    }
+
+    sealed class SingleViewApplication : Application
+    {
+        public SingleViewApplication(View view)
+        {
+            ArgumentNullException.ThrowIfNull(view);
+            if (view.Application != null)
+                throw new InvalidOperationException("View already belongs to an Application.");
+            AddView(view);
+            SetActiveView(view);
+        }
     }
 }

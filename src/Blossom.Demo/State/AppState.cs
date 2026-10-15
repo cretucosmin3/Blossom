@@ -4,6 +4,7 @@ using System.Linq;
 using Blossom.Reactive;
 using Blossom.Testing.Components;
 using static Blossom.Reactive.ReactiveEngine;
+using Blossom.Desktop;
 
 namespace Blossom.Testing.State;
 
@@ -127,7 +128,7 @@ public static class AppState
     {
         var toast = new ToastItem(Guid.NewGuid(), tone, title, message);
         Toasts.Value = Toasts.Value.Append(toast).TakeLast(4).ToList();
-        Blossom.Shell.PostDelayed(TimeSpan.FromSeconds(4), () => Dismiss(toast.Id));
+        Shell.PostDelayed(TimeSpan.FromSeconds(4), () => Dismiss(toast.Id));
     }
 
     public static void Dismiss(Guid id)

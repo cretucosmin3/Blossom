@@ -11,7 +11,6 @@ using Blossom.Core.Input;
 using Blossom.Core.Visual;
 using Blossom.Core.Delegates.Common;
 using Blossom.Hosting;
-using Blossom.Platform;
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -29,14 +28,14 @@ using Silk.NET.Core.Contexts;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 
-namespace Blossom;
+namespace Blossom.Desktop;
 
 public static class Shell
 {
     private static IInputContext input;
 
     internal static IWindow window;
-    internal static Application ShellApp = null!;
+    internal static DesktopApplication ShellApp = null!;
     public static UiSession? Session { get; private set; }
     static RectangleF s_renderRect = new(0, 0, 0, 0);
 
@@ -297,7 +296,7 @@ public static class Shell
     static readonly SKColor DefaultBackColor = new(255, 255, 255, 255);
     private static readonly List<(SKRect, SKColor)> PostMarkers = new();
     /// <summary>
-    /// Frame-time overlay visibility (top-left). Independent of <see cref="Application.EnableStatsOverlay"/>,
+    /// Frame-time overlay visibility (top-left). Independent of <see cref="DesktopApplication.EnableStatsOverlay"/>,
     /// which is what lets F12 toggle this flag. Default false.
     /// </summary>
     public static bool ShowDebugOverlay { get; set; }
@@ -347,7 +346,7 @@ public static class Shell
     /// <summary>
     /// Hosts <paramref name="application"/> in a native window and runs until the window closes.
     /// </summary>
-    public static void Initialize(Application application)
+    public static void Initialize(DesktopApplication application)
     {
         ShellApp = application ?? throw new ArgumentNullException(nameof(application));
         UiDispatcher.BindUiThread();
@@ -568,7 +567,7 @@ public static class Shell
                     WaitForFrameSlot();
                     if (window.IsClosing)
                         break;
-                    // Drain only: Tick(0) would zero SKSL DeltaTime and stall hover/OnUpdate.
+                    // Drain only: no Tick here, so UI time advances once per loop iteration.
                     UiDispatcher.DrainPostQueue();
                     UiDispatcher.DrainTimers();
                     if (Session?.NeedsPaint != true)
@@ -1223,9 +1222,9 @@ public static class Shell
     {
         Renderer.ResetContext();
 
-        if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
+        if (BenchmarkManager.IsBenchmarkMode)
         {
-            Blossom.Core.BenchmarkManager.StartFrame(ShellApp.ActiveView?.Name ?? "Unknown");
+            BenchmarkManager.StartFrame(ShellApp.ActiveView?.Name ?? "Unknown");
         }
 
         frameTimer.Restart();
@@ -1258,9 +1257,9 @@ public static class Shell
         }
         frameTimer.Stop();
 
-        if (Blossom.Core.BenchmarkManager.IsBenchmarkMode)
+        if (BenchmarkManager.IsBenchmarkMode)
         {
-            Blossom.Core.BenchmarkManager.EndFrame();
+            BenchmarkManager.EndFrame();
         }
 
         string title = !string.IsNullOrWhiteSpace(ShellApp.Title)

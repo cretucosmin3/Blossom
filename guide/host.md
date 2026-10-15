@@ -8,13 +8,14 @@ Do not take Silk's `IWindow` or `IInputContext` by reflection. The public surfac
 
 ## Window
 
-Set policy on the application before `Shell.Initialize`:
+Desktop apps derive from `DesktopApplication` (namespace `Blossom.Desktop`), which adds the window policy to core `Application`. Set it before `Shell.Initialize`:
 
 ```csharp
-public abstract class Application
+public abstract class DesktopApplication : Application
 {
     public WindowOptions Window { get; } = new();
     public bool EnableStatsOverlay { get; set; } // default false
+    public string Title { get; set; } = "";     // empty = active view name
 }
 
 public sealed class WindowOptions

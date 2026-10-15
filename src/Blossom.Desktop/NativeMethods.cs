@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Blossom;
+namespace Blossom.Desktop;
 
 public static class NativeMethods
 {

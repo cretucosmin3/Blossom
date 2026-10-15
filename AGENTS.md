@@ -182,7 +182,7 @@ dotnet run --project src/Blossom.Demo/Blossom.Demo.csproj
 # optional: --builder | --benchmark
 ```
 
-Other apps consume the framework with `dotnet add package Blossom`, or with project references to `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(new MyApplication())`.
+Other apps consume the framework with `dotnet add package Blossom`, or with project references to `src/Blossom`, `src/Blossom.Reactive`, `src/Blossom.Primitives`, and `src/Blossom.Desktop`, then `Shell.Initialize(new MyApplication())` where `MyApplication : DesktopApplication`. Everything in `Blossom.Desktop` lives in the `Blossom.Desktop` namespace.
 
 ---
 
@@ -194,7 +194,7 @@ Other apps consume the framework with `dotnet add package Blossom`, or with proj
 | Anchors / size / 3D matrix | `src/Blossom/Visual/Transform.cs`, `src/Blossom/Visual/Enums/Anchor.cs` |
 | Mouse / hover / view render | `src/Blossom/Core/View.cs` |
 | Hit-testing | `src/Blossom/Core/ElementsMap.cs` |
-| Keyboard / mouse event maps | `src/Blossom/Core/EventMap.cs`, `src/Blossom/Shell.cs`, `src/Blossom/Visual/ElementEvents.cs` |
+| Keyboard / mouse event maps | `src/Blossom/Core/EventMap.cs`, `src/Blossom.Desktop/Shell.cs`, `src/Blossom/Visual/ElementEvents.cs` |
 | Scrolling & scrollbars | `src/Blossom/Visual/ScrollContainer.cs` |
 | Layout hooks | `src/Blossom/Visual/VisualElement.cs` (`LayoutChildren`), `src/Blossom.Primitives/` (`Stack`, `Grid`, `Split`) |
 | Design canvas & units | `src/Blossom/Core/Design/` |

@@ -1,7 +1,7 @@
-namespace Blossom.Core;
+namespace Blossom.Desktop;
 
 /// <summary>
-/// Initial OS-window policy for an <see cref="Application"/>. Applied when the host creates the window.
+/// Initial OS-window policy for a <see cref="DesktopApplication"/>. Applied when <see cref="Shell"/> creates the window.
 /// </summary>
 public sealed class WindowOptions
 {

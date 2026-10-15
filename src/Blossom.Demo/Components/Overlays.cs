@@ -6,6 +6,7 @@ using Blossom.Primitives;
 using Blossom.Reactive;
 using Blossom.Testing.State;
 using SkiaSharp;
+using Blossom.Desktop;
 
 namespace Blossom.Testing.Components;
 

@@ -92,6 +92,16 @@ public class GameUi
 }
 ```
 
+### Single-View Sessions (No `Application` Subclass)
+
+A panel with one screen, such as a nameplate or a world-space display, can skip the `Application` subclass. Pass the view directly; the session wraps it in a private one-view application:
+
+```csharp
+var session = new UiSession(new SoftwareUiHost(), new NameplateView(), options);
+```
+
+Each session keeps its own UI clock (`session.Application.Time`), so animations and continuous shaders run at the right speed however many sessions you tick per frame. Use an `Application` subclass when the panel switches between several views.
+
 ### Handling Window Resize
 
 When your game window or resolution changes:

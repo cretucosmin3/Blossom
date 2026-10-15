@@ -24,7 +24,7 @@ dotnet add package Blossom
 
 The `Blossom` package (`net10.0`) includes `Blossom.dll`, `Blossom.Reactive.dll`, and `Blossom.Primitives.dll`.
 
-From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, and `src/Blossom.Primitives`, then `Shell.Initialize(yourApplication)`.
+From this repo, project-reference `src/Blossom`, `src/Blossom.Reactive`, `src/Blossom.Primitives`, and `src/Blossom.Desktop`, derive your app from `DesktopApplication`, then `Shell.Initialize(yourApplication)` (`using Blossom.Desktop;`).
 
 ## Projects
 

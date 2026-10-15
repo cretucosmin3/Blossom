@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using Silk.NET.Windowing;
 
-namespace Blossom;
+namespace Blossom.Desktop;
 
 public static class User32
 {

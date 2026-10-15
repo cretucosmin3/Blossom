@@ -51,6 +51,49 @@ public class UiSessionTests
     }
 
     [Fact]
+    public void ViewSession_PaintsWithoutApplicationSubclass()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var view = new HostingView();
+        using var session = new UiSession(new SoftwareUiHost(), view, HudOptions());
+        session.SetSize(80, 40, 80, 40);
+        session.Init();
+
+        Assert.Same(view, session.Application.ActiveView);
+        Assert.Same(session.Application, view.Application);
+
+        session.Paint(Frame(surface, session), force: true);
+
+        using var pixmap = surface.PeekPixels();
+        Assert.Equal(255, pixmap.GetPixelColor(10, 10).Red);
+        Assert.Equal(0, pixmap.GetPixelColor(50, 30).Alpha);
+    }
+
+    [Fact]
+    public void ViewSession_RejectsViewOwnedByAnotherApplication()
+    {
+        var app = new HostingApp();
+        Assert.Throws<InvalidOperationException>(() => new UiSession(new SoftwareUiHost(), app.Main, HudOptions()));
+    }
+
+    [Fact]
+    public void Tick_AdvancesOnlyItsOwnSessionClock()
+    {
+        var host = new SoftwareUiHost();
+        using var a = CreateSession(host, new HostingApp(), 80, 40);
+        using var b = new UiSession(host, new HostingView(), HudOptions());
+        b.SetSize(80, 40, 80, 40);
+        b.Init();
+
+        a.Tick(0.5f);
+        a.Tick(0.5f);
+        b.Tick(0.25f);
+
+        Assert.Equal(1.0, a.Application.Time, 6);
+        Assert.Equal(0.25, b.Application.Time, 6);
+    }
+
+    [Fact]
     public void Tick_RunsPostFromWorker()
     {
         var host = new SoftwareUiHost();

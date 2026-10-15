@@ -7,26 +7,6 @@ namespace Blossom.Core;
 
 public abstract class Application : IDisposable
 {
-    /// <summary>Initial window size, min size, resizable border, and center-on-load. Read by <see cref="Shell"/> at create time.</summary>
-    public WindowOptions Window { get; } = new();
-
-    /// <summary>
-    /// When true, F12 toggles Blossom’s stats overlay and is consumed by the host
-    /// before any element, view, or application key bind. Default false.
-    /// </summary>
-    public bool EnableStatsOverlay { get; set; }
-
-    private string _title = "";
-    public string Title
-    {
-        get => _title;
-        set
-        {
-            _title = value;
-            //! #render title only
-        }
-    }
-
     public UiSession? Session { get; internal set; }
 
     /// <summary>

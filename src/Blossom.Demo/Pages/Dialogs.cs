@@ -4,6 +4,7 @@ using Blossom.Reactive;
 using Blossom.Testing.Components;
 using Blossom.Testing.State;
 using static Blossom.Reactive.ReactiveEngine;
+using Blossom.Desktop;
 
 namespace Blossom.Testing.Pages;
 

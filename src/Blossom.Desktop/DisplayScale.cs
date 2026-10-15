@@ -11,7 +11,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using Silk.NET.Windowing;
 
-namespace Blossom.Platform;
+namespace Blossom.Desktop;
 
 /// <summary>
 /// Manages platform-specific DPI scaling, window content scale detection, and live display scale changes.
