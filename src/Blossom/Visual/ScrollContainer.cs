@@ -377,7 +377,7 @@ public class ScrollContainer : VisualElement
 
         if (_isAnimatingY)
         {
-            float stepDt = (dt > 0.0001f && dt < 0.1f) ? dt : 0.016f;
+            float stepDt = dt > 0.0001f ? Math.Min(dt, 0.1f) : 0.016f;
             float blend = 1f - MathF.Exp(-ScrollDamping * stepDt);
             float nextY = _scrollY + (_targetScrollY - _scrollY) * blend;
 
@@ -399,7 +399,7 @@ public class ScrollContainer : VisualElement
 
         if (_isAnimatingX)
         {
-            float stepDt = (dt > 0.0001f && dt < 0.1f) ? dt : 0.016f;
+            float stepDt = dt > 0.0001f ? Math.Min(dt, 0.1f) : 0.016f;
             float blend = 1f - MathF.Exp(-ScrollDamping * stepDt);
             float nextX = _scrollX + (_targetScrollX - _scrollX) * blend;
 

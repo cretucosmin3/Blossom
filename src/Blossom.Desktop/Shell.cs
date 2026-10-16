@@ -618,7 +618,10 @@ public static class Shell
     {
         int maxFps = _maxFps;
         if (maxFps <= 0)
+        {
+            PollInput();
             return;
+        }
 
         long freq = Stopwatch.Frequency;
         long period = Math.Max(1L, freq / maxFps);
@@ -628,8 +631,15 @@ public static class Shell
         if (target <= 0)
         {
             _nextPresentTicks = now + period;
+            PollInput();
             return;
         }
+
+        // A frame slower than the cap leaves no time to wait, and the wait below is the only place this
+        // branch reads input: without a poll, a view that repaints every frame (live data, smooth scroll)
+        // would never see a click or wheel event again.
+        if (now >= target)
+            PollInput();
 
         while (now < target && !window.IsClosing)
         {
@@ -657,6 +667,14 @@ public static class Shell
         _nextPresentTicks += period;
         if (now - _nextPresentTicks > period)
             _nextPresentTicks = now + period;
+    }
+
+    /// <summary>Non-blocking: dispatch pending window input, then run what it posted.</summary>
+    private static void PollInput()
+    {
+        WaitForEvents(0);
+        UiDispatcher.DrainPostQueue();
+        UiDispatcher.DrainTimers();
     }
 
     /// <summary>Set a platform standard mouse cursor.</summary>

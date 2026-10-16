@@ -750,6 +750,7 @@ namespace Blossom.Core
             }
 
             Elements.RemoveElement(element);
+            Ledger.Remove(element.RecordedDrawCommandKey);
             element.RemovedFromView();
             _hierarchyDirty = true;
             RenderRequired = true;
@@ -853,9 +854,12 @@ namespace Blossom.Core
                 CachedSortedElements.Clear();
                 CachedSortedElements.AddRange(CachedRenderQueue);
 
+                // The queue already holds every visible element, so set the flag directly: the recursive
+                // MarkVisibilityClippingDirty here re-walked each subtree once per ancestor.
                 foreach (var element in CachedRenderQueue)
                 {
-                    element.MarkVisibilityClippingDirty();
+                    element._visibilityClippingDirty = true;
+                    element._descendantsHidden = false;
                 }
 
                 _hierarchyDirty = false;
@@ -870,19 +874,17 @@ namespace Blossom.Core
             for (int idx = 0; idx < CachedRenderQueue.Count; idx++)
             {
                 var element = CachedRenderQueue[idx];
-                if (!element.EffectiveVisible) continue;
+                if (element.IsDisposed || !element.EffectiveVisible) continue;
 
                 element.UpdateHover(animationDt);
+                // An animation callback may dispose the element (and its subtree) mid-frame; the queue
+                // still lists them until the next hierarchy rebuild.
+                if (element.IsDisposed) continue;
 
                 if (element.Transform.Evaluate())
                 {
                     element.IsDirty = true;
                     element.MarkVisibilityClippingDirty();
-                }
-
-                if (element.IsLayoutDirty)
-                {
-                    element.PerformLayout();
                 }
 
                 if (element._visibilityClippingDirty)
@@ -891,9 +893,43 @@ namespace Blossom.Core
                     element._visibilityClippingDirty = false;
                 }
 
+                // Layout only places children, so a hidden element keeps it pending until it shows again.
+                if (element.IsLayoutDirty && element.ComputedVisibility != Visibility.Hidden)
+                {
+                    element.PerformLayout();
+
+                    if (element._visibilityClippingDirty)
+                    {
+                        element.EvaluateVisibilityAndClipping();
+                        element._visibilityClippingDirty = false;
+                    }
+                }
+
                 if (element._isPaintDirty && !element.IsDirty)
                 {
                     element.IsDirty = true;
+                }
+
+                // Fully clipped out (e.g. a card scrolled away): everything under it is hidden too, so its
+                // descendants skip transform, layout and visibility work until it shows again (their dirty
+                // flags keep). With thousands of off-screen rows this is most of the frame.
+                if (element._paintSubtreeSize > 1 && element.ComputedVisibility == Visibility.Hidden)
+                {
+                    int end = Math.Min(idx + element._paintSubtreeSize, CachedRenderQueue.Count);
+                    bool hide = !element._descendantsHidden;
+                    for (int j = idx + 1; j < end; j++)
+                    {
+                        var descendant = CachedRenderQueue[j];
+                        if (hide)
+                            descendant.HideUnderHiddenAncestor();
+                        descendant.AdvanceRunningAnimations(animationDt);
+                    }
+                    element._descendantsHidden = true;
+                    idx = end - 1;
+                }
+                else
+                {
+                    element._descendantsHidden = false;
                 }
             }
 
@@ -984,9 +1020,14 @@ namespace Blossom.Core
                 for (int idx = 0; idx < CachedSortedElements.Count; idx++)
                 {
                     var element = CachedSortedElements[idx];
-                    if (!element.Visible || !element.EffectiveVisible) continue;
-                    // Still draw Clipped elements; only skip fully hidden
-                    if (element.ComputedVisibility == Visibility.Hidden) continue;
+                    // Disposed by an animation callback this frame: its paints and fonts are already freed.
+                    if (element.IsDisposed || !element.Visible || !element.EffectiveVisible) continue;
+                    // Still draw Clipped elements; only skip fully hidden (with everything under them)
+                    if (element.ComputedVisibility == Visibility.Hidden)
+                    {
+                        idx += element._paintSubtreeSize - 1;
+                        continue;
+                    }
 
                     var elementRect = element.RenderBounds;
                     elementRect.Inflate(4, 4);

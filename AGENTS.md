@@ -46,6 +46,7 @@ Blossom/
 │   │   ├── Theme/          # Look (mode/accent signals) + Recipes (all styling)
 │   │   ├── State/          # AppState store (signals + memos)
 │   │   └── Views/          # Benchmark views
+│   ├── ReactiveLab/        # Reactive stress board (thousands of keyed cards, live updates) + feature lab
 │   └── Snake.MonoGame/     # Headless Blossom UI in a MonoGame game (SkiaGameRendering NuGet)
 ├── src/
 │   ├── Blossom/            # Core framework library (Silk-free: retained tree, layout, styles, UiSession)
@@ -181,6 +182,7 @@ Run (after build), from output or via project:
 ```bash
 dotnet run --project demos/ApplicationDemo/ApplicationDemo.csproj
 # optional: --builder | --benchmark
+dotnet run --project demos/ReactiveLab/ReactiveLab.csproj   # reactive stress board + feature lab
 ```
 
 Other apps consume the framework with `dotnet add package Blossom`, or with project references to `src/Blossom`, `src/Blossom.Reactive`, `src/Blossom.Primitives`, and `src/Blossom.Desktop`, then `Shell.Initialize(new MyApplication())` where `MyApplication : DesktopApplication`. Everything in `Blossom.Desktop` lives in the `Blossom.Desktop` namespace.

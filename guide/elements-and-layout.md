@@ -10,6 +10,10 @@ Apps are object graphs of `VisualElement` nodes. Each node has:
 
 Parents own children. `Parent = x` calls `AddChild`. For chrome that must not participate in the parent's layout (scrollbar thumbs), use `SetParentInternal`.
 
+An element's default `Style` (the one its getter creates) is disposed with the element, including any `Text` / `Border` / `Shadow` assigned into it. A style you create and assign is never disposed by the element. A shared style tracks its elements until they are disposed, so dispose elements you remove and do not reuse (`For.Each` and `Show.When` do this for you).
+
+`AddChild`, `RemoveChild`, `InsertChild` and `SetChildIndex` each cost O(n) in the parent's child count. To apply many edits at once (a reordered or filtered list), build the final list and call `ReplaceChildren(list)`: it detaches children not in the list (without disposing them), attaches new ones (taking them from any previous parent), applies the order, and invalidates once, all in O(n).
+
 `GetVisualChildren` yields content then visible chrome. `OverflowMode.Clip` (not `Hidden`) clips drawing and hit-testing.
 
 Lifecycle hooks you can use when writing a primitive: `ParentChanged`, `Disposed`, `IndexOfChild`, `Tag`, `OnSizeChanged` / `SizeChanged`, `LayoutChildren`.
@@ -46,6 +50,8 @@ For row/column/grid/split **hosts** that place and size children, use [`Blossom.
 While `LayoutMutationDepth` is non-zero, `Transform.OnChanged` is suppressed (avoids a layout loop). **Width/height changes still raise `SizeChanged`**, so a nested primitive can relayout itself.
 
 `GetPreferredSize` is the measure hook for userland layout engines.
+
+An element fully clipped out of view (`ComputedVisibility == Hidden`, e.g. a row scrolled out of a `ScrollContainer`) keeps its `LayoutChildren` pending, and its descendants skip layout and evaluation, until it shows again. Everything under it is hidden by definition, and running animations keep advancing. So `LayoutChildren` should only place children: anything that must stay current while off-screen belongs outside it.
 
 ## Scroll
 

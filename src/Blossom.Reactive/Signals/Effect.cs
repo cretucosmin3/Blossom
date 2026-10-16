@@ -6,18 +6,27 @@ namespace Blossom.Reactive;
 /// <summary>
 /// A reactive computation that re-executes whenever any of its read signal dependencies change.
 /// </summary>
-public sealed class Effect : IDisposable
+/// <remarks>
+/// Effects created while this effect runs belong to it: they are disposed before each re-run and when
+/// this effect is disposed. An <see cref="EffectScope.Record(Action)"/> inside the run takes them instead.
+/// </remarks>
+public sealed class Effect : IDisposable, IObserver
 {
     private readonly Action _action;
-    private readonly HashSet<ISignal> _dependencies = new();
-    private Action? _staleHandler;
+    private readonly SourceList _sources = new();
+    private List<IDisposable>? _owned;
+    private NodeState _state;
     private bool _isDisposed;
     private bool _isRunning;
+
+    // Per-flush run counter for cycle detection, owned by ReactiveContext.Flush.
+    internal int FlushGeneration;
+    internal int FlushRuns;
 
     public Effect(Action action, bool autoExecute = true)
     {
         _action = action ?? throw new ArgumentNullException(nameof(action));
-        EffectScope.Current?.Register(this);
+        ReactiveContext.RegisterWithOwner(this);
 
         if (autoExecute)
         {
@@ -26,25 +35,26 @@ public sealed class Effect : IDisposable
     }
 
     /// <summary>
-    /// When set, the effect is a memo tracker: upstream changes mark the memo dirty
-    /// instead of re-running a user action. Dependencies are refreshed only on recompute.
+    /// Called by the flush for a queued effect: re-runs only if a source actually changed.
     /// </summary>
-    internal void SetStaleHandler(Action handler) => _staleHandler = handler;
-
-    /// <summary>
-    /// Called by signals (and memos) when an upstream value changes.
-    /// </summary>
-    internal void Notify()
+    internal void RunIfStale()
     {
         if (_isDisposed) return;
 
-        if (_staleHandler != null)
+        if (_state == NodeState.Check)
         {
-            _staleHandler();
-            return;
+            // Sources in read order: once one changes, later ones may not be read at all this time.
+            for (int i = 0; i < _sources.Count; i++)
+            {
+                _sources[i].UpdateIfNecessary();
+                if (_state == NodeState.Dirty) break;
+            }
         }
 
-        ReactiveContext.EnqueuePendingEffect(this);
+        if (_state == NodeState.Dirty)
+            Execute();
+        else
+            _state = NodeState.Clean;
     }
 
     /// <summary>
@@ -56,55 +66,87 @@ public sealed class Effect : IDisposable
 
         if (_isRunning)
         {
-            ReactiveContext.EnqueuePendingEffect(this);
+            Invalidate(NodeState.Dirty);
             return;
         }
 
         _isRunning = true;
+        _state = NodeState.Clean;
         ReactiveContext.EnterExecution();
+        var prevObserver = ReactiveContext.SwapObserver(null);
+        var prevOwner = ReactiveContext.SwapOwner(null);
         try
         {
-            CleanupDependencies();
+            DisposeOwned();
 
-            var prev = ReactiveContext.CurrentEffect;
-            ReactiveContext.CurrentEffect = this;
-            try
-            {
-                _action();
-            }
-            finally
-            {
-                ReactiveContext.CurrentEffect = prev;
-            }
+            ReactiveContext.SwapObserver(this);
+            ReactiveContext.SwapOwner(this);
+            _action();
         }
         finally
         {
+            ReactiveContext.SwapObserver(prevObserver);
+            ReactiveContext.SwapOwner(prevOwner);
+            if (_isDisposed)
+                _sources.Clear(this);
+            else
+                _sources.Commit(this);
             _isRunning = false;
             ReactiveContext.ExitExecution();
         }
     }
 
-    internal void AddDependency(ISignal signal)
+    void IObserver.Track(ISource source) => _sources.Track(source, this);
+
+    void IObserver.MarkStale(NodeState state, ISource from)
     {
-        if (_dependencies.Add(signal))
-        {
-            signal.Subscribe(this);
-        }
+        if (_isDisposed) return;
+        // While running, a source not read yet will be read fresh; only a re-read one is stale
+        // (e.g. the effect wrote a signal it had already read, so it must run again).
+        if (_isRunning && !_sources.IsTrackedThisRun(from)) return;
+        Invalidate(state);
     }
 
-    internal void CleanupDependencies()
+    private void Invalidate(NodeState state)
     {
-        foreach (var dep in _dependencies)
+        if (_state >= state) return;
+
+        bool wasClean = _state == NodeState.Clean;
+        _state = state;
+        if (wasClean)
+            ReactiveContext.EnqueuePendingEffect(this);
+    }
+
+    /// <summary>Drops a queued run (cycle guard) without disposing the effect.</summary>
+    internal void AbandonPending() => _state = NodeState.Clean;
+
+    internal void Own(IDisposable disposable)
+    {
+        if (_isDisposed)
         {
-            dep.Unsubscribe(this);
+            disposable.Dispose();
+            return;
         }
-        _dependencies.Clear();
+        (_owned ??= new List<IDisposable>()).Add(disposable);
+    }
+
+    private void DisposeOwned()
+    {
+        var owned = _owned;
+        if (owned == null || owned.Count == 0) return;
+
+        _owned = null;
+        for (int i = owned.Count - 1; i >= 0; i--)
+        {
+            owned[i].Dispose();
+        }
     }
 
     public void Dispose()
     {
         if (_isDisposed) return;
         _isDisposed = true;
-        CleanupDependencies();
+        DisposeOwned();
+        _sources.Clear(this);
     }
 }

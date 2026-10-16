@@ -86,7 +86,14 @@ var name  = CreateMemo(() => $"{first.Value} {last.Value}");
 // name.Value is cached until first or last changes
 ```
 
-Memos use a tracker effect internally. They do not re-run user effects just because an input changed if the output is equal.
+Memos are **lazy and glitch-free**. A write only marks a memo stale; it recomputes the next time something reads it (an effect, another memo, or your code), after first bringing its own inputs up to date. So:
+
+- a memo never sees a half-updated graph (in `D = B + C` over the same signal, `D` reads both new values);
+- it computes at most once per change, however many paths lead to it, and once per `Batch`;
+- a memo nobody reads does no work until it is read again;
+- if the output is equal, downstream memos and effects do not re-run.
+
+`Peek()` reads the up-to-date value without subscribing. If the computation throws, readers get that exception until an input changes; a throw on the first computation propagates from the constructor.
 
 ### `Effect`
 
@@ -106,9 +113,13 @@ using var fx = CreateEffect(() =>
 
 While `toggle` is `true`, writes to `b` do not re-run the effect.
 
-Effects register themselves with the ambient `EffectScope` (if any) and are `IDisposable`.
+Effects are `IDisposable`. An effect created while another effect runs belongs to that effect: it is disposed before the parent re-runs and when the parent is disposed (Solid's owner model). Otherwise it registers with the ambient `EffectScope`, if any. `EffectScope.Record` inside a running effect takes ownership instead, which is how `Show` / `For` keep their content alive across re-runs.
 
-An effect that writes a signal it also read is **requeued after the current run** instead of recursing. A cycle that never settles throws after 10 000 flush iterations.
+A queued effect whose inputs are only memos re-runs only if one of those memos actually produced a new value.
+
+An effect that writes a signal it also read is **requeued after the current run** instead of recursing. A cycle that never settles throws once the same effect has run 10 000 times in one flush. The limit is per effect, so a single write may fan out to any number of distinct effects.
+
+If an effect throws during a flush, the remaining queued effects still run; the exception is rethrown afterwards (an `AggregateException` when several threw).
 
 ### `Batch` and `Untrack`
 
@@ -123,7 +134,7 @@ Batch(() =>
 var snapshot = Untrack(() => expensive.Value); // read without subscribing
 ```
 
-Writes inside `Batch` still update signal values immediately; only **effect execution** is deferred until the batch (and any in-flight notify/execute) finishes.
+Writes inside `Batch` still update signal values immediately, and reading a memo inside the batch computes it from the current values; only **effect execution** is deferred until the batch (and any in-flight notify/execute) finishes.
 
 ---
 
@@ -185,7 +196,7 @@ Show.When(
 );
 ```
 
-When the boolean changes, the previous branch is **removed and disposed**, including its `EffectScope`. Factories run inside `EffectScope.Record`, so effects created while building the branch are cleaned up on unmount.
+When the boolean changes, the previous branch is **removed and disposed**, including its `EffectScope`. Factories run inside `EffectScope.Record`, so effects created while building the branch are cleaned up on unmount. They run untracked: a signal read directly in the factory does not re-run the condition (use `Bind` inside the branch to react to it).
 
 ### Keyed lists
 
@@ -200,12 +211,14 @@ For.Each<TaskItem, Guid>(
 - Keys must be unique. Duplicate keys: **the first item with that key wins**; later duplicates are skipped.
 - Existing keys keep their `VisualElement` (state, focus, bindings).
 - Missing keys unmount (remove + dispose element + scope).
-- Order follows the item list (`InsertChild` / `SetChildIndex`).
+- Order follows the item list. A reconcile that changes anything applies the whole child order in one `ReplaceChildren` call, so a reverse, a shuffle or removing many items is linear, not one O(n) move per item.
 - `startIndex` leaves leading children alone (static chrome in the same parent). Prefer putting list items in a dedicated parent so chrome is not mixed with reconciled children.
 
-The template runs **once per key** at mount. If `T` is a mutable class, the card should `Bind` to signals (or a store) rather than assume the template re-runs.
+The template runs **once per key** at mount, untracked: a signal read directly in the template body does not re-run the reconcile. If `T` is a mutable class, the card should `Bind` to signals (or a store) rather than assume the template re-runs.
 
-`For.Each` calls `InvalidateLayout()` on the parent after reconcile.
+`For.Each` invalidates the parent's layout after a reconcile that mounted, removed, or moved a child. Items already in place cost one slot check each, so re-running with an unchanged order is linear.
+
+Called while an effect runs, `Show.When` and `For.Each` belong to that effect: when it re-runs or is disposed, their elements are removed and disposed along with their inner effect (otherwise each re-run would leave the previous copy in the tree, no longer updating). Called from a component body or inside `EffectScope.Record`, they live until the parent element is disposed.
 
 ---
 
@@ -219,7 +232,11 @@ var (scope, panel) = EffectScope.Record(() => BuildPanel());
 scope.Dispose(); // disposes those effects
 ```
 
-`Effect` constructors call `EffectScope.Current?.Register(this)`. `Show` / `For` use `Record` so a removed card does not leak subscriptions.
+An `Effect` constructed outside a running effect calls `EffectScope.Current?.Register(this)`; `Memo` constructors always do. `Show` / `For` use `Record` so a removed card does not leak subscriptions.
+
+Disposing a memo, directly or through its scope, **releases** it. It unsubscribes from its inputs once nothing reads it (right away if nothing does), and reading it again later recomputes it and subscribes again. This matters for `static readonly` memos: C# runs a static initializer the first time the class is touched, which may be while some component is being built inside a scope. When that component unmounts, the memo is released, not killed, so it keeps working for everyone else.
+
+Memos are not owned by effects. A memo in a `static readonly` field may first be initialized while some effect is running, and must not die when that effect re-runs.
 
 ---
 
@@ -229,15 +246,17 @@ Tracking is **thread-static** (`ReactiveContext`). Use the API on the UI thread 
 
 ```text
 Write signal
-  → if value changed, BeginNotify → Effect.Notify
-       → user effects enqueue
-       → memo trackers recompute; notify only if output changed
-  → EndNotify → Flush (unless batching or an effect is still running)
+  → if value changed, mark direct observers Dirty and everything further downstream Check
+       (no user code runs while marking; effects leaving Clean are queued once)
+  → Flush (unless batching or an effect is still running)
 
 Flush
-  → Execute each pending effect once (deduped)
-  → Execute rebuilds the dependency set
-  → writes during Execute queue more work until the current effect finishes
+  → for each queued effect, in order:
+       Check: bring its sources up to date in read order (memos recompute here)
+              and stop at the first that changed
+       Dirty: run it; reads re-subscribe, unread sources are dropped
+       otherwise: nothing changed, skip it
+  → writes during a run queue more work until the current effect finishes
 ```
 
 There is no scheduler that paints. Bindings that change `Text`, `Visible`, transforms, or style call into Blossom’s existing dirty-rect path (`InvalidatePaint` / `InvalidateLayout`). Idle sleep still applies when nothing is dirty.

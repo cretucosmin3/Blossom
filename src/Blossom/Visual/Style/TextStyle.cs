@@ -191,6 +191,7 @@ public class TextStyle : StyleProperty, IDisposable
     {
         GC.SuppressFinalize(this);
 
+        Paint.Dispose();
         SkFont?.Dispose();
         _PathEffect?.Dispose();
         _Shadow?.Dispose();

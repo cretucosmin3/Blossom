@@ -17,7 +17,6 @@ public class Control : VisualElement
 
     protected Control()
     {
-        Style = new ElementStyle();
         Events.OnMouseEnter += _ => SetHover(true);
         Events.OnMouseLeave += _ => { SetHover(false); SetPressed(false); };
         Events.OnMouseDown += (_, e) => { if (e.Button == 0) SetPressed(true); };

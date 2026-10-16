@@ -59,7 +59,9 @@ public static class Show
 
         private void Mount(Func<VisualElement?> factory)
         {
-            ( _currentScope, _currentMounted ) = EffectScope.Record(factory);
+            // Untracked like a component body: signals the factory reads directly must not
+            // subscribe this controller's effect (bindings inside it track themselves).
+            ( _currentScope, _currentMounted ) = ReactiveContext.Untrack(() => EffectScope.Record(factory));
             if (_currentMounted != null)
             {
                 _parent.AddChild(_currentMounted);
@@ -110,6 +112,7 @@ public static class Show
         var controller = new Controller(parent, condition, contentFactory, fallbackFactory);
         controller.Start();
         parent.BindLifecycle(controller);
+        ReactiveContext.OwnByCurrentEffect(controller);
         return controller;
     }
 }

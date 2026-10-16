@@ -1128,6 +1128,21 @@ public class CommandLedger
     }
 
     /// <summary>
+    /// Drops and disposes an element's recorded commands. Called when the element leaves the view:
+    /// the commands capture the element, so a kept entry would keep it (and its subtree) alive.
+    /// </summary>
+    public void Remove(string elementId)
+    {
+        if (string.IsNullOrEmpty(elementId) || !_commands.Remove(elementId, out var existing))
+            return;
+
+        for (int i = 0; i < existing.Count; i++)
+        {
+            existing[i].Dispose();
+        }
+    }
+
+    /// <summary>
     /// Reverts the last drawing change (analogous to git revert).
     /// </summary>
     public bool Undo()

@@ -79,6 +79,14 @@ dotnet run --project demos/Snake.MonoGame/Snake.MonoGame.csproj
 
 See [`guide/game-ui.md`](guide/game-ui.md) for how to embed Blossom in your own engine.
 
+## Reactive lab
+
+`demos/ReactiveLab` stress-tests `Blossom.Reactive`. The **Board** page is a four-column board of keyed cards with one signal per field, filtered and sorted by memos. You can add thousands of cards, shuffle, edit or move them in bulk, or let a timer edit them up to 60 times a second. Every operation is timed, and the log shows how many card bindings and memos re-ran, with or without batching. The **Feature lab** page has one small experiment per feature: a glitch-free diamond, batching, `Peek`/`Untrack`, memo cut-off, `Show.When`, effect ownership, errors, the cycle guard and two-way binding. Each experiment says what you should see.
+
+```bash
+dotnet run --project demos/ReactiveLab/ReactiveLab.csproj
+```
+
 ## Install
 
 ```bash
@@ -137,6 +145,7 @@ To work from this repo instead, reference `src/Blossom`, `src/Blossom.Desktop`, 
 - [`src/Blossom.Pack`](src/Blossom.Pack): packs the four libraries into the `Blossom` NuGet package
 - [`demos/ApplicationDemo`](demos/ApplicationDemo): the desktop demo above
 - [`demos/Snake.MonoGame`](demos/Snake.MonoGame/README.md): the game demo above
+- [`demos/ReactiveLab`](demos/ReactiveLab): the reactive stress board and feature lab above
 
 ## Build
 

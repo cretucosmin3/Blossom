@@ -51,7 +51,37 @@ public class ElementTree : IDisposable
     internal static void CollectPaintOrder(VisualElement root, List<VisualElement> list)
     {
         if (!root.Visible) return;
+        int start = list.Count;
         list.Add(root);
+        CollectChildrenPaintOrder(root, list);
+        // The render loop skips a hidden element's whole subtree by this count.
+        root._paintSubtreeSize = list.Count - start;
+    }
+
+    private static void CollectChildrenPaintOrder(VisualElement root, List<VisualElement> list)
+    {
+        // Sorting only when ZIndex differs keeps the common case allocation-free (keyed lists can hold
+        // thousands of siblings). OrderBy is stable, so equal ZIndex keeps tree order either way.
+        bool mixedZ = false;
+        int firstZ = 0;
+        bool any = false;
+        foreach (var child in root.GetVisualChildren())
+        {
+            if (child == null || !child.Visible) continue;
+            if (!any) { firstZ = child.ZIndex; any = true; }
+            else if (child.ZIndex != firstZ) { mixedZ = true; break; }
+        }
+
+        if (!mixedZ)
+        {
+            foreach (var child in root.GetVisualChildren())
+            {
+                if (child != null)
+                    CollectPaintOrder(child, list);
+            }
+            return;
+        }
+
         var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderBy(c => c.ZIndex).ToList();
         foreach (var child in sortedChildren)
         {
