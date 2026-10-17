@@ -206,6 +206,7 @@ public class ElementStyle : IDisposable
     {
         GC.SuppressFinalize(this);
 
+        Text?.Dispose();
         Border?.Dispose();
         Shadow?.Dispose();
     }

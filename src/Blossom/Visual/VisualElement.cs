@@ -19,6 +19,8 @@ public class VisualElement : IDisposable
     private string? _drawCommandKey;
     /// <summary>Stable key for the command ledger (never null). Prefer Id so unnamed elements still render.</summary>
     internal string DrawCommandKey => _drawCommandKey ??= Id.ToString("N");
+    /// <summary>The ledger key if this element has ever recorded commands, otherwise null.</summary>
+    internal string? RecordedDrawCommandKey => _drawCommandKey;
 
     public virtual void AddedToView() { }
     public virtual void RemovedFromView() { }
@@ -214,7 +216,7 @@ public class VisualElement : IDisposable
             _children[i]?.InvalidateLayoutSubtree();
         foreach (var visual in GetVisualChildren())
         {
-            if (visual == null || _children.Contains(visual)) continue;
+            if (visual == null || IsListedChild(visual)) continue;
             visual.InvalidateLayoutSubtree();
         }
     }
@@ -239,7 +241,7 @@ public class VisualElement : IDisposable
 
             foreach (var visual in GetVisualChildren())
             {
-                if (visual == null || _children.Contains(visual)) continue;
+                if (visual == null || IsListedChild(visual)) continue;
                 visual.ForceLayoutSubtreeCore();
             }
         }
@@ -263,7 +265,7 @@ public class VisualElement : IDisposable
 
         foreach (var visual in GetVisualChildren())
         {
-            if (visual == null || _children.Contains(visual)) continue;
+            if (visual == null || IsListedChild(visual)) continue;
             visual.ForceLayoutSubtreeCore();
         }
     }
@@ -281,7 +283,7 @@ public class VisualElement : IDisposable
         }
         foreach (var visual in GetVisualChildren())
         {
-            if (visual == null || _children.Contains(visual)) continue;
+            if (visual == null || IsListedChild(visual)) continue;
             visual.InvalidateSubtreePaint();
         }
     }
@@ -303,7 +305,7 @@ public class VisualElement : IDisposable
         }
         foreach (var visual in GetVisualChildren())
         {
-            if (visual == null || _children.Contains(visual)) continue;
+            if (visual == null || IsListedChild(visual)) continue;
             visual.InvalidateSubtreeBounds();
         }
     }
@@ -674,6 +676,28 @@ public class VisualElement : IDisposable
     public bool HasClippingAncestors => _hasClippingAncestors;
 
     internal bool _visibilityClippingDirty = true;
+
+    // Size of this element's subtree in the view's paint order, itself included (set by CollectPaintOrder).
+    internal int _paintSubtreeSize = 1;
+    // Set while this element is hidden and every descendant has been marked hidden with it.
+    internal bool _descendantsHidden;
+
+    /// <summary>
+    /// Under a hidden ancestor (scrolled out of a clip) the render loop skips this element: it is hidden by
+    /// definition, and it re-evaluates when the ancestor shows again. Its other dirty flags keep until then.
+    /// </summary>
+    internal void HideUnderHiddenAncestor()
+    {
+        ComputedVisibility = Visibility.Hidden;
+        _visibilityClippingDirty = true;
+    }
+
+    /// <summary>Running timelines keep their clock while the element is skipped as hidden.</summary>
+    internal void AdvanceRunningAnimations(float dt)
+    {
+        if (_playbacks is { Count: > 0 })
+            AdvanceAnimations(dt);
+    }
     public void MarkVisibilityClippingDirty()
     {
         _visibilityClippingDirty = true;
@@ -685,7 +709,7 @@ public class VisualElement : IDisposable
         foreach (var visual in GetVisualChildren())
         {
             if (visual == null) continue;
-            if (_children.Contains(visual)) continue;
+            if (IsListedChild(visual)) continue;
             visual.MarkVisibilityClippingDirty();
         }
     }
@@ -860,6 +884,10 @@ public class VisualElement : IDisposable
         // Paint only: re-layout is requested explicitly (parent size change, ForceLayoutSubtree, etc.)
         CalculateText();
         MarkVisibilityClippingDirty();
+        // Listed children are notified directly: subscribing each one to the event made every
+        // AddChild/RemoveChild copy the whole invocation list (O(n²) for long lists).
+        for (int i = 0; i < _children.Count; i++)
+            _children[i].ParentTransformChanged(this, transform);
         TransformChanged?.Invoke(this, transform);
         InvalidateSubtreeBounds();
         InvalidatePaint();
@@ -947,18 +975,32 @@ public class VisualElement : IDisposable
     public object? Tag { get; set; }
     public event Action<VisualElement?>? ParentChanged;
 
-    internal void SetParentInternal(VisualElement? value)
+    // True while subscribed to the parent's TransformChanged: only chrome attached without being
+    // listed in Children (scrollbars); listed children are notified by the parent's own loop.
+    private bool _subscribedToParentTransform;
+
+    /// <summary>O(1) form of <c>_children.Contains(child)</c>: listed children never subscribe to our TransformChanged.</summary>
+    private bool IsListedChild(VisualElement child) => child._Parent == this && !child._subscribedToParentTransform;
+
+    internal void SetParentInternal(VisualElement? value, bool listed = false)
     {
         var oldParent = _Parent;
-        if (_Parent != null)
-            _Parent.TransformChanged -= ParentTransformChanged;
+        if (_subscribedToParentTransform)
+        {
+            _Parent!.TransformChanged -= ParentTransformChanged;
+            _subscribedToParentTransform = false;
+        }
 
         _Parent = value;
 
         if (value != null)
         {
             Transform.Parent = value.Transform;
-            _Parent.TransformChanged += ParentTransformChanged;
+            if (!listed)
+            {
+                _Parent.TransformChanged += ParentTransformChanged;
+                _subscribedToParentTransform = true;
+            }
             RootParent = _Parent.RootParent;
         }
         else
@@ -1015,6 +1057,8 @@ public class VisualElement : IDisposable
     }
 
     private ElementStyle _Style;
+    // True when the getter created _Style: nobody else holds it, so it is disposed with this element.
+    private bool _ownsStyle;
     public ElementStyle Style
     {
         get
@@ -1022,15 +1066,32 @@ public class VisualElement : IDisposable
             if (_Style == null)
             {
                 _Style = new ElementStyle();
+                _ownsStyle = true;
                 _Style.AssignElement(this);
             }
             return _Style;
         }
         set
         {
+            if (ReferenceEquals(_Style, value)) return;
+            ReleaseStyle();
             _Style = value;
             _Style.AssignElement(this);
         }
+    }
+
+    /// <summary>
+    /// Leaves the current style's element list (a shared style would otherwise keep this element alive)
+    /// and disposes the style if this element created it and no other element took it since.
+    /// </summary>
+    private void ReleaseStyle()
+    {
+        if (_Style == null) return;
+        var self = this;
+        _Style.UnassignElement(ref self);
+        if (_ownsStyle && _Style.AssignedElements.Count == 0)
+            _Style.Dispose();
+        _ownsStyle = false;
     }
 
     private OverflowMode _overflowX = OverflowMode.Visible;
@@ -1349,7 +1410,7 @@ public class VisualElement : IDisposable
         }
 
         _children.Add(child);
-        child.SetParentInternal(this);
+        child.SetParentInternal(this, listed: true);
 
         if (ParentView != null)
         {
@@ -1380,7 +1441,7 @@ public class VisualElement : IDisposable
         if (index > _children.Count) index = _children.Count;
 
         _children.Insert(index, child);
-        child.SetParentInternal(this);
+        child.SetParentInternal(this, listed: true);
 
         if (ParentView != null)
         {
@@ -1430,6 +1491,63 @@ public class VisualElement : IDisposable
             view.MarkHierarchyDirty();
         }
 
+        InvalidateLayout();
+    }
+
+    /// <summary>
+    /// Sets the whole child list in one pass: current children missing from <paramref name="children"/>
+    /// are removed (not disposed), new ones are attached (taken from any previous parent), and the order
+    /// is applied. O(n) with a single hierarchy and layout invalidation, where the same edit made with
+    /// <see cref="RemoveChild"/> / <see cref="InsertChild"/> / <see cref="SetChildIndex"/> costs O(n) per call.
+    /// </summary>
+    public void ReplaceChildren(IEnumerable<VisualElement> children)
+    {
+        if (children == null) throw new ArgumentNullException(nameof(children));
+
+        var next = new List<VisualElement>(children);
+        var nextSet = new HashSet<VisualElement>(next.Count);
+        foreach (var child in next)
+        {
+            if (child == null) throw new ArgumentException("Children cannot contain null.", nameof(children));
+            if (child == this) throw new InvalidOperationException("Cannot add an element as a child of itself.");
+            if (!nextSet.Add(child)) throw new ArgumentException("An element appears more than once.", nameof(children));
+            if (child._Parent != this && child.ContainsElement(this)) throw new InvalidOperationException("Cannot add an ancestor as a child.");
+        }
+
+        if (next.Count == _children.Count)
+        {
+            int i = 0;
+            while (i < next.Count && next[i] == _children[i]) i++;
+            if (i == next.Count) return;
+        }
+
+        var view = ParentView;
+        var previous = _children.ToArray();
+        _children.Clear();
+        foreach (var child in previous)
+        {
+            if (nextSet.Contains(child)) continue;
+            if (view != null)
+                UnregisterSubtree(child, view);
+            child.SetParentInternal(null);
+        }
+
+        foreach (var child in next)
+        {
+            if (IsListedChild(child))
+            {
+                _children.Add(child);
+                continue;
+            }
+
+            child._Parent?.RemoveChild(child);
+            _children.Add(child);
+            child.SetParentInternal(this, listed: true);
+            if (view != null)
+                RegisterSubtree(child, view);
+        }
+
+        view?.MarkHierarchyDirty();
         InvalidateLayout();
     }
 
@@ -1537,7 +1655,10 @@ public class VisualElement : IDisposable
 
                 _localBoundsDirty = true;
                 _textLayout = null;
-                CalculateText();
+                // Width-bound text on an element not sized yet would be laid out 1px wide (a break per
+                // character) and thrown away once it is: every reader of the layout builds it on demand.
+                if (sizeIndependent || Transform.Computed.Width > 0)
+                    CalculateText();
 
                 bool sameSize = sizeIndependent && oldW >= 0f && _textLayout != null &&
                     Math.Abs(_textLayout.Width - oldW) < 0.01f && Math.Abs(_textLayout.Height - oldH) < 0.01f;
@@ -2436,6 +2557,11 @@ public class VisualElement : IDisposable
         if (_Parent != null)
         {
             _Parent._children.Remove(this);
+            if (_subscribedToParentTransform)
+            {
+                _Parent.TransformChanged -= ParentTransformChanged;
+                _subscribedToParentTransform = false;
+            }
             _Parent = null;
         }
 
@@ -2454,6 +2580,7 @@ public class VisualElement : IDisposable
         ClearRenderCache();
         Transform.Dispose();
         paint.Dispose();
+        ReleaseStyle();
         _cachedRoundRect?.Dispose();
         _BackgroundImage?.Dispose();
         _BackgroundSvg?.Dispose();

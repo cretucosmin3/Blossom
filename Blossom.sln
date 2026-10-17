@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snake.MonoGame", "demos\Sna
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplicationDemo", "demos\ApplicationDemo\ApplicationDemo.csproj", "{FA0ABE4A-CEF9-4DED-9749-BB0CEC0F19AC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveLab", "demos\ReactiveLab\ReactiveLab.csproj", "{25FC8D5D-6CBF-4546-B965-973C1F40F03E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -157,6 +159,18 @@ Global
 		{FA0ABE4A-CEF9-4DED-9749-BB0CEC0F19AC}.Release|x64.Build.0 = Release|Any CPU
 		{FA0ABE4A-CEF9-4DED-9749-BB0CEC0F19AC}.Release|x86.ActiveCfg = Release|Any CPU
 		{FA0ABE4A-CEF9-4DED-9749-BB0CEC0F19AC}.Release|x86.Build.0 = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|x64.Build.0 = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Debug|x86.Build.0 = Debug|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|x64.ActiveCfg = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|x64.Build.0 = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|x86.ActiveCfg = Release|Any CPU
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -165,6 +179,7 @@ Global
 		{17EB4CC7-8544-4931-8F90-49EC2B8940CE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{D40AEB87-C185-4D53-81D2-22DC09FA3FF1} = {FA8A28C8-4B59-8028-2ACF-626D05B08DB7}
 		{FA0ABE4A-CEF9-4DED-9749-BB0CEC0F19AC} = {FA8A28C8-4B59-8028-2ACF-626D05B08DB7}
+		{25FC8D5D-6CBF-4546-B965-973C1F40F03E} = {FA8A28C8-4B59-8028-2ACF-626D05B08DB7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1765314A-C1A9-40B8-B91D-6ACF2D8B5997}

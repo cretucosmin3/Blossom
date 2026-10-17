@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Blossom.Utils.Arrays;
 using SkiaSharp;
 
@@ -333,20 +334,52 @@ namespace Blossom.Utils
             if (typeface == null || codepoint <= 0)
                 return false;
 
-            // Never use color emoji fonts on Linux: SkiaSharp FreeType build lacks PNG support and crashes
-            string family = typeface.FamilyName ?? "";
-            if (family.Contains("Color", StringComparison.OrdinalIgnoreCase) ||
-                family.Contains("Emoji", StringComparison.OrdinalIgnoreCase))
-                return false;
+            return _coverage.GetValue(typeface, static tf => new GlyphCoverage(tf)).Has(codepoint);
+        }
 
-            try
+        // Text layout asks this for every character it shapes; each answer from Skia costs a family-name
+        // read and a native font, so answers are kept per typeface.
+        private static readonly ConditionalWeakTable<SKTypeface, GlyphCoverage> _coverage = new();
+
+        private sealed class GlyphCoverage
+        {
+            private readonly SKTypeface _typeface;
+            private readonly bool _excluded;
+            private readonly Dictionary<int, bool> _known = new();
+
+            public GlyphCoverage(SKTypeface typeface)
             {
-                using var font = new SKFont(typeface, 12f, 1f, 0f);
-                return font.ContainsGlyph(codepoint);
+                _typeface = typeface;
+                // Never use color emoji fonts on Linux: SkiaSharp FreeType build lacks PNG support and crashes
+                string family = typeface.FamilyName ?? "";
+                _excluded = family.Contains("Color", StringComparison.OrdinalIgnoreCase) ||
+                    family.Contains("Emoji", StringComparison.OrdinalIgnoreCase);
             }
-            catch
+
+            public bool Has(int codepoint)
             {
-                return false;
+                if (_excluded)
+                    return false;
+
+                lock (_known)
+                {
+                    if (!_known.TryGetValue(codepoint, out bool has))
+                        _known[codepoint] = has = Query(codepoint);
+                    return has;
+                }
+            }
+
+            private bool Query(int codepoint)
+            {
+                try
+                {
+                    using var font = new SKFont(_typeface, 12f, 1f, 0f);
+                    return font.ContainsGlyph(codepoint);
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
 

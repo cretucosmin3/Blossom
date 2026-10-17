@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 
 namespace Blossom.Reactive;
 
@@ -8,8 +9,13 @@ namespace Blossom.Reactive;
 /// </summary>
 public static class ReactiveContext
 {
+    // The effect or memo currently tracking reads (null when untracked).
     [ThreadStatic]
-    private static Effect? _currentEffect;
+    private static IObserver? _currentObserver;
+
+    // The effect that owns effects created right now (null inside EffectScope.Record or a memo).
+    [ThreadStatic]
+    private static Effect? _currentOwner;
 
     [ThreadStatic]
     private static int _batchDepth;
@@ -27,18 +33,15 @@ public static class ReactiveContext
     private static List<Effect>? _pendingQueue;
 
     [ThreadStatic]
-    private static HashSet<Effect>? _pendingSet;
+    private static int _flushGeneration;
 
-    private const int MaxFlushIterations = 10000;
+    private const int MaxRunsPerEffect = 10000;
 
     /// <summary>
-    /// Gets or sets the effect currently executing and tracking dependencies on this thread.
+    /// Gets the effect currently executing and tracking dependencies on this thread
+    /// (null while untracked or while a memo computes).
     /// </summary>
-    public static Effect? CurrentEffect
-    {
-        get => _currentEffect;
-        internal set => _currentEffect = value;
-    }
+    public static Effect? CurrentEffect => _currentObserver as Effect;
 
     /// <summary>
     /// Indicates whether state mutations are currently grouped in a batch.
@@ -46,6 +49,65 @@ public static class ReactiveContext
     public static bool IsBatching => _batchDepth > 0;
 
     internal static bool IsFlushing => _isFlushing;
+
+    internal static void Track(ISource source)
+    {
+        var observer = _currentObserver;
+        if (observer != null && !ReferenceEquals(observer, source))
+            observer.Track(source);
+    }
+
+    internal static IObserver? SwapObserver(IObserver? observer)
+    {
+        var prev = _currentObserver;
+        _currentObserver = observer;
+        return prev;
+    }
+
+    internal static Effect? SwapOwner(Effect? owner)
+    {
+        var prev = _currentOwner;
+        _currentOwner = owner;
+        return prev;
+    }
+
+    /// <summary>
+    /// Attaches a new effect to the running effect, or else to the ambient <see cref="EffectScope"/>.
+    /// </summary>
+    internal static void RegisterWithOwner(IDisposable disposable)
+    {
+        if (_currentOwner != null)
+            _currentOwner.Own(disposable);
+        else
+            EffectScope.Current?.Register(disposable);
+    }
+
+    /// <summary>
+    /// Hands a flow controller (For / Show) to the running effect, so a re-run of that effect removes the
+    /// controller's elements instead of leaving them in the tree with only their inner effect disposed.
+    /// Outside an effect the parent element's lifecycle alone owns it.
+    /// </summary>
+    internal static void OwnByCurrentEffect(IDisposable disposable) => _currentOwner?.Own(disposable);
+
+    /// <summary>
+    /// Marks every observer of <paramref name="from"/> stale. Marking never runs user code, so the
+    /// set is iterated in place; queued effects run once the outermost notify/batch/execution ends.
+    /// </summary>
+    internal static void MarkObservers(HashSet<IObserver> observers, NodeState state, ISource from)
+    {
+        if (observers.Count == 0) return;
+
+        BeginNotify();
+        try
+        {
+            foreach (var observer in observers)
+                observer.MarkStale(state, from);
+        }
+        finally
+        {
+            EndNotify();
+        }
+    }
 
     internal static void EnterBatch()
     {
@@ -97,47 +159,70 @@ public static class ReactiveContext
         }
     }
 
+    /// <summary>
+    /// Queues an effect that just left the clean state; its node state keeps it from being queued twice.
+    /// </summary>
     internal static void EnqueuePendingEffect(Effect effect)
     {
-        if (effect == null) return;
         EnsureQueues();
-        if (_pendingSet!.Add(effect))
-        {
-            _pendingQueue!.Add(effect);
-        }
+        _pendingQueue!.Add(effect);
     }
 
     internal static void Flush()
     {
         if (_isFlushing || _batchDepth > 0 || _notifyDepth > 0) return;
         EnsureQueues();
+        if (_pendingQueue!.Count == 0) return;
 
         _isFlushing = true;
+        int generation = ++_flushGeneration;
+        List<Exception>? errors = null;
         try
         {
-            int safety = 0;
             int index = 0;
             while (index < _pendingQueue!.Count)
             {
-                if (++safety > MaxFlushIterations)
+                var effect = _pendingQueue[index++];
+
+                // Only a single effect re-running without settling is a cycle; many distinct
+                // effects (e.g. every binding on a theme signal) are one legitimate flush.
+                if (effect.FlushGeneration != generation)
                 {
-                    _pendingQueue.Clear();
-                    _pendingSet!.Clear();
-                    throw new InvalidOperationException(
-                        "Reactive update cycle exceeded the maximum iteration count. Check for cyclic effect writes.");
+                    effect.FlushGeneration = generation;
+                    effect.FlushRuns = 0;
+                }
+                if (++effect.FlushRuns > MaxRunsPerEffect)
+                {
+                    // Stop re-running the cyclic effect, but leave it able to react to later writes.
+                    effect.AbandonPending();
+                    if (effect.FlushRuns == MaxRunsPerEffect + 1)
+                    {
+                        (errors ??= new List<Exception>()).Add(new InvalidOperationException(
+                            "Reactive update cycle exceeded the maximum iteration count. Check for cyclic effect writes."));
+                    }
+                    continue;
                 }
 
-                var effect = _pendingQueue[index++];
-                _pendingSet!.Remove(effect);
-                effect.Execute();
+                // One failing effect must not cancel the rest of the queue; rethrow after it drains.
+                try
+                {
+                    effect.RunIfStale();
+                }
+                catch (Exception ex)
+                {
+                    (errors ??= new List<Exception>()).Add(ex);
+                }
             }
         }
         finally
         {
             _pendingQueue!.Clear();
-            _pendingSet!.Clear();
             _isFlushing = false;
         }
+
+        if (errors == null) return;
+        if (errors.Count == 1) ExceptionDispatchInfo.Capture(errors[0]).Throw();
+        throw new AggregateException("One or more reactive effects threw during a flush.", errors);
     }
 
     /// <summary>
@@ -145,15 +230,14 @@ public static class ReactiveContext
     /// </summary>
     public static T Untrack<T>(Func<T> action)
     {
-        var prev = _currentEffect;
-        _currentEffect = null;
+        var prev = SwapObserver(null);
         try
         {
             return action();
         }
         finally
         {
-            _currentEffect = prev;
+            _currentObserver = prev;
         }
     }
 
@@ -162,21 +246,19 @@ public static class ReactiveContext
     /// </summary>
     public static void Untrack(Action action)
     {
-        var prev = _currentEffect;
-        _currentEffect = null;
+        var prev = SwapObserver(null);
         try
         {
             action();
         }
         finally
         {
-            _currentEffect = prev;
+            _currentObserver = prev;
         }
     }
 
     private static void EnsureQueues()
     {
         _pendingQueue ??= new List<Effect>();
-        _pendingSet ??= new HashSet<Effect>();
     }
 }

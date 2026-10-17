@@ -1,5 +1,4 @@
 using Blossom.Core.Visual;
-using QuadTrees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -10,115 +9,102 @@ namespace Blossom.Core;
 
 public class ElementTree : IDisposable
 {
-    private readonly Dictionary<Guid, (VisualElement, ElementTracker)> _byId = new();
+    private readonly Dictionary<Guid, VisualElement> _byId = new();
     private readonly Dictionary<string, VisualElement> _byName = new();
-    internal readonly SortedAxis BoundAxis = new();
 
-    private readonly QuadTreeRectF<ElementTracker> QuadTree = new(
-        float.MinValue / 2f, float.MinValue / 2f,
-        float.MaxValue, float.MaxValue
-    );
-
-    public VisualElement[] Items { get => _byId.Values.Select(x => x.Item1).ToArray(); }
+    public VisualElement[] Items { get => _byId.Values.ToArray(); }
     public int Count => _byId.Count;
 
     internal ElementTree() { }
 
     public VisualElement? FindById(Guid id)
     {
-        return _byId.TryGetValue(id, out var entry) ? entry.Item1 : null;
+        return _byId.TryGetValue(id, out var element) ? element : null;
     }
 
     public VisualElement? FindByName(string name)
     {
         if (string.IsNullOrEmpty(name)) return null;
         if (_byName.TryGetValue(name, out var elem)) return elem;
-        return _byId.Values.FirstOrDefault(x => x.Item1.Name == name).Item1;
+        return _byId.Values.FirstOrDefault(x => x.Name == name);
     }
 
     public List<VisualElement> ComponentsFromPoint(PointF point)
     {
-        return QuadTree.GetObjects(new RectangleF(point.X - 1, point.Y - 1, 2, 2)).ToArray().Select(x => x.Element).ToList();
+        return ElementsIntersecting(new RectangleF(point.X - 1, point.Y - 1, 2, 2));
     }
 
     public List<VisualElement> CollidedComponents(VisualElement element)
     {
-        var Collided = QuadTree.GetObjects(element.Transform.Computed.RectF);
-        List<VisualElement> Result = new();
-        foreach (var Tracker in Collided)
-        {
-            if (Tracker.Element == element) continue;
-            Result.Add(Tracker.Element);
-        }
-
+        var Result = ElementsIntersecting(element.Transform.Computed.RectF);
+        Result.Remove(element);
         return Result;
     }
 
     public VisualElement FirstFromPoint(PointF point) =>
         FirstFromPoint(point.X, point.Y);
 
-    private void CollectElementsForHitTest(VisualElement root, List<VisualElement> list)
+    /// <summary>
+    /// Appends <paramref name="root"/> and its visible subtree in paint order
+    /// (parent first, children by ascending ZIndex, then tree order).
+    /// </summary>
+    internal static void CollectPaintOrder(VisualElement root, List<VisualElement> list)
     {
-        if (root == null || root.IsDisposed || !root.Visible) return;
-
-        var sortedChildren = root.GetVisualChildren()
-            .Where(c => c != null && !c.IsDisposed && c.Visible)
-            .OrderByDescending(c => c.ZIndex)
-            .ToList();
-        foreach (var child in sortedChildren)
-        {
-            CollectElementsForHitTest(child, list);
-        }
+        if (!root.Visible) return;
+        int start = list.Count;
         list.Add(root);
+        CollectChildrenPaintOrder(root, list);
+        // The render loop skips a hidden element's whole subtree by this count.
+        root._paintSubtreeSize = list.Count - start;
     }
 
+    private static void CollectChildrenPaintOrder(VisualElement root, List<VisualElement> list)
+    {
+        // Sorting only when ZIndex differs keeps the common case allocation-free (keyed lists can hold
+        // thousands of siblings). OrderBy is stable, so equal ZIndex keeps tree order either way.
+        bool mixedZ = false;
+        int firstZ = 0;
+        bool any = false;
+        foreach (var child in root.GetVisualChildren())
+        {
+            if (child == null || !child.Visible) continue;
+            if (!any) { firstZ = child.ZIndex; any = true; }
+            else if (child.ZIndex != firstZ) { mixedZ = true; break; }
+        }
+
+        if (!mixedZ)
+        {
+            foreach (var child in root.GetVisualChildren())
+            {
+                if (child != null)
+                    CollectPaintOrder(child, list);
+            }
+            return;
+        }
+
+        var sortedChildren = root.GetVisualChildren().Where(c => c != null && c.Visible).OrderBy(c => c.ZIndex).ToList();
+        foreach (var child in sortedChildren)
+        {
+            CollectPaintOrder(child, list);
+        }
+    }
+
+    /// <summary>
+    /// Front-to-back hit test over every root in paint order. <see cref="View.HitTest"/> is the
+    /// cheaper, overlay-aware path the view uses for input.
+    /// </summary>
     public VisualElement FirstFromPoint(float x, float y)
     {
-        var nearby = QuadTree.GetObjects(new RectangleF(x - 2f, y - 2f, 4f, 4f));
-        if (nearby != null && nearby.Count > 0)
-        {
-            nearby.Sort((a, b) =>
-            {
-                if (a.Element == null || a.Element.IsDisposed) return 1;
-                if (b.Element == null || b.Element.IsDisposed) return -1;
-                int ld = b.Element.Layer.CompareTo(a.Element.Layer);
-                if (ld != 0) return ld;
-                int zd = b.Element.ZIndex.CompareTo(a.Element.ZIndex);
-                if (zd != 0) return zd;
-                // Same stacking: smaller control wins so a button beats a full-width bar.
-                float aa = Math.Max(a.Element.Transform.Computed.Width * a.Element.Transform.Computed.Height, a.Element.Transform.Width * a.Element.Transform.Height);
-                float ba = Math.Max(b.Element.Transform.Computed.Width * b.Element.Transform.Computed.Height, b.Element.Transform.Width * b.Element.Transform.Height);
-                return aa.CompareTo(ba);
-            });
-            foreach (var tracker in nearby)
-            {
-                var el = tracker.Element;
-                if (el == null || el.IsDisposed) continue;
-                if (!el.EffectiveVisible || el.ComputedVisibility == Visibility.Hidden)
-                    continue;
-                if (!Hits(el, x, y))
-                    continue;
-                var resolved = ResolveClickthrough(el);
-                if (resolved != null)
-                    return resolved;
-            }
-        }
-
-        var rootElements = _byId.Values.Select(x => x.Item1)
-            .Where(e => e != null && !e.IsDisposed && e.Parent == null)
-            .Reverse()
-            .OrderByDescending(e => e.ZIndex)
-            .ToList();
-
         var elements = new List<VisualElement>();
-        foreach (var root in rootElements)
+        foreach (var root in _byId.Values.Where(e => !e.IsDisposed && e.Parent == null).OrderBy(e => e.ZIndex))
         {
-            CollectElementsForHitTest(root, elements);
+            CollectPaintOrder(root, elements);
         }
 
-        foreach (var elementFromPoint in elements)
+        for (int i = elements.Count - 1; i >= 0; i--)
         {
-            if (elementFromPoint == null || elementFromPoint.IsDisposed)
+            var elementFromPoint = elements[i];
+            if (elementFromPoint.IsDisposed)
                 continue;
             if (!elementFromPoint.EffectiveVisible || elementFromPoint.ComputedVisibility == Visibility.Hidden)
                 continue;
@@ -191,50 +177,37 @@ public class ElementTree : IDisposable
 
     public VisualElement? FirstFromQuad(RectangleF quad)
     {
-        var components = QuadTree.GetObjects(quad);
+        VisualElement? result = null;
+        foreach (var element in _byId.Values)
+        {
+            if (!element.Transform.Computed.RectF.IntersectsWith(quad)) continue;
+            if (result == null || element.Layer > result.Layer)
+                result = element;
+        }
 
-        if (!components.Any()) return null;
-
-        int maxLayer = components.Max(t => t.Element.Layer);
-
-        return components.Find(t => t.Element.Layer == maxLayer).Element;
+        return result;
     }
 
     public VisualElement[] ElementsFromRect(RectangleF rect)
     {
-        var components = QuadTree.GetObjects(rect);
-
-        if (components?.Count > 0)
-            return components.Select(e => e.Element).ToArray();
-
-        return Array.Empty<VisualElement>();
+        return ElementsIntersecting(rect).ToArray();
     }
 
     public bool ComponentsIntersect(VisualElement elm1, VisualElement elm2)
     {
-        var Intersected = QuadTree.GetObjects(elm1.Transform.Computed.RectF);
-
-        for (int i = 0; i < Intersected?.Count; i++)
-            if (Intersected[i].Element == elm2) return true;
-
-        return false;
+        return elm1.Transform.Computed.RectF.IntersectsWith(elm2.Transform.Computed.RectF);
     }
 
-    private ElementTracker AddTracker(ref VisualElement element)
+    private List<VisualElement> ElementsIntersecting(RectangleF rect)
     {
-        var NewTracker = new ElementTracker(ref element);
-
-        QuadTree.Add(NewTracker);
-
-        return NewTracker;
-    }
-
-    private void RemoveTracker(VisualElement element)
-    {
-        if (_byId.TryGetValue(element.Id, out var entry))
+        var result = new List<VisualElement>();
+        foreach (var element in _byId.Values)
         {
-            QuadTree.Remove(entry.Item2);
+            if (element.Transform.Computed.RectF.IntersectsWith(rect))
+                result.Add(element);
         }
+
+        return result;
     }
 
     public void AddElement(ref VisualElement element)
@@ -244,18 +217,12 @@ public class ElementTree : IDisposable
             return;
         }
 
-        var tracker = AddTracker(ref element);
-
-        // Add element and tracker to the map
-        _byId.Add(element.Id, (element, tracker));
+        _byId.Add(element.Id, element);
 
         if (!string.IsNullOrEmpty(element.Name))
         {
             _byName[element.Name] = element;
         }
-
-        if (element.Name != "Bounding Area")
-            BoundAxis.AddElement(element);
 
         element.OnDisposing += Element_OnDispose;
     }
@@ -267,16 +234,13 @@ public class ElementTree : IDisposable
 
     public void RemoveElement(VisualElement element)
     {
-        if (element == null || !_byId.TryGetValue(element.Id, out var entry)) return;
-        QuadTree.Remove(entry.Item2);
-        _byId.Remove(element.Id);
+        if (element == null || !_byId.Remove(element.Id)) return;
 
         if (!string.IsNullOrEmpty(element.Name) && _byName.TryGetValue(element.Name, out var named) && named == element)
         {
             _byName.Remove(element.Name);
         }
 
-        BoundAxis.RemoveElement(element);
         element.OnDisposing -= Element_OnDispose;
     }
 
@@ -289,6 +253,5 @@ public class ElementTree : IDisposable
     {
         _byId.Clear();
         _byName.Clear();
-        QuadTree.Clear();
     }
 }

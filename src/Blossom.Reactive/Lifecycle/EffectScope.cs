@@ -27,6 +27,8 @@ public sealed class EffectScope : IDisposable
         var scope = new EffectScope();
         var prev = _current;
         _current = scope;
+        // The scope, not a running effect, owns what is created here (e.g. Show / For content).
+        var prevOwner = ReactiveContext.SwapOwner(null);
         try
         {
             var result = factory();
@@ -34,6 +36,7 @@ public sealed class EffectScope : IDisposable
         }
         finally
         {
+            ReactiveContext.SwapOwner(prevOwner);
             _current = prev;
         }
     }
@@ -46,6 +49,7 @@ public sealed class EffectScope : IDisposable
         var scope = new EffectScope();
         var prev = _current;
         _current = scope;
+        var prevOwner = ReactiveContext.SwapOwner(null);
         try
         {
             action();
@@ -53,6 +57,7 @@ public sealed class EffectScope : IDisposable
         }
         finally
         {
+            ReactiveContext.SwapOwner(prevOwner);
             _current = prev;
         }
     }

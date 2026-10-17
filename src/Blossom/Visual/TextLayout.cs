@@ -61,6 +61,32 @@ public sealed class TextLayout
         int maxLines,
         float lineHeightMul = 1.15f)
     {
+        if (baseFont == null)
+            return new TextLayout();
+
+        var outer = t_fonts;
+        using var fonts = new FontSet(baseFont);
+        t_fonts = fonts;
+        try
+        {
+            return BuildCore(spans, baseFont, baseColor, maxWidth, maxHeight, overflow, maxLines, lineHeightMul);
+        }
+        finally
+        {
+            t_fonts = outer;
+        }
+    }
+
+    private static TextLayout BuildCore(
+        IReadOnlyList<TextSpan> spans,
+        SKFont baseFont,
+        SKColor baseColor,
+        float maxWidth,
+        float maxHeight,
+        TextOverflow overflow,
+        int maxLines,
+        float lineHeightMul)
+    {
         var layout = new TextLayout();
         if (baseFont == null || spans == null || spans.Count == 0)
             return layout;
@@ -179,7 +205,7 @@ public sealed class TextLayout
             {
                 if (tok.Width <= 0 && string.IsNullOrEmpty(tok.Text))
                     continue;
-                using var measure = FontOf(tok.Typeface, tok.Size, baseFont);
+                var measure = FontOf(tok.Typeface, tok.Size, baseFont);
                 var m = measure.Metrics;
                 ascent = Math.Max(ascent, -m.Ascent);
                 descent = Math.Max(descent, m.Descent);
@@ -363,12 +389,28 @@ public sealed class TextLayout
 
     private void AddGraphemes(GlyphTok tok, float runX, float baseline, float ascent, float descent, int line, SKFont baseFont)
     {
-        var clusters = Clusters(tok.Text);
-        if (clusters.Count == 0)
+        if (string.IsNullOrEmpty(tok.Text))
             return;
 
-        using var font = FontOf(tok.Typeface, tok.Size, baseFont);
+        var font = FontOf(tok.Typeface, tok.Size, baseFont);
         float x = runX;
+        string text = tok.Text;
+        if (IsOneCharClusters(text))
+        {
+            // One glyph per char, so a single native call returns every advance MeasureText would.
+            var widths = font.GetGlyphWidths(text);
+            for (int i = 0; i < text.Length; i++)
+            {
+                float w = i == text.Length - 1
+                    ? Math.Max(0f, (runX + tok.Width) - x)
+                    : widths[i];
+                _graphemes.Add(new GraphemePlacement(OneCharStrings[text[i]], x, baseline, w, ascent, descent, line));
+                x += w;
+            }
+            return;
+        }
+
+        var clusters = Clusters(text);
         for (int i = 0; i < clusters.Count; i++)
         {
             string cluster = clusters[i];
@@ -560,6 +602,27 @@ public sealed class TextLayout
         if (string.IsNullOrEmpty(word))
             return result;
 
+        if (IsOneCharClusters(word))
+        {
+            // Common case (Latin text): every char is its own cluster, so runs are plain substrings.
+            int runStart = 0;
+            SKTypeface? runTf = null;
+            for (int k = 0; k < word.Length; k++)
+            {
+                var tf = Fonts.ResolveForCodepoint(primary, word[k]);
+                if (runTf == null)
+                    runTf = tf;
+                else if (!ReferenceEquals(tf, runTf))
+                {
+                    result.Add(MakeTok(word[runStart..k], runTf, size, color, baseFont));
+                    runStart = k;
+                    runTf = tf;
+                }
+            }
+            result.Add(MakeTok(runStart == 0 ? word : word[runStart..], runTf ?? primary, size, color, baseFont));
+            return result;
+        }
+
         var clusters = Clusters(word);
         SKTypeface? currentTf = null;
         string acc = "";
@@ -582,6 +645,30 @@ public sealed class TextLayout
         return result;
     }
 
+    private static readonly string[] OneCharStrings = CreateOneCharStrings();
+
+    private static string[] CreateOneCharStrings()
+    {
+        var strings = new string[0x300];
+        for (int c = 0; c < strings.Length; c++)
+            strings[c] = ((char)c).ToString();
+        return strings;
+    }
+
+    /// <summary>
+    /// Below U+0300 (where combining marks start) there are no surrogates and nothing that extends a
+    /// grapheme, so each char is a cluster of its own.
+    /// </summary>
+    private static bool IsOneCharClusters(string s)
+    {
+        foreach (char c in s)
+        {
+            if (c >= '\u0300')
+                return false;
+        }
+        return true;
+    }
+
     private static int Codepoint(string cluster)
     {
         if (string.IsNullOrEmpty(cluster))
@@ -598,21 +685,62 @@ public sealed class TextLayout
         return Fonts.GetTypeface(primary.FamilyName, weight.Value);
     }
 
+    /// <summary>A font shared for the rest of the current <see cref="Build"/>; callers must not dispose it.</summary>
     private static SKFont FontOf(SKTypeface? typeface, float size, SKFont prototype)
     {
         var tf = typeface ?? prototype.Typeface ?? SKTypeface.Default;
-        return new SKFont(tf, size, 1f, 0f)
+        return (t_fonts ?? throw new InvalidOperationException("TextLayout fonts are only available inside Build.")).Get(tf, size);
+    }
+
+    // One layout measures every token with the same few typeface/size pairs. Creating (and disposing) a
+    // native SKFont per token, and reading the prototype's settings back each time, was most of the cost
+    // of setting an element's text.
+    [ThreadStatic] private static FontSet? t_fonts;
+
+    private sealed class FontSet : IDisposable
+    {
+        private readonly bool _subpixel;
+        private readonly SKFontEdging _edging;
+        private readonly SKFontHinting _hinting;
+        private readonly List<(SKTypeface Typeface, float Size, SKFont Font)> _fonts = new(2);
+
+        public FontSet(SKFont prototype)
         {
-            Subpixel = prototype.Subpixel,
-            Edging = prototype.Edging,
-            Hinting = prototype.Hinting,
-        };
+            _subpixel = prototype.Subpixel;
+            _edging = prototype.Edging;
+            _hinting = prototype.Hinting;
+        }
+
+        public SKFont Get(SKTypeface typeface, float size)
+        {
+            foreach (var entry in _fonts)
+            {
+                if (ReferenceEquals(entry.Typeface, typeface) && entry.Size == size)
+                    return entry.Font;
+            }
+
+            var font = new SKFont(typeface, size, 1f, 0f)
+            {
+                Subpixel = _subpixel,
+                Edging = _edging,
+                Hinting = _hinting,
+            };
+            _fonts.Add((typeface, size, font));
+            return font;
+        }
+
+        public void Dispose()
+        {
+            foreach (var entry in _fonts)
+                entry.Font.Dispose();
+            _fonts.Clear();
+        }
     }
 
     private static GlyphTok MakeTok(string text, SKTypeface? tf, float size, SKColor color, SKFont baseFont, bool isSpace = false)
     {
         tf ??= baseFont.Typeface ?? SKTypeface.Default;
-        using var font = FontOf(tf, size, baseFont);
+        var font = FontOf(tf, size, baseFont);
         float w = font.MeasureText(text);
         var m = font.Metrics;
         return new GlyphTok(text, w, -m.Ascent, m.Descent, tf, size, color, isSpace, isNewline: false);

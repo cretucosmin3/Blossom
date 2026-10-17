@@ -381,6 +381,159 @@ public class UiSessionTests
         }
     }
 
+    [Fact]
+    public void ReplaceChildren_DetachesAttachesAndReorders_AndNewChildFollowsParentResize()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(160, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var removed = new VisualElement { Name = "removed" };
+        var app = new HostingApp(root => root.AddChild(removed));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+        var root = app.Main.Stretch!.Parent!;
+        var box = app.Main.Stretch;
+        var added = new VisualElement { Name = "added" };
+        added.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
+        added.Transform.Height = 10;
+        var formerParent = new VisualElement();
+        formerParent.AddChild(added);
+
+        root.ReplaceChildren(new[] { added, box });
+
+        Assert.Equal(new[] { added, box }, root.Children);
+        Assert.Null(removed.Parent);
+        Assert.Null(removed.ParentView);
+        Assert.Same(root, added.Parent);
+        Assert.Same(app.Main, added.ParentView);
+        Assert.Empty(formerParent.Children);
+
+        session.Paint(Frame(surface, session), force: true);
+        Assert.InRange(added.Transform.Width, 79f, 81f);
+
+        session.SetSize(160, 40, 160, 40);
+        session.Paint(Frame(surface, session), force: true);
+        Assert.InRange(added.Transform.Width, 159f, 161f);
+    }
+
+    [Fact]
+    public void ScrolledOutRow_SkipsItsSubtree_AndPlacesShowsAndHitsItWhenScrolledBack()
+    {
+        // A row scrolled out of the clip skips layout and evaluation for everything under it. Scrolling it
+        // back must place, draw and hit-test its children as if nothing had been skipped.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var scroller = new ScrollContainer { OverflowY = OverflowMode.Scroll, SmoothScroll = false };
+        scroller.Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top | Anchor.Bottom;
+        var rows = new DotRow[6];
+        for (int i = 0; i < rows.Length; i++)
+        {
+            rows[i] = new DotRow(i * 20);
+            scroller.AddChild(rows[i]);
+        }
+        var app = new HostingApp(root => root.AddChild(scroller));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+        session.Paint(Frame(surface, session), force: true);
+
+        Assert.NotEqual(Visibility.Hidden, rows[0].Dot.ComputedVisibility);
+        Assert.Equal(Visibility.Hidden, rows[4].Dot.ComputedVisibility);
+
+        scroller.ScrollY = 80;
+        session.Paint(Frame(surface, session), force: true);
+        session.Paint(Frame(surface, session), force: true);
+
+        var dot = rows[4].Dot;
+        Assert.Equal(Visibility.Hidden, rows[0].Dot.ComputedVisibility);
+        Assert.NotEqual(Visibility.Hidden, dot.ComputedVisibility);
+        Assert.InRange(dot.Transform.Computed.Y, 4.9f, 5.1f);
+        using (var pixmap = surface.PeekPixels())
+            Assert.Equal(255, pixmap.GetPixelColor(35, 10).Green);
+
+        int clicks = 0;
+        dot.Events.OnClick += (_, _) => clicks++;
+        session.Input.PointerDown(35, 10, 0);
+        session.Input.PointerUp(35, 10, 0);
+        Assert.Equal(1, clicks);
+    }
+
+    [Fact]
+    public void DisposedElement_IsCollected_AndFreesItsOwnStyleButNotASharedOne()
+    {
+        // The view's draw-command ledger and a shared style's element list both used to keep every
+        // removed element alive, and an element's own default style waited for the finalizer.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var shared = new ElementStyle { BackColor = new SKColor(255, 0, 0, 255) };
+        VisualElement root = null!;
+        var app = new HostingApp(r => root = r);
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        var (removed, ownPaint, key) = PaintThenDispose(root, shared, session, surface);
+        Assert.Null(app.Main.Ledger.GetCommands(key));
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(removed.IsAlive);
+        Assert.Equal(IntPtr.Zero, ownPaint.Handle);
+        Assert.NotEqual(IntPtr.Zero, shared.Text.Paint.Handle);
+    }
+
+    [Fact]
+    public void AnimationThatDisposesItsElement_MidFrame_DoesNotDrawTheDisposedSubtree()
+    {
+        // A banner that disposes itself when its animation ends: the frame that runs the callback must
+        // not go on to draw it or its children with their freed paints and fonts.
+        using var surface = SKSurface.Create(new SKImageInfo(80, 40, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var banner = new VisualElement { Transform = new Transform(0, 0, 80, 40) };
+        banner.Style.BackColor = new SKColor(0, 255, 0, 255);
+        banner.AddChild(new VisualElement { Text = "LEVEL 2", Transform = new Transform(0, 0, 80, 20) });
+        banner.Animate().ScaleY(0.5f, 0.05f).Call(banner.Dispose);
+        var app = new HostingApp(root => root.AddChild(banner));
+        using var session = CreateSession(new SoftwareUiHost(), app, 80, 40);
+
+        for (int i = 0; i < 10 && !banner.IsDisposed; i++)
+        {
+            session.Tick(0.016f);
+            session.Paint(Frame(surface, session));
+        }
+
+        Assert.True(banner.IsDisposed);
+        session.Paint(Frame(surface, session), force: true);
+        using var pixmap = surface.PeekPixels();
+        Assert.NotEqual(255, pixmap.GetPixelColor(40, 30).Green);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static (WeakReference, SKPaint, string) PaintThenDispose(VisualElement root, ElementStyle shared, UiSession session, SKSurface surface)
+    {
+        var withShared = new VisualElement { Style = shared, Transform = new Transform(0, 0, 40, 40) };
+        var withOwn = new VisualElement { Text = "hi", Transform = new Transform(40, 0, 40, 40) };
+        root.AddChild(withShared);
+        root.AddChild(withOwn);
+        session.Paint(Frame(surface, session), force: true);
+        string key = withShared.Id.ToString("N");
+        Assert.NotNull(withShared.ParentView.Ledger.GetCommands(key));
+
+        withShared.Dispose();
+        withOwn.Dispose();
+        session.Paint(Frame(surface, session), force: true);
+        return (new WeakReference(withShared), withOwn.Style.Text.Paint, key);
+    }
+
+    /// <summary>A 20px row that places its green dot in <see cref="LayoutChildren"/>.</summary>
+    sealed class DotRow : VisualElement
+    {
+        public readonly VisualElement Dot = new() { Name = "dot" };
+
+        public DotRow(float y)
+        {
+            Transform.Anchor = Anchor.Left | Anchor.Right | Anchor.Top;
+            Transform.LocalY = y;
+            Transform.Height = 20;
+            Dot.Style.BackColor = new SKColor(0, 255, 0, 255);
+            AddChild(Dot);
+        }
+
+        protected override void LayoutChildren() =>
+            Dot.Transform.SetAbsoluteFrame(Transform.AbsoluteX + 30, Transform.AbsoluteY + 5, 10, 10);
+    }
+
     static UiSession CreateSession(IUiHost host, Application app, float logicalW, float logicalH)
     {
         var session = new UiSession(host, app, HudOptions());

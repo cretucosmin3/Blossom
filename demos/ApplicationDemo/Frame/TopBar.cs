@@ -45,6 +45,7 @@ public sealed class TopBar : Stack
         Route.Components => ("Components", "Controls built on Blossom.Primitives, styled by one theme sheet"),
         Route.Tasks => ("Tasks", "Keyed lists with For.Each, memos and batched updates"),
         Route.Playground => ("Playground", "Shaders, backdrop blur and 3D transforms with live bindings"),
+        Route.Horizon => ("Event Horizon", "Hover the buttons: SKSL shaders bend and burn the live pixels around them"),
         _ => ("Overview", "Everything on this page is derived from the same reactive store"),
     };
 }

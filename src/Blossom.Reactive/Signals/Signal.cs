@@ -7,10 +7,10 @@ namespace Blossom.Reactive;
 /// A reactive state cell containing a value that notifies tracking effects when modified.
 /// </summary>
 /// <typeparam name="T">The type of value held by the signal.</typeparam>
-public class Signal<T> : ISignal
+public class Signal<T> : ISource
 {
     private T _value;
-    private readonly HashSet<Effect> _subscribers = new();
+    private readonly HashSet<IObserver> _observers = new();
     private readonly IEqualityComparer<T> _comparer;
 
     public Signal(T initialValue, IEqualityComparer<T>? comparer = null)
@@ -27,7 +27,7 @@ public class Signal<T> : ISignal
     {
         get
         {
-            ReactiveContext.CurrentEffect?.AddDependency(this);
+            ReactiveContext.Track(this);
             return _value;
         }
         set
@@ -35,7 +35,7 @@ public class Signal<T> : ISignal
             if (!_comparer.Equals(_value, value))
             {
                 _value = value;
-                NotifySubscribers();
+                ReactiveContext.MarkObservers(_observers, NodeState.Dirty, this);
             }
         }
     }
@@ -64,28 +64,11 @@ public class Signal<T> : ISignal
     /// </summary>
     public T Peek() => _value;
 
-    void ISignal.Subscribe(Effect effect) => _subscribers.Add(effect);
+    void ISource.AddObserver(IObserver observer) => _observers.Add(observer);
 
-    void ISignal.Unsubscribe(Effect effect) => _subscribers.Remove(effect);
+    void ISource.RemoveObserver(IObserver observer) => _observers.Remove(observer);
 
-    private void NotifySubscribers()
-    {
-        if (_subscribers.Count == 0) return;
-
-        var subs = new List<Effect>(_subscribers);
-        ReactiveContext.BeginNotify();
-        try
-        {
-            foreach (var sub in subs)
-            {
-                sub.Notify();
-            }
-        }
-        finally
-        {
-            ReactiveContext.EndNotify();
-        }
-    }
+    void ISource.UpdateIfNecessary() { }
 
     public static implicit operator T(Signal<T> signal) => signal != null ? signal.Value : default!;
 
