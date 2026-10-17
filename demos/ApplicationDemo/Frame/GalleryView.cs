@@ -58,6 +58,7 @@ public sealed class GalleryView : View
             Mount(pages, Route.Components, () => new ComponentsPage());
             Mount(pages, Route.Tasks, () => new TasksPage());
             Mount(pages, Route.Playground, () => new PlaygroundPage());
+            Mount(pages, Route.Horizon, () => new HorizonPage());
 
             _layout.AddChild(new Sidebar());
             _layout.AddChild(edge);

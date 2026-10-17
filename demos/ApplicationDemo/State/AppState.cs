@@ -13,7 +13,8 @@ public enum Route
     Dashboard,
     Components,
     Tasks,
-    Playground
+    Playground,
+    Horizon
 }
 
 public enum TaskStatus

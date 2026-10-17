@@ -36,6 +36,7 @@ public sealed class Sidebar : Stack
         AddChild(Nav("Components", "grid", Route.Components));
         AddChild(Nav("Tasks", "check-square", Route.Tasks, () => AppState.OpenCount.Value.ToString()));
         AddChild(Nav("Playground", "zap", Route.Playground));
+        AddChild(Nav("Event Horizon", "eye", Route.Horizon));
 
         AddChild(Ui.Spacer());
 
