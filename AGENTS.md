@@ -170,8 +170,9 @@ dotnet build Blossom.sln
 dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release
 # CI: .github/workflows/nuget.yml (pack + artifact; tag v*.*.* → GitHub Release;
 #     nuget.org Trusted Publishing: policy workflow nuget.yml)
-# Version: Nerdbank.GitVersioning + version.json (`0.1` → 0.1.N per commit;
-#     bump the first numbers only for minor/major)
+# Version: Nerdbank.GitVersioning + version.json, pinned to the full release version
+#     (`0.3.6` → package 0.3.6 on every commit). To release: set version.json, merge to main,
+#     tag `v<same version>`; CI fails the publish if the tag and version.json disagree.
 
 # Or packaging script (Linux; see build.sh for flags)
 ./build.sh
