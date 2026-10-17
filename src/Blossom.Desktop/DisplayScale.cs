@@ -379,6 +379,28 @@ public static class DisplayScale
     }
 
     /// <summary>
+    /// Work area of the primary monitor in desktop coordinates. Window positions are desktop-wide, so
+    /// (0, 0) is the top-left of whichever monitor sits at the origin, which need not be the primary.
+    /// </summary>
+    internal static unsafe bool TryGetPrimaryWorkArea(out int x, out int y, out int width, out int height)
+    {
+        x = y = width = height = 0;
+        try
+        {
+            var glfw = GlfwProvider.GLFW.Value;
+            var primary = glfw.GetPrimaryMonitor();
+            if (primary == null)
+                return false;
+            glfw.GetMonitorWorkarea(primary, out x, out y, out width, out height);
+            return width > 0 && height > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Sets GLFW window hints relevant to display scaling (e.g. GLFW_SCALE_TO_MONITOR).
     /// </summary>
     public static void SetupGlfwHints()

@@ -325,6 +325,9 @@ public static class Shell
     private static int _maxClientWidth;
     private static int _maxClientHeight;
 
+    private static bool _openedMaximized;
+    private static WindowState _lastShownState;   // last state other than minimized, saved on close
+
     // GLFW callbacks must be stored so the GC does not collect them (native function pointers).
     private static GlfwCallbacks.KeyCallback? _glfwKeyCallback;
     private static GlfwCallbacks.KeyCallback? _prevGlfwKeyCallback;
@@ -388,6 +391,20 @@ public static class Shell
 
         var options = Silk.NET.Windowing.WindowOptions.Default;
         options.Size = new Vector2D<int>(initialPhysicalW, initialPhysicalH);
+        // Silk's default Position (50, 50) is a desktop coordinate: with several monitors it lands on
+        // whichever one sits at the origin, not the primary that the size above was measured on.
+        // (Native Wayland ignores client positions; the compositor places the window there.)
+        if (DisplayScale.TryGetPrimaryWorkArea(out int workX, out int workY, out int workW, out int workH))
+        {
+            options.Position = appWindow.CenterOnLoad
+                ? new Vector2D<int>(workX + (workW - initialPhysicalW) / 2, workY + (workH - initialPhysicalH) / 2)
+                : new Vector2D<int>(workX + 50, workY + 50);
+        }
+        // Created at the normal size and position above, then maximized, so un-maximizing lands there.
+        _openedMaximized = WindowMemory.LoadMaximized(appWindow);
+        if (_openedMaximized)
+            options.WindowState = WindowState.Maximized;
+        _lastShownState = options.WindowState;
         options.Title = string.IsNullOrWhiteSpace(ShellApp.Title) ? "Blossom" : ShellApp.Title;
         options.VSync = false;
         options.TransparentFramebuffer = false;
@@ -419,6 +436,7 @@ public static class Shell
         {
             if (state != WindowState.Minimized)
             {
+                _lastShownState = state;
                 HandleClientSize(window.Size.X, window.Size.Y);
                 UiHost.Current.Wake();
             }
@@ -894,6 +912,8 @@ public static class Shell
 
     private static void Closing()
     {
+        // A window closed while minimized keeps the state it was minimized from.
+        WindowMemory.SaveMaximized(ShellApp.Window, _lastShownState == WindowState.Maximized);
         DisplayScale.Shutdown();
 
         if (Session != null)
@@ -977,8 +997,10 @@ public static class Shell
         DisplayScale.Initialize(window);
         ApplySizeLimits();
 
-        if (ShellApp.Window.CenterOnLoad)
-            window.Center();
+        // Center() without a monitor uses the one the window is on now; name the primary explicitly.
+        // Moving a maximized window can un-maximize it; its normal position was centred at creation.
+        if (ShellApp.Window.CenterOnLoad && !_openedMaximized)
+            window.Center(Silk.NET.Windowing.Monitor.GetMainMonitor(window));
         Renderer.SetCanvas(window);
 
         Session = new UiSession(UiHost.Current, ShellApp, new UiSessionOptions
