@@ -27,6 +27,13 @@ internal static class Renderer
     private static GRBackendRenderTarget _offscreenRenderTarget;
     private static bool _stencilOnly = true;
 
+    // GLES 2.0 has no glBlitFramebuffer, so Skia itself draws the offscreen texture onto the window.
+    private static GRBackendTexture? _offscreenTexture;
+    private static SKImage? _offscreenImage;
+    private static GRBackendRenderTarget? _windowRenderTarget;
+    private static SKSurface? _windowSurface;
+    private static readonly SKPaint s_presentPaint = new() { BlendMode = SKBlendMode.Src };
+
     // Skia's default budget is 256 MB of cached GPU textures, which a simple app fills with scratch
     // textures it never needs again. Frames that need more still render; Skia just keeps less.
     private const long GpuCacheLimitBytes = 96L * 1024 * 1024;
@@ -58,6 +65,8 @@ internal static class Renderer
 
         _offscreenRenderTarget?.Dispose();
         _offscreenRenderTarget = null!;
+
+        DisposePresentSurfaces();
 
         if (_gl != null)
         {
@@ -91,6 +100,7 @@ internal static class Renderer
         OffscreenSurface = null!;
         _offscreenRenderTarget?.Dispose();
         _offscreenRenderTarget = null!;
+        DisposePresentSurfaces();
 
         if (_gl == null) return;
 
@@ -110,7 +120,8 @@ internal static class Renderer
             _gl.TexImage2D(
                 TextureTarget.Texture2D,
                 0,
-                InternalFormat.Rgba8,
+                // GLES 2.0 takes only unsized formats; the driver still allocates 8 bits per channel.
+                GlBackend.Current == GlBackend.Kind.Gles2 ? InternalFormat.Rgba : InternalFormat.Rgba8,
                 (uint)width,
                 (uint)height,
                 0,
@@ -165,11 +176,34 @@ internal static class Renderer
         using var surfaceProps = new SKSurfaceProperties(pixelGeometry);
         OffscreenSurface = SKSurface.Create(grContext, _offscreenRenderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888, surfaceProps);
 
-        // 3. Set the default canvas to the Offscreen one
+        // 3. Without a blit, present by drawing the offscreen texture onto the window framebuffer.
+        if (!GlBackend.CanBlit)
+        {
+            _offscreenTexture = new GRBackendTexture(width, height, false, new GRGlTextureInfo(0x0DE1, _offscreenColorTex, 0x8058)); // GL_TEXTURE_2D, GL_RGBA8
+            _offscreenImage = SKImage.FromTexture(grContext, _offscreenTexture, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+            _windowRenderTarget = new GRBackendRenderTarget(width, height, 0, 0, new GRGlFramebufferInfo(0, 0x8058));
+            _windowSurface = SKSurface.Create(grContext, _windowRenderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+            if (_offscreenImage == null || _windowSurface == null)
+                Log.Error("Could not wrap the offscreen texture or the window framebuffer for presenting.");
+        }
+
+        // 4. Set the default canvas to the Offscreen one
         _Canvas = OffscreenSurface.Canvas;
 
         // Initialize with white background to avoid black screen on startup
         _Canvas.Clear(SKColors.White);
+    }
+
+    private static void DisposePresentSurfaces()
+    {
+        _windowSurface?.Dispose();
+        _windowSurface = null;
+        _windowRenderTarget?.Dispose();
+        _windowRenderTarget = null;
+        _offscreenImage?.Dispose();
+        _offscreenImage = null;
+        _offscreenTexture?.Dispose();
+        _offscreenTexture = null;
     }
 
     private static void AttachStencil(InternalFormat format, FramebufferAttachment attachment, int width, int height)
@@ -210,6 +244,18 @@ internal static class Renderer
         OffscreenSurface.Canvas.Flush();
         grContext?.Flush();
 
+        if (!GlBackend.CanBlit)
+        {
+            // Skia sets and tracks its own GL state here, so no ResetContext is needed.
+            if (_windowSurface != null && _offscreenImage != null)
+            {
+                _windowSurface.Canvas.DrawImage(_offscreenImage, 0, 0, new SKSamplingOptions(SKFilterMode.Nearest), s_presentPaint);
+                _windowSurface.Flush();
+            }
+            ScheduleGpuTrim();
+            return;
+        }
+
         // Bind source (offscreen) and destination (window framebuffer 0)
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _offscreenFbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
@@ -244,28 +290,41 @@ internal static class Renderer
             _gl = GL.GetApi(window);
         }
 
-        try
+        IntPtr GetProc(string name)
         {
-            grGlInterface = GRGlInterface.Create();
+            if (window.GLContext != null)
+            {
+                try
+                {
+                    var ptr = window.GLContext.GetProcAddress(name);
+                    if (ptr != IntPtr.Zero) return ptr;
+                }
+                catch { }
+            }
+            return IntPtr.Zero;
+        }
+
+        if (GlBackend.IsGles)
+        {
+            // Skia's native lookup assumes desktop GL on Linux; load the GLES entry points from the context.
+            // Skia also asks for eglQueryString to read EGL extensions. Under GLX, GetProcAddress returns a
+            // stub for any name, and calling it crashes, so EGL lookups get nothing: Skia then skips them.
+            grGlInterface = GRGlInterface.CreateGles(name => name.StartsWith("egl", StringComparison.Ordinal) ? IntPtr.Zero : GetProc(name));
             grGlInterface.Validate();
         }
-        catch (Exception ex)
+        else
         {
-            Log.Warning($"Default GRGlInterface.Create() failed ({ex.Message}), trying window GLContext...");
-            grGlInterface = GRGlInterface.Create(name =>
+            try
             {
-                if (window.GLContext != null)
-                {
-                    try
-                    {
-                        var ptr = window.GLContext.GetProcAddress(name);
-                        if (ptr != IntPtr.Zero) return ptr;
-                    }
-                    catch { }
-                }
-                return IntPtr.Zero;
-            });
-            grGlInterface.Validate();
+                grGlInterface = GRGlInterface.Create();
+                grGlInterface.Validate();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"Default GRGlInterface.Create() failed ({ex.Message}), trying window GLContext...");
+                grGlInterface = GRGlInterface.Create(GetProc);
+                grGlInterface.Validate();
+            }
         }
 
         grContext = GRContext.CreateGl(grGlInterface);

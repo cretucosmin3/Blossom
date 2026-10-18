@@ -1,31 +1,20 @@
 using System.Diagnostics;
-using System.Threading;
 using System.Numerics;
 using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
-using Blossom.Core;
 using Blossom.Core.Input;
-using Blossom.Core.Visual;
 using Blossom.Core.Delegates.Common;
 using Blossom.Hosting;
 using System;
-using System.Globalization;
 using System.Threading.Tasks;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.PixelFormats;
-using Image = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 using SkiaSharp;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using Silk.NET.Core.Contexts;
-using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 
 namespace Blossom.Desktop;
@@ -204,8 +193,10 @@ public static class Shell
         long nowTicks = Stopwatch.GetTimestamp();
         s_presentTimestamps.Enqueue(nowTicks);
         long oneSecAgo = nowTicks - Stopwatch.Frequency;
+
         while (s_presentTimestamps.Count > 0 && s_presentTimestamps.Peek() < oneSecAgo)
             s_presentTimestamps.Dequeue();
+
         PresentedFps = s_presentTimestamps.Count;
     }
 
@@ -319,7 +310,6 @@ public static class Shell
     private static int _maxFps = 120;
     private static long _nextPresentTicks;
 
-    private static Glfw _glfw = null!;
     private static int _minClientWidth;
     private static int _minClientHeight;
     private static int _maxClientWidth;
@@ -369,6 +359,7 @@ public static class Shell
         var appWindow = ShellApp.Window;
         int width = Math.Max(1, appWindow.Width);
         int height = Math.Max(1, appWindow.Height);
+
         if (appWindow.MinWidth > 0)
             width = Math.Max(width, appWindow.MinWidth);
         if (appWindow.MinHeight > 0)
@@ -379,10 +370,8 @@ public static class Shell
         _minClientHeight = Math.Max(0, appWindow.MinHeight);
 
         GlfwWindowing.Use();
-        // SdlWindowing.Use();
-
-        _glfw = Glfw.GetApi();
-        _glfw = GlfwProvider.GLFW.Value;
+        // Silk finds input platforms by reflection, which Native AOT trims away; register it explicitly.
+        Silk.NET.Input.Glfw.GlfwInput.RegisterPlatform();
 
         float initialScale = DisplayScale.GetInitialScale(out int maxWorkW, out int maxWorkH);
 
@@ -391,6 +380,7 @@ public static class Shell
 
         var options = Silk.NET.Windowing.WindowOptions.Default;
         options.Size = new Vector2D<int>(initialPhysicalW, initialPhysicalH);
+
         // Silk's default Position (50, 50) is a desktop coordinate: with several monitors it lands on
         // whichever one sits at the origin, not the primary that the size above was measured on.
         // (Native Wayland ignores client positions; the compositor places the window there.)
@@ -400,26 +390,27 @@ public static class Shell
                 ? new Vector2D<int>(workX + (workW - initialPhysicalW) / 2, workY + (workH - initialPhysicalH) / 2)
                 : new Vector2D<int>(workX + 50, workY + 50);
         }
+
         // Created at the normal size and position above, then maximized, so un-maximizing lands there.
         _openedMaximized = WindowMemory.LoadMaximized(appWindow);
+        
         if (_openedMaximized)
             options.WindowState = WindowState.Maximized;
+
         _lastShownState = options.WindowState;
         options.Title = string.IsNullOrWhiteSpace(ShellApp.Title) ? "Blossom" : ShellApp.Title;
         options.VSync = false;
         options.TransparentFramebuffer = false;
         options.WindowBorder = appWindow.Resizable ? WindowBorder.Resizable : WindowBorder.Fixed;
         options.IsEventDriven = true;
+
         // The window only receives a blit of the offscreen FBO (Renderer), so it needs no depth or
         // stencil. Null for both would get GLFW's default 24/8.
         options.PreferredDepthBufferBits = 0;
         options.PreferredStencilBufferBits = 0;
 
-        options.API = new GraphicsAPI(
-    ContextAPI.OpenGL,
-    ContextProfile.Core,
-    ContextFlags.ForwardCompatible,
-    new APIVersion(3, 2));
+        // Before SetupGlfwHints: probing for a supported context resets GLFW's window hints.
+        options.API = GlBackend.Choose();
 
         DisplayScale.SetupGlfwHints();
 
@@ -462,6 +453,7 @@ public static class Shell
 
         int fbW;
         int fbH;
+
         if (window is not null && window.FramebufferSize.X > 0 && window.FramebufferSize.Y > 0)
         {
             fbW = Math.Max(1, window.FramebufferSize.X);
@@ -480,6 +472,7 @@ public static class Shell
             var fb = Session.FramebufferSize;
             changed = changed || fb.Width != fbW || fb.Height != fbH;
         }
+
         if (!changed)
             return;
 
@@ -528,42 +521,6 @@ public static class Shell
         catch (Exception ex)
         {
             Log.Warning($"Could not apply window size limits: {ex.Message}");
-        }
-    }
-
-    private static void SetGlfwWindowHints()
-    {
-        _glfw.DefaultWindowHints();
-
-        if (true)
-        {
-            _glfw.WindowHint(WindowHintContextApi.ContextCreationApi, ContextApi.NativeContextApi); // ContextApi.EglContextApi
-            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.OpenGL);
-            _glfw.WindowHint(WindowHintOpenGlProfile.OpenGlProfile, OpenGlProfile.Core);
-
-            _glfw.WindowHint(WindowHintInt.ContextVersionMajor, 3);
-            _glfw.WindowHint(WindowHintInt.ContextVersionMinor, 2);
-        }
-        // else
-        // {
-        //     _glfw.WindowHint(WindowHintContextApi.ContextCreationApi,
-        //       _automaticFallback || _useEgl ? ContextApi.EglContextApi : ContextApi.NativeContextApi);
-        //     _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.OpenGLES);
-
-        //     _glfw.WindowHint(WindowHintInt.ContextVersionMajor, _majOES);
-        //     _glfw.WindowHint(WindowHintInt.ContextVersionMinor, 0);
-        // }
-
-        _glfw.WindowHint(WindowHintInt.RedBits, 8);
-        _glfw.WindowHint(WindowHintInt.GreenBits, 8);
-        _glfw.WindowHint(WindowHintInt.BlueBits, 8);
-        _glfw.WindowHint(WindowHintInt.DepthBits, 24);
-        _glfw.WindowHint(WindowHintInt.StencilBits, 8);
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            // osx graphics switching
-            _glfw.WindowHint((WindowHintBool)0x00023003, true);
         }
     }
 
@@ -968,17 +925,18 @@ public static class Shell
                 if (!File.Exists(iconPath))
                     throw new FileNotFoundException("assets/icon.png not found next to the app or in the working directory.");
 
-                using var image = Image.Load<Rgba32>(iconPath);
-                var memoryGroup = image.GetPixelMemoryGroup();
-                Memory<byte> array = new byte[memoryGroup.TotalLength * sizeof(Rgba32)];
-                var block = MemoryMarshal.Cast<byte, Rgba32>(array.Span);
-                foreach (var memory in memoryGroup)
+                using var image = SKImage.FromEncodedData(iconPath)
+                    ?? throw new InvalidDataException($"Could not decode {iconPath}.");
+                // GLFW wants straight (unpremultiplied) RGBA rows.
+                var info = new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+                var pixels = new byte[info.BytesSize];
+                fixed (byte* ptr = pixels)
                 {
-                    memory.Span.CopyTo(block);
-                    block = block[memory.Length..];
+                    if (!image.ReadPixels(info, (IntPtr)ptr, info.RowBytes, 0, 0))
+                        throw new InvalidDataException($"Could not read the pixels of {iconPath}.");
                 }
 
-                var icon = new RawImage(image.Width, image.Height, array);
+                var icon = new RawImage(image.Width, image.Height, pixels);
                 window.SetWindowIcon(ref icon);
                 Log.Info("Logo loaded");
             }
