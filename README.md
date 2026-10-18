@@ -165,7 +165,7 @@ Application demo flags: `--benchmark`, `--no-fps` (hides the stats panel), `--ma
 
 ## Versioning
 
-`version.json` (`"0.1"` → `0.1.{git height}`). Patch increments per commit. Edit `"version"` for a minor or major line (e.g. `"1.0"`). Tag `v*.*.*` for a GitHub Release and nuget.org push (`nuget.yml`).
+`version.json` holds the full release version (e.g. `"0.3.6"`); every commit builds that version until it is changed. To release, set it to the new version, merge into `main`, and tag `v` plus the same version (e.g. `v0.3.6`). The tag triggers a GitHub Release and the nuget.org push (`nuget.yml`), which fails if the tag and `version.json` disagree.
 
 ## Built with
 

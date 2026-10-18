@@ -43,12 +43,23 @@ jobs:
       - name: Pack
         run: |
           set -euo pipefail
-          ver=$(dotnet msbuild src/Blossom.Pack/Blossom.Pack.csproj -nologo -getProperty:NuGetPackageVersion)
+          # Nerdbank sets the version inside GetBuildVersion; without that target the property is empty.
+          ver=$(dotnet msbuild src/Blossom.Pack/Blossom.Pack.csproj -nologo -target:GetBuildVersion -getProperty:NuGetPackageVersion)
           echo "Package version: $ver"
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           dotnet pack src/Blossom.Pack/Blossom.Pack.csproj -c Release --no-restore
           ls -l artifacts/*.nupkg
         id: pack
+
+      - name: Check tag matches version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          if [ "${GITHUB_REF_NAME#v}" != "$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version.json ($VERSION). Set version.json to ${GITHUB_REF_NAME#v} before tagging."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
